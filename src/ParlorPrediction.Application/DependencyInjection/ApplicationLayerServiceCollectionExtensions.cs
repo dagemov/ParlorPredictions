@@ -13,6 +13,7 @@ public static class ApplicationLayerServiceCollectionExtensions
         services.AddScoped<IDoughPrepCalculationService, DoughPrepCalculationService>();
         services.AddScoped<IDoughPrepRecommendationReadService, DoughPrepRecommendationReadService>();
         services.AddScoped<IDoughPrepRecommendationService, DoughPrepRecommendationService>();
+        services.AddScoped<IPrepDashboardReadService, PrepDashboardReadService>();
         services.AddScoped<IPrepTaskReadService, PrepTaskReadService>();
         services.AddScoped<IPrepTaskService, PrepTaskService>();
 
