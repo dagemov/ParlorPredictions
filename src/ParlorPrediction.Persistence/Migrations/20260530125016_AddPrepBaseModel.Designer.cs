@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ParlorPrediction.Persistence;
 
@@ -11,9 +12,11 @@ using ParlorPrediction.Persistence;
 namespace ParlorPrediction.Persistence.Migrations
 {
     [DbContext(typeof(ParlorPredictionDbContext))]
-    partial class ParlorPredictionDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260530125016_AddPrepBaseModel")]
+    partial class AddPrepBaseModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
