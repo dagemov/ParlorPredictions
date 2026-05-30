@@ -22,6 +22,8 @@ public sealed class ParlorPredictionDbContext : IdentityDbContext<User>
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+    public DbSet<SalesHistory> SalesHistories => Set<SalesHistory>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
