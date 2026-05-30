@@ -5,6 +5,7 @@ public interface IFileStorage
     Task<string> SaveFileAsync(
         byte[] content,
         string extension,
+        string contentType,
         string containerName,
         CancellationToken cancellationToken = default);
 
@@ -12,6 +13,7 @@ public interface IFileStorage
         byte[] content,
         string extension,
         string originalFileName,
+        string contentType,
         string containerName,
         CancellationToken cancellationToken = default);
 
@@ -23,6 +25,7 @@ public interface IFileStorage
     Task<string> ReplaceFileAsync(
         byte[] content,
         string extension,
+        string contentType,
         string currentFilePath,
         string containerName,
         string? originalFileName,

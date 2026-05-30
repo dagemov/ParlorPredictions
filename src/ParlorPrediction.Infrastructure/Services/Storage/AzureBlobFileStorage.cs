@@ -18,15 +18,25 @@ public sealed class AzureBlobFileStorage : IFileStorage
     public async Task<string> SaveFileAsync(
         byte[] content,
         string extension,
+        string contentType,
         string containerName,
         CancellationToken cancellationToken = default)
     {
         var client = await GetContainerClientAsync(containerName, cancellationToken);
-        var fileName = $"{Guid.NewGuid()}{NormalizeExtension(extension)}";
+        var fileName = $"file_{Guid.NewGuid():N}{NormalizeExtension(extension)}";
         var blob = client.GetBlobClient(fileName);
 
         using var memoryStream = new MemoryStream(content);
-        await blob.UploadAsync(memoryStream, overwrite: false, cancellationToken);
+        await blob.UploadAsync(
+            memoryStream,
+            new BlobUploadOptions
+            {
+                HttpHeaders = new BlobHttpHeaders
+                {
+                    ContentType = contentType
+                }
+            },
+            cancellationToken);
         return blob.Uri.ToString();
     }
 
@@ -34,6 +44,7 @@ public sealed class AzureBlobFileStorage : IFileStorage
         byte[] content,
         string extension,
         string originalFileName,
+        string contentType,
         string containerName,
         CancellationToken cancellationToken = default)
     {
@@ -43,7 +54,16 @@ public sealed class AzureBlobFileStorage : IFileStorage
         var blob = client.GetBlobClient(fileName);
 
         using var memoryStream = new MemoryStream(content);
-        await blob.UploadAsync(memoryStream, overwrite: false, cancellationToken);
+        await blob.UploadAsync(
+            memoryStream,
+            new BlobUploadOptions
+            {
+                HttpHeaders = new BlobHttpHeaders
+                {
+                    ContentType = contentType
+                }
+            },
+            cancellationToken);
         return blob.Uri.ToString();
     }
 
@@ -61,6 +81,7 @@ public sealed class AzureBlobFileStorage : IFileStorage
     public async Task<string> ReplaceFileAsync(
         byte[] content,
         string extension,
+        string contentType,
         string currentFilePath,
         string containerName,
         string? originalFileName,
@@ -72,8 +93,8 @@ public sealed class AzureBlobFileStorage : IFileStorage
         }
 
         return IsDocumentExtension(extension)
-            ? await SaveDocumentAsync(content, extension, originalFileName ?? "document", containerName, cancellationToken)
-            : await SaveFileAsync(content, extension, containerName, cancellationToken);
+            ? await SaveDocumentAsync(content, extension, originalFileName ?? "document", contentType, containerName, cancellationToken)
+            : await SaveFileAsync(content, extension, contentType, containerName, cancellationToken);
     }
 
     private async Task<BlobContainerClient> GetContainerClientAsync(string containerName, CancellationToken cancellationToken)
