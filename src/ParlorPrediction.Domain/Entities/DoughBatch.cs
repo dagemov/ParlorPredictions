@@ -1,10 +1,12 @@
+using ParlorPrediction.Domain.Rules;
+
 namespace ParlorPrediction.Domain.Entities;
 
 public sealed class DoughBatch
 {
-    public const int DefaultBallsPerCase = 12;
-    public const int StandardLoadCases = 14;
-    public const int MinimumFermentationDays = 2;
+    public const int DefaultBallsPerCase = DoughRules.BallsPerCase;
+    public const int StandardLoadCases = DoughRules.StandardBatchCases;
+    public const int MinimumFermentationDays = DoughRules.NormalFermentationMinimumDays;
     public const int NotesMaxLength = 500;
 
     private DoughBatch()
