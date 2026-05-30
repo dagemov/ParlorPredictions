@@ -6,5 +6,13 @@ public interface IValidationFileService
 
     bool IsImage(string extension);
 
-    Task<bool> ValidateFileAsync(byte[] content, string extension, long maxSizeInBytes = 5 * 1024 * 1024);
+    string SanitizeFileName(string fileName);
+
+    string GetCanonicalContentType(string extension);
+
+    Task<bool> ValidateFileAsync(
+        byte[] content,
+        string extension,
+        string? contentType,
+        long maxSizeInBytes = 5 * 1024 * 1024);
 }

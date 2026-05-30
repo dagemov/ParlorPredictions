@@ -12,5 +12,6 @@ public sealed class FileUpdateRequest
     public string CurrentFilePath { get; set; } = null!;
 
     [Required]
+    [StringLength(63)]
     public string ContainerName { get; set; } = null!;
 }

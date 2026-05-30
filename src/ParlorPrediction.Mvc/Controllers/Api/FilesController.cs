@@ -3,13 +3,15 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ParlorPrediction.Application.Interfaces.Files;
 using ParlorPrediction.Application.Models.Files;
+using ParlorPrediction.Contracts.Common;
 using ParlorPrediction.Contracts.Requests.Files;
+using System.Net;
 
 namespace ParlorPrediction.Mvc.Controllers.Api;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Admin,Manager")]
 public sealed class FilesController : ControllerBase
 {
     private readonly IFileBlobService _fileBlobService;
@@ -21,6 +23,7 @@ public sealed class FilesController : ControllerBase
 
     [HttpPost]
     [RequestSizeLimit(5 * 1024 * 1024)]
+    [Consumes("multipart/form-data")]
     public async Task<IActionResult> Upload([FromForm] FileUploadRequest request, CancellationToken cancellationToken)
     {
         await using var memoryStream = new MemoryStream();
@@ -31,6 +34,7 @@ public sealed class FilesController : ControllerBase
             Content = memoryStream.ToArray(),
             Extension = Path.GetExtension(request.File.FileName),
             OriginalFileName = request.File.FileName,
+            ContentType = request.File.ContentType,
             ContainerName = request.ContainerName ?? "images"
         };
 
@@ -40,11 +44,12 @@ public sealed class FilesController : ControllerBase
 
     [HttpPost("multiple")]
     [RequestSizeLimit(50 * 1024 * 1024)]
+    [Consumes("multipart/form-data")]
     public async Task<IActionResult> UploadMultiple([FromForm] MultipleFileUploadRequest request, CancellationToken cancellationToken)
     {
         if (!request.Files.Any())
         {
-            return BadRequest("No files were provided.");
+            return BadRequest(ApiResponse<object>.Failure("No files were provided.", HttpStatusCode.BadRequest));
         }
 
         var payloads = new List<FileUploadPayload>();
@@ -59,6 +64,7 @@ public sealed class FilesController : ControllerBase
                 Content = memoryStream.ToArray(),
                 Extension = Path.GetExtension(file.FileName),
                 OriginalFileName = file.FileName,
+                ContentType = file.ContentType,
                 ContainerName = request.ContainerName ?? "images"
             });
         }
@@ -75,11 +81,12 @@ public sealed class FilesController : ControllerBase
     [HttpDelete]
     public async Task<IActionResult> Delete([FromQuery] string filePath, [FromQuery] string containerName, CancellationToken cancellationToken)
     {
-        await _fileBlobService.DeleteFileAsync(filePath, containerName, cancellationToken);
-        return NoContent();
+        var response = await _fileBlobService.DeleteFileAsync(filePath, containerName, cancellationToken);
+        return StatusCode((int)response.StatusCode, response);
     }
 
     [HttpPut]
+    [Consumes("multipart/form-data")]
     public async Task<IActionResult> Update([FromForm] FileUpdateRequest request, CancellationToken cancellationToken)
     {
         await using var memoryStream = new MemoryStream();
