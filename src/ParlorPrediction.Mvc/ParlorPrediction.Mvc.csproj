@@ -11,6 +11,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>ParlorPrediction.Mvc-7d73d806-4bd1-4210-b8be-c58ccf406ee5</UserSecretsId>
   </PropertyGroup>
 
 </Project>
