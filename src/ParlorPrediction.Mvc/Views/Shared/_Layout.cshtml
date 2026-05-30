@@ -6,30 +6,72 @@
     <title>@ViewData["Title"] - Parlor Prediction</title>
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/ParlorPrediction.Mvc.styles.css" asp-append-version="true" />
 </head>
 <body>
-    <header class="app-header">
-        <div class="container app-shell">
-            <a class="app-brand" asp-area="" asp-controller="Home" asp-action="Index">Parlor Prediction</a>
-            <span class="app-badge">Clean Architecture Setup</span>
-        </div>
-    </header>
-    <div class="container app-shell">
-        <main role="main" class="pb-5">
+    @{
+        var canSeePrep = User.Identity?.IsAuthenticated == true &&
+            (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("PizzaMaker"));
+    }
+
+    <div class="app-frame">
+        <header class="app-header">
+            <div class="container app-shell header-bar">
+                <div class="header-branding">
+                    <a class="app-brand" asp-controller="Home" asp-action="Index">
+                        <span class="app-brand__mark">PP</span>
+                        <span>
+                            <strong>Parlor Prediction</strong>
+                            <small>Dough Prep Prototype</small>
+                        </span>
+                    </a>
+                    <nav class="app-nav" aria-label="Primary">
+                        <a asp-controller="Home" asp-action="Index">Home</a>
+                        @if (canSeePrep)
+                        {
+                            <a asp-controller="Prep" asp-action="Index">Prep</a>
+                        }
+                    </nav>
+                </div>
+
+                <div class="header-actions">
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <span class="user-chip">
+                            <i class="fa-regular fa-user"></i>
+                            @User.Identity?.Name
+                        </span>
+                        <form asp-controller="Session" asp-action="Logout" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Sign Out</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <a class="btn btn-sm btn-primary" asp-controller="Session" asp-action="Login">Sign In</a>
+                    }
+                </div>
+            </div>
+        </header>
+
+        <main class="container app-shell py-4 py-lg-5" role="main">
             @RenderBody()
         </main>
+
+        <footer class="footer">
+            <div class="container app-shell footer-content">
+                <span>&copy; 2026 Parlor Prediction</span>
+                <span>Internal workflow prototype for Parlor Pizza, Wilton CT.</span>
+            </div>
+        </footer>
     </div>
 
-    <footer class="footer">
-        <div class="container app-shell footer-content">
-            <span>&copy; 2026 Parlor Prediction</span>
-            <span>Base interna para Dough Prep</span>
-        </div>
-    </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

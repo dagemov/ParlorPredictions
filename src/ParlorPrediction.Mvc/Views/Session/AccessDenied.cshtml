@@ -1,0 +1,21 @@
+@{
+    ViewData["Title"] = "Access Denied";
+}
+
+<section class="content-card empty-state-card">
+    <span class="eyebrow">Restricted</span>
+    <h1>You do not have access to this area.</h1>
+    <p>Managers and Pizza Makers can work with Dough Prep. If you need access, ask an administrator or manager to update your role.</p>
+    <div class="d-flex flex-wrap gap-2 mt-4">
+        <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Back Home</a>
+        @if (User.Identity?.IsAuthenticated == true &&
+            (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("PizzaMaker")))
+        {
+            <a class="btn btn-outline-secondary" asp-controller="Prep" asp-action="Index">Open Prep</a>
+        }
+        else
+        {
+            <a class="btn btn-outline-secondary" asp-controller="Session" asp-action="Login">Sign In</a>
+        }
+    </div>
+</section>

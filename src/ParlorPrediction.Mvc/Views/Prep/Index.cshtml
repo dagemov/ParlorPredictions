@@ -1,0 +1,38 @@
+@{
+    ViewData["Title"] = "Prep";
+}
+
+<section class="page-hero">
+    <div>
+        <span class="eyebrow">Prep Module</span>
+        <h1>Choose the prep area you want to run today.</h1>
+        <p class="page-copy">Dough Prep is now functional. General Prep stays intentionally light until the dough flow is fully validated.</p>
+    </div>
+</section>
+
+<section class="feature-grid">
+    <a class="feature-card feature-card--link" asp-action="Dough" asp-controller="Prep">
+        <div class="feature-card__icon">
+            <i class="fa-solid fa-bread-slice"></i>
+        </div>
+        <div class="feature-card__body">
+            <div class="feature-card__meta">Ready now</div>
+            <h2>Dough Prep</h2>
+            <p>Calculate recommendation snapshots, save them, create dough tasks, and track completion by role.</p>
+        </div>
+        <span class="feature-card__arrow">
+            <i class="fa-solid fa-arrow-right"></i>
+        </span>
+    </a>
+
+    <article class="feature-card feature-card--muted">
+        <div class="feature-card__icon">
+            <i class="fa-regular fa-clipboard"></i>
+        </div>
+        <div class="feature-card__body">
+            <div class="feature-card__meta">Placeholder</div>
+            <h2>General Prep</h2>
+            <p>This area is reserved for future prep items after the dough workflow is stable and approved.</p>
+        </div>
+    </article>
+</section>

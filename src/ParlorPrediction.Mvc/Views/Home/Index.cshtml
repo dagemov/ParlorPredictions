@@ -1,54 +1,63 @@
 @{
-    ViewData["Title"] = "Setup Base";
+    ViewData["Title"] = "Home";
 }
 
-<section class="hero-panel">
-    <p class="eyebrow">Parlor Pizza · Wilton, CT</p>
-    <h1>Parlor Prediction está listo para crecer por subfases.</h1>
-    <p class="hero-copy">
-        Esta base deja la solución organizada en Clean Architecture para arrancar Dough Prep sin mezclar
-        autenticación, persistencia avanzada ni módulos futuros antes de tiempo.
-    </p>
+<section class="page-hero">
+    <div>
+        <span class="eyebrow">Parlor Pizza - Wilton, CT</span>
+        <h1>A clean base for dough prep, recommendations, and daily execution.</h1>
+        <p class="page-copy">The prototype now covers authentication, persistence, dough calculation, recommendation snapshots, and prep task tracking. The next screen is already operational for day-to-day dough prep work.</p>
+    </div>
+
+    <div class="hero-actions">
+        @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("PizzaMaker")))
+        {
+            <a class="btn btn-primary btn-lg" asp-controller="Prep" asp-action="Index">
+                <i class="fa-solid fa-arrow-right me-2"></i>
+                Open Prep
+            </a>
+        }
+        else
+        {
+            <a class="btn btn-primary btn-lg" asp-controller="Session" asp-action="Login">
+                <i class="fa-solid fa-arrow-right-to-bracket me-2"></i>
+                Sign In
+            </a>
+        }
+    </div>
 </section>
 
-<section class="status-grid" aria-label="Estado de la solución">
-    <article class="status-card">
-        <h2>Subfase actual</h2>
-        <p>Setup de solución, proyectos por capa y MVC funcional.</p>
+<section class="feature-grid">
+    <article class="feature-card">
+        <div class="feature-card__icon">
+            <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <div class="feature-card__body">
+            <div class="feature-card__meta">Foundation</div>
+            <h2>Secure auth and files</h2>
+            <p>Identity, JWT, Blob-ready uploads, and local SQL Server are already wired for the prototype.</p>
+        </div>
     </article>
-    <article class="status-card">
-        <h2>Siguiente paso natural</h2>
-        <p>Revisar <code>Shifts</code> y mapear qué piezas de autenticación se podrían reutilizar sin copiar nada todavía.</p>
-    </article>
-    <article class="status-card">
-        <h2>Fuera de alcance por ahora</h2>
-        <p>JWT, UnitOfWork, Blob Storage, IA, migraciones grandes y dashboard final.</p>
-    </article>
-</section>
 
-<section class="layer-list" aria-label="Capas iniciales">
-    <article class="layer-item">
-        <span class="layer-name">Domain</span>
-        <p>Entidades, value objects y reglas puras de negocio.</p>
+    <article class="feature-card">
+        <div class="feature-card__icon">
+            <i class="fa-solid fa-calculator"></i>
+        </div>
+        <div class="feature-card__body">
+            <div class="feature-card__meta">Operational core</div>
+            <h2>Dough calculations</h2>
+            <p>The system can calculate dough demand from history, events, and inventory snapshots before saving a recommendation.</p>
+        </div>
     </article>
-    <article class="layer-item">
-        <span class="layer-name">Application</span>
-        <p>Casos de uso, servicios de aplicación e interfaces.</p>
-    </article>
-    <article class="layer-item">
-        <span class="layer-name">Contracts</span>
-        <p>Requests, responses y contratos públicos entre MVC y Application.</p>
-    </article>
-    <article class="layer-item">
-        <span class="layer-name">Persistence</span>
-        <p>DbContext, EF Core, migraciones y persistencia transaccional futura.</p>
-    </article>
-    <article class="layer-item">
-        <span class="layer-name">Infrastructure</span>
-        <p>Servicios externos como email, archivos, IA y Blob Storage.</p>
-    </article>
-    <article class="layer-item">
-        <span class="layer-name">MVC</span>
-        <p>Controllers, views, HTMX, TypeScript ligero y experiencia operativa.</p>
+
+    <article class="feature-card">
+        <div class="feature-card__icon">
+            <i class="fa-solid fa-list-check"></i>
+        </div>
+        <div class="feature-card__body">
+            <div class="feature-card__meta">Execution</div>
+            <h2>Prep task tracking</h2>
+            <p>Dough recommendations can become real prep tasks that managers and pizza makers can complete with traceability.</p>
+        </div>
     </article>
 </section>

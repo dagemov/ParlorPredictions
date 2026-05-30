@@ -1,0 +1,63 @@
+@model DoughTaskViewModel
+
+<tr>
+    <td>
+        <div class="task-main">
+            <strong>@Model.PrepItemName</strong>
+            <span>@Model.PrepStationName station</span>
+        </div>
+    </td>
+    <td>@Model.AssignedRole</td>
+    <td>@Model.QuantityRecommended balls</td>
+    <td>@Model.QuantityCompleted balls</td>
+    <td>
+        <span class="status-pill @(Model.Status == "Completed" ? "status-pill--success" : "status-pill--neutral")">
+            @Model.Status
+        </span>
+        @if (Model.CompletedAtUtc.HasValue)
+        {
+            <div class="task-timestamp">@Model.CompletedAtUtc.Value.ToLocalTime().ToString("MMM d, h:mm tt")</div>
+        }
+    </td>
+    <td class="text-end">
+        @if (Model.CanComplete)
+        {
+            <form asp-action="CompleteTask"
+                  asp-controller="Prep"
+                  method="post"
+                  class="task-complete-form"
+                  hx-post="@Url.Action("CompleteTask", "Prep")"
+                  hx-target="#dough-prep-workspace"
+                  hx-swap="outerHTML"
+                  data-swal-confirm
+                  data-confirm-title="Complete dough task?"
+                  data-confirm-text="This will mark the dough task as completed for the current date.">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="PrepTaskId" value="@Model.PrepTaskId" />
+                <input type="hidden" name="TargetDate" value="@Model.TaskDate.ToString("yyyy-MM-dd")" />
+                <input type="hidden" name="HistoricalWeeksToUse" value="@Model.HistoricalWeeksToUse" />
+                <div class="task-form-grid">
+                    <input name="QuantityCompleted"
+                           type="number"
+                           min="1"
+                           value="@(Math.Max(Model.QuantityRecommended - Model.QuantityCompleted, 1))"
+                           class="form-control form-control-sm"
+                           aria-label="Quantity completed" />
+                    <input name="Notes"
+                           type="text"
+                           maxlength="500"
+                           class="form-control form-control-sm"
+                           placeholder="Optional note" />
+                    <button type="submit" class="btn btn-sm btn-outline-primary">
+                        <i class="fa-solid fa-check me-1"></i>
+                        Complete
+                    </button>
+                </div>
+            </form>
+        }
+        else
+        {
+            <span class="inline-hint">No action needed</span>
+        }
+    </td>
+</tr>

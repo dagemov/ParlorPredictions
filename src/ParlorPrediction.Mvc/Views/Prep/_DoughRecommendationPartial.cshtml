@@ -1,0 +1,120 @@
+@model DoughRecommendationViewModel?
+
+<section class="content-card content-card--padded">
+    <div class="section-heading">
+        <span class="eyebrow">Recommendation</span>
+        <h2>Dough snapshot</h2>
+        @if (Model is null)
+        {
+            <p>No dough recommendation is loaded for this date yet.</p>
+        }
+        else if (Model.IsPersisted)
+        {
+            <p>This saved snapshot can be audited later and used to create a dough prep task.</p>
+        }
+        else
+        {
+            <p>This recommendation was calculated in memory. Save it first if you want a persisted snapshot.</p>
+        }
+    </div>
+
+    @if (Model is null)
+    {
+        <div class="empty-state">
+            <i class="fa-regular fa-lightbulb"></i>
+            <span>Managers can calculate a recommendation from the toolbar above.</span>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="status-pill @(Model.IsPersisted ? "status-pill--success" : "status-pill--info")">
+                @(Model.IsPersisted ? "Saved Snapshot" : "Draft Calculation")
+            </span>
+            <span class="status-pill @(Model.ShouldMakeDough ? "status-pill--warning" : "status-pill--neutral")">
+                @(Model.ShouldMakeDough ? "Make Dough" : "No Production Needed")
+            </span>
+            <span class="status-pill @(Model.ShouldBallDough ? "status-pill--warning" : "status-pill--neutral")">
+                @(Model.ShouldBallDough ? "Ball Dough" : "No Immediate Boleado")
+            </span>
+            @if (Model.UsesShortFermentationException)
+            {
+                <span class="status-pill status-pill--info">Short Fermentation Considered</span>
+            }
+        </div>
+
+        <div class="metric-grid">
+            <article class="metric-card">
+                <span class="metric-card__label">Required Balls</span>
+                <strong>@Model.RequiredBalls</strong>
+                <small>@Model.HistoricalAverageBalls historical + @Model.EventEstimatedBalls event</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Available Balls</span>
+                <strong>@Model.AvailableBalls</strong>
+                <small>Latest inventory snapshot on or before @Model.RecommendationDate.ToString("MMM d")</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Missing Balls</span>
+                <strong>@Model.MissingBalls</strong>
+                <small>@Model.RecommendedCases cases / @Model.RecommendedLoads loads</small>
+            </article>
+        </div>
+
+        <div class="recommendation-note">
+            <h3>Why this recommendation?</h3>
+            <p>@Model.Reason</p>
+            @if (Model.SavedAtUtc.HasValue)
+            {
+                <small>Saved @Model.SavedAtUtc.Value.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</small>
+            }
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mt-4">
+            @if (Model.CanSaveRecommendation)
+            {
+                <form asp-action="SaveDoughRecommendation"
+                      asp-controller="Prep"
+                      method="post"
+                      hx-post="@Url.Action("SaveDoughRecommendation", "Prep")"
+                      hx-target="#dough-prep-workspace"
+                      hx-swap="outerHTML">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="targetDate" value="@Model.RecommendationDate.ToString("yyyy-MM-dd")" />
+                    <input type="hidden" name="historicalWeeksToUse" value="@Model.HistoricalWeeksToUse" />
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-regular fa-floppy-disk me-2"></i>
+                        Save Recommendation
+                    </button>
+                </form>
+            }
+
+            @if (Model.CanCreateTask && Model.RecommendationId.HasValue)
+            {
+                <form asp-action="CreateDoughTask"
+                      asp-controller="Prep"
+                      method="post"
+                      hx-post="@Url.Action("CreateDoughTask", "Prep")"
+                      hx-target="#dough-prep-workspace"
+                      hx-swap="outerHTML">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="recommendationId" value="@Model.RecommendationId.Value" />
+                    <input type="hidden" name="targetDate" value="@Model.RecommendationDate.ToString("yyyy-MM-dd")" />
+                    <input type="hidden" name="historicalWeeksToUse" value="@Model.HistoricalWeeksToUse" />
+                    <button type="submit" class="btn btn-dark">
+                        <i class="fa-solid fa-list-check me-2"></i>
+                        Create Dough Task
+                    </button>
+                </form>
+            }
+        </div>
+
+        @if (Model.TaskAlreadyExists)
+        {
+            <p class="inline-hint mt-3 mb-0">
+                <i class="fa-solid fa-circle-info me-2"></i>
+                A dough task already exists for this recommendation.
+            </p>
+        }
+    }
+</section>
