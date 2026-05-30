@@ -1,0 +1,76 @@
+@model DoughDemandPlanListPageViewModel
+
+<section id="dough-demand-list" class="content-card">
+    <div class="content-card--padded">
+        @if (Model.DemandPlans.Count == 0)
+        {
+            <div class="empty-state">
+                <i class="fa-solid fa-box-open"></i>
+                <div>
+                    <strong>No demand plans match the current filters.</strong>
+                    <p>Add a new demand plan or broaden the search to see more baseline entries.</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table prep-table align-middle">
+                    <thead>
+                        <tr>
+                            <th scope="col">Day</th>
+                            <th scope="col">Source</th>
+                            <th scope="col">Range</th>
+                            <th scope="col">Baseline</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Notes</th>
+                            <th scope="col" class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var demandPlan in Model.DemandPlans)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@demandPlan.DayOfWeek</strong>
+                                    <div class="task-timestamp">Updated @demandPlan.UpdatedAtUtc.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</div>
+                                </td>
+                                <td>@demandPlan.SourceName</td>
+                                <td>@demandPlan.MinDoughBalls - @demandPlan.MaxDoughBalls balls</td>
+                                <td><strong>@demandPlan.BaselineDoughBalls</strong> balls</td>
+                                <td>
+                                    <span class="status-pill @(demandPlan.IsActive ? "status-pill--success" : "status-pill--neutral")">
+                                        <i class="fa-solid @(demandPlan.IsActive ? "fa-circle-check" : "fa-circle-pause")"></i>
+                                        @(demandPlan.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </td>
+                                <td>@(string.IsNullOrWhiteSpace(demandPlan.Notes) ? "—" : demandPlan.Notes)</td>
+                                <td class="text-end">
+                                    <div class="d-flex justify-content-end flex-wrap gap-2">
+                                        <a class="btn btn-sm btn-outline-secondary"
+                                           asp-action="EditDoughDemand"
+                                           asp-controller="PrepData"
+                                           asp-route-id="@demandPlan.Id">
+                                            Edit
+                                        </a>
+                                        <button type="button"
+                                                class="btn btn-sm @(demandPlan.IsActive ? "btn-outline-danger" : "btn-outline-secondary")"
+                                                hx-post="@Url.Action("ToggleDoughDemand", "PrepData", new { id = demandPlan.Id })"
+                                                hx-include="#prep-data-anti-forgery,#dough-demand-filters"
+                                                hx-target="#dough-demand-list"
+                                                hx-swap="outerHTML"
+                                                data-swal-confirm
+                                                data-confirm-title="@(demandPlan.IsActive ? "Deactivate demand plan?" : "Reactivate demand plan?")"
+                                                data-confirm-text="@(demandPlan.IsActive ? "The plan will stay in history but the dough calculator will ignore it until it is reactivated." : "The plan will return to the active baseline pool for this day.")">
+                                            @(demandPlan.IsActive ? "Deactivate" : "Reactivate")
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</section>

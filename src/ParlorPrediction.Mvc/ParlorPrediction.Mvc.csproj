@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="MailKit" Version="4.17.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ParlorPrediction.Application\ParlorPrediction.Application.csproj" />
+    <ProjectReference Include="..\ParlorPrediction.Contracts\ParlorPrediction.Contracts.csproj" />
+    <ProjectReference Include="..\ParlorPrediction.Persistence\ParlorPrediction.Persistence.csproj" />
+    <ProjectReference Include="..\ParlorPrediction.Infrastructure\ParlorPrediction.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>ParlorPrediction.Mvc-7d73d806-4bd1-4210-b8be-c58ccf406ee5</UserSecretsId>
+  </PropertyGroup>
+
+</Project>

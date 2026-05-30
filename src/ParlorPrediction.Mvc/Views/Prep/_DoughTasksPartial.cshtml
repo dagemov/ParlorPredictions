@@ -1,0 +1,40 @@
+@model DoughPrepPageViewModel
+
+<section class="content-card content-card--padded">
+    <div class="section-heading">
+        <span class="eyebrow">Tasks</span>
+        <h2>Dough tasks for @Model.TargetDate.ToString("dddd, MMM d")</h2>
+        <p>Pizza Makers and Managers can use this list to track what still needs to be prepared.</p>
+    </div>
+
+    @if (Model.Tasks.Count == 0)
+    {
+        <div class="empty-state">
+            <i class="fa-regular fa-clipboard"></i>
+            <span>No dough tasks exist for this date yet.</span>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table prep-table align-middle">
+                <thead>
+                    <tr>
+                        <th scope="col">Task</th>
+                        <th scope="col">Assigned Role</th>
+                        <th scope="col">Recommended</th>
+                        <th scope="col">Completed</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var task in Model.Tasks)
+                    {
+                        <partial name="_DoughTaskRowPartial" model="task" />
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

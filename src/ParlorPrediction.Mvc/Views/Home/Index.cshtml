@@ -1,0 +1,63 @@
+@{
+    ViewData["Title"] = "Home";
+}
+
+<section class="page-hero">
+    <div>
+        <span class="eyebrow">Parlor Pizza - Wilton, CT</span>
+        <h1>A clean base for dough prep, recommendations, and daily execution.</h1>
+        <p class="page-copy">The prototype now covers authentication, persistence, dough calculation, recommendation snapshots, and prep task tracking. The next screen is already operational for day-to-day dough prep work.</p>
+    </div>
+
+    <div class="hero-actions">
+        @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("PizzaMaker")))
+        {
+            <a class="btn btn-primary btn-lg" asp-controller="Prep" asp-action="Index">
+                <i class="fa-solid fa-arrow-right me-2"></i>
+                Open Prep
+            </a>
+        }
+        else
+        {
+            <a class="btn btn-primary btn-lg" asp-controller="Session" asp-action="Login">
+                <i class="fa-solid fa-arrow-right-to-bracket me-2"></i>
+                Sign In
+            </a>
+        }
+    </div>
+</section>
+
+<section class="feature-grid">
+    <article class="feature-card">
+        <div class="feature-card__icon">
+            <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <div class="feature-card__body">
+            <div class="feature-card__meta">Foundation</div>
+            <h2>Secure auth and files</h2>
+            <p>Identity, JWT, Blob-ready uploads, and local SQL Server are already wired for the prototype.</p>
+        </div>
+    </article>
+
+    <article class="feature-card">
+        <div class="feature-card__icon">
+            <i class="fa-solid fa-calculator"></i>
+        </div>
+        <div class="feature-card__body">
+            <div class="feature-card__meta">Operational core</div>
+            <h2>Dough calculations</h2>
+            <p>The system can calculate dough demand from history, events, and inventory snapshots before saving a recommendation.</p>
+        </div>
+    </article>
+
+    <article class="feature-card">
+        <div class="feature-card__icon">
+            <i class="fa-solid fa-list-check"></i>
+        </div>
+        <div class="feature-card__body">
+            <div class="feature-card__meta">Execution</div>
+            <h2>Prep task tracking</h2>
+            <p>Dough recommendations can become real prep tasks that managers and pizza makers can complete with traceability.</p>
+        </div>
+    </article>
+</section>

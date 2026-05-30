@@ -1,0 +1,99 @@
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@model DoughDemandPlanListPageViewModel
+@{
+    ViewData["Title"] = "Dough Demand Plans";
+    var requestToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
+}
+
+<section class="page-hero page-hero--compact">
+    <div>
+        <span class="eyebrow">Prep Data</span>
+        <h1>Dough demand plans</h1>
+        <p class="page-copy">Define the weekly baseline demand for dough by source, then let Dough Prep add live events on top of it.</p>
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div class="alert alert-@Model.StatusType status-banner" role="alert">
+        @Model.StatusMessage
+    </div>
+}
+
+<section class="content-card content-card--padded stack-lg">
+    <div class="toolbar-header">
+        <div class="section-heading mb-0">
+            <span class="eyebrow">Filter Baselines</span>
+            <h2>Search demand plans</h2>
+            <p>Narrow plans by day or source, then create or edit the active demand setup for the restaurant.</p>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="PrepData">
+                <i class="fa-solid fa-arrow-left me-2"></i>
+                Prep Data Home
+            </a>
+            <a class="btn btn-primary" asp-action="CreateDoughDemand" asp-controller="PrepData">
+                <i class="fa-solid fa-plus me-2"></i>
+                New Demand Plan
+            </a>
+        </div>
+    </div>
+
+    <input id="prep-data-anti-forgery" type="hidden" name="__RequestVerificationToken" value="@requestToken" />
+
+    <form id="dough-demand-filters"
+          asp-action="DoughDemand"
+          asp-controller="PrepData"
+          method="get"
+          class="row g-3 align-items-end"
+          hx-get="@Url.Action("DoughDemand", "PrepData")"
+          hx-target="#dough-demand-list"
+          hx-swap="outerHTML"
+          hx-push-url="true">
+        <div class="col-md-3">
+            <label class="form-label" for="dayOfWeek">Day of week</label>
+            <select id="dayOfWeek"
+                    name="dayOfWeek"
+                    class="form-select"
+                    asp-items="Model.DayOfWeekOptions">
+            </select>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label" for="sourceTerm">Source</label>
+            <input id="sourceTerm"
+                   name="sourceTerm"
+                   type="text"
+                   value="@Model.SourceTerm"
+                   class="form-control"
+                   placeholder="Restaurant, market, party..." />
+        </div>
+
+        <div class="col-md-2">
+            <div class="form-check admin-form-check">
+                <input id="activeOnly"
+                       name="activeOnly"
+                       class="form-check-input"
+                       type="checkbox"
+                       value="true"
+                       checked="@Model.ActiveOnly" />
+                <label class="form-check-label" for="activeOnly">Active only</label>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-outline-secondary">
+                    <i class="fa-solid fa-filter me-2"></i>
+                    Search
+                </button>
+                <a class="btn btn-outline-secondary" asp-action="DoughDemand" asp-controller="PrepData">
+                    Clear
+                </a>
+            </div>
+        </div>
+    </form>
+</section>
+
+<partial name="_DoughDemandPlanListPartial" model="Model" />

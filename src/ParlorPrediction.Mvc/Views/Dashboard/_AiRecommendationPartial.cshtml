@@ -1,0 +1,50 @@
+@model AiRecommendationPanelViewModel
+
+<section id="dashboard-ai-panel" class="content-card content-card--padded">
+    <div class="section-heading">
+        <span class="eyebrow">AI Advisor</span>
+        <h2>Text recommendation</h2>
+        <p>This panel reads the current dashboard snapshot and returns guidance for the manager. It does not write to the database or create tasks.</p>
+    </div>
+
+    <form asp-action="GenerateAiRecommendation"
+          asp-controller="Dashboard"
+          method="post"
+          class="dashboard-ai-form"
+          hx-post="@Url.Action("GenerateAiRecommendation", "Dashboard")"
+          hx-target="#dashboard-ai-panel"
+          hx-swap="outerHTML">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="targetDate" value="@Model.TargetDate.ToString("yyyy-MM-dd")" />
+        <button type="submit" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-sparkles me-2"></i>
+            Generate AI Recommendation
+        </button>
+    </form>
+
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="dashboard-ai-message dashboard-ai-message--error">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <p>@Model.ErrorMessage</p>
+        </div>
+    }
+    else if (Model.HasRecommendation)
+    {
+        <div class="dashboard-ai-message">
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <span class="status-pill @(Model.IsAiGenerated ? "status-pill--info" : "status-pill--neutral")">
+                    @(Model.IsAiGenerated ? "AI Generated" : "Deterministic Local Fallback")
+                </span>
+            </div>
+            <p>@Model.RecommendationText</p>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <i class="fa-regular fa-message"></i>
+            <span>Generate an AI-style recommendation when you want a quick manager-facing summary from this dashboard snapshot.</span>
+        </div>
+    }
+</section>

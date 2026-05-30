@@ -1,0 +1,67 @@
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@model DoughPrepPageViewModel
+@{
+    var toolbarRequestToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
+}
+
+<section id="dough-prep-workspace" class="stack-lg">
+    <section class="content-card content-card--padded">
+        <div class="toolbar-header">
+            <div class="section-heading mb-0">
+                <span class="eyebrow">Run Prep For A Day</span>
+                <h2>Dough prep date</h2>
+                <p>Use the selector to load saved activity for a day. Managers can calculate a fresh recommendation without reloading the page.</p>
+            </div>
+        </div>
+
+        <input id="dough-prep-anti-forgery" type="hidden" name="__RequestVerificationToken" value="@toolbarRequestToken" />
+
+        <form asp-action="Dough" asp-controller="Prep" method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label" for="targetDate">Target date</label>
+                <input id="targetDate"
+                       name="targetDate"
+                       type="date"
+                       value="@Model.TargetDate.ToString("yyyy-MM-dd")"
+                       class="form-control" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label" for="historicalWeeksToUse">Historical weeks</label>
+                <input id="historicalWeeksToUse"
+                       name="historicalWeeksToUse"
+                       type="number"
+                       min="1"
+                       value="@Model.HistoricalWeeksToUse"
+                       class="form-control" />
+            </div>
+
+            <div class="col-md-5">
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-outline-secondary">
+                        <i class="fa-solid fa-calendar-day me-2"></i>
+                        Load Day
+                    </button>
+
+                    @if (Model.CanManageRecommendations)
+                    {
+                        <button type="button"
+                                class="btn btn-primary"
+                                hx-post="@Url.Action("CalculateDough", "Prep")"
+                                hx-include="#targetDate,#historicalWeeksToUse,#dough-prep-anti-forgery"
+                                hx-target="#dough-prep-workspace"
+                                hx-swap="outerHTML">
+                            <i class="fa-solid fa-wand-magic-sparkles me-2"></i>
+                            Calculate Recommendation
+                        </button>
+                    }
+                </div>
+            </div>
+        </form>
+    </section>
+
+    <div class="prep-grid prep-grid-wide">
+        <partial name="_DoughRecommendationPartial" model="Model.Recommendation" />
+        <partial name="_DoughTasksPartial" model="Model" />
+    </div>
+</section>

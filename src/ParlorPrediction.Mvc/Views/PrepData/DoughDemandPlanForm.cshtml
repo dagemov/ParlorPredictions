@@ -1,0 +1,81 @@
+@model DoughDemandPlanFormViewModel
+@{
+    ViewData["Title"] = Model.IsEditMode ? "Edit Dough Demand Plan" : "New Dough Demand Plan";
+}
+
+<section class="page-hero page-hero--compact">
+    <div>
+        <span class="eyebrow">Prep Data</span>
+        <h1>@(Model.IsEditMode ? "Edit dough demand plan" : "Create dough demand plan")</h1>
+        <p class="page-copy">Capture baseline dough demand for a source and day of the week so the recommendation engine has a stable starting point.</p>
+    </div>
+</section>
+
+<section class="content-card content-card--padded">
+    <div class="toolbar-header">
+        <div class="section-heading mb-0">
+            <span class="eyebrow">Demand Plan Form</span>
+            <h2>@(Model.IsEditMode ? "Update plan details" : "Enter new plan details")</h2>
+            <p>Source names should stay stable over time so baseline planning remains easy to review.</p>
+        </div>
+
+        <a class="btn btn-outline-secondary" asp-action="DoughDemand" asp-controller="PrepData">
+            <i class="fa-solid fa-arrow-left me-2"></i>
+            Back To Plans
+        </a>
+    </div>
+
+    <form method="post" class="row g-3">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="col-md-4">
+            <label asp-for="DayOfWeek" class="form-label"></label>
+            <select asp-for="DayOfWeek" asp-items="Model.DayOfWeekOptions" class="form-select"></select>
+            <span asp-validation-for="DayOfWeek" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-8">
+            <label asp-for="SourceName" class="form-label"></label>
+            <input asp-for="SourceName" class="form-control" placeholder="Restaurant, Westport Farmers Market..." />
+            <span asp-validation-for="SourceName" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-3">
+            <label asp-for="MinDoughBalls" class="form-label"></label>
+            <input asp-for="MinDoughBalls" class="form-control" type="number" min="0" />
+            <span asp-validation-for="MinDoughBalls" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-3">
+            <label asp-for="MaxDoughBalls" class="form-label"></label>
+            <input asp-for="MaxDoughBalls" class="form-control" type="number" min="0" />
+            <span asp-validation-for="MaxDoughBalls" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-6">
+            <label asp-for="Notes" class="form-label"></label>
+            <textarea asp-for="Notes" class="form-control" rows="3" placeholder="Optional context for operators or markets."></textarea>
+            <span asp-validation-for="Notes" class="text-danger"></span>
+        </div>
+
+        <div class="col-12">
+            <div class="form-check admin-form-check">
+                <input asp-for="IsActive" class="form-check-input" />
+                <label asp-for="IsActive" class="form-check-label"></label>
+            </div>
+        </div>
+
+        <div class="col-12 d-flex flex-wrap gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk me-2"></i>
+                @(Model.IsEditMode ? "Save Changes" : "Create Plan")
+            </button>
+            <a class="btn btn-outline-secondary" asp-action="DoughDemand" asp-controller="PrepData">Cancel</a>
+        </div>
+    </form>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
