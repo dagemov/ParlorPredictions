@@ -10,5 +10,7 @@ public sealed class DoughPrepPageViewModel
 
     public DoughRecommendationViewModel? Recommendation { get; set; }
 
+    public DoughProductionPlanningViewModel? ProductionPlanning { get; set; }
+
     public IReadOnlyList<DoughTaskViewModel> Tasks { get; set; } = Array.Empty<DoughTaskViewModel>();
 }

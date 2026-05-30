@@ -18,8 +18,10 @@ namespace ParlorPrediction.Mvc.Controllers;
 public sealed class PrepController : Controller
 {
     private const int DefaultHistoricalWeeksToUse = 8;
+    private const int DefaultPlanningDaysAhead = 7;
 
     private readonly IDoughPrepCalculationService _doughPrepCalculationService;
+    private readonly IDoughProductionPlanningService _doughProductionPlanningService;
     private readonly IDoughPrepRecommendationReadService _doughPrepRecommendationReadService;
     private readonly IDoughPrepRecommendationService _doughPrepRecommendationService;
     private readonly IPrepTaskReadService _prepTaskReadService;
@@ -27,12 +29,14 @@ public sealed class PrepController : Controller
 
     public PrepController(
         IDoughPrepCalculationService doughPrepCalculationService,
+        IDoughProductionPlanningService doughProductionPlanningService,
         IDoughPrepRecommendationReadService doughPrepRecommendationReadService,
         IDoughPrepRecommendationService doughPrepRecommendationService,
         IPrepTaskReadService prepTaskReadService,
         IPrepTaskService prepTaskService)
     {
         _doughPrepCalculationService = doughPrepCalculationService;
+        _doughProductionPlanningService = doughProductionPlanningService;
         _doughPrepRecommendationReadService = doughPrepRecommendationReadService;
         _doughPrepRecommendationService = doughPrepRecommendationService;
         _prepTaskReadService = prepTaskReadService;
@@ -278,6 +282,14 @@ public sealed class PrepController : Controller
         int historicalWeeksToUse,
         CancellationToken cancellationToken)
     {
+        var productionPlanning = await _doughProductionPlanningService.PlanAsync(
+            new DoughProductionPlanningRequest
+            {
+                ProductionDate = targetDate,
+                DaysAhead = DefaultPlanningDaysAhead
+            },
+            cancellationToken);
+
         var taskResponses = await _prepTaskReadService.GetDoughTasksByDateAsync(targetDate, cancellationToken);
         var taskViewModels = taskResponses
             .Select(MapTask)
@@ -317,6 +329,7 @@ public sealed class PrepController : Controller
             TargetDate = targetDate,
             HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse),
             Recommendation = recommendation,
+            ProductionPlanning = MapProductionPlanning(productionPlanning),
             Tasks = taskViewModels,
             CanManageRecommendations = CanManageRecommendations()
         };
@@ -437,6 +450,39 @@ public sealed class PrepController : Controller
             HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse),
             IsPersisted = true,
             SavedAtUtc = DateTime.UtcNow
+        };
+    }
+
+    private static DoughProductionPlanningViewModel MapProductionPlanning(
+        DoughProductionPlanningResponse productionPlanning)
+    {
+        return new DoughProductionPlanningViewModel
+        {
+            ProductionDate = productionPlanning.ProductionDate,
+            DaysAhead = productionPlanning.UpcomingNeeds.Count,
+            TotalFutureRequiredBalls = productionPlanning.TotalFutureRequiredBalls,
+            ReadyBalls = productionPlanning.ReadyBalls,
+            FermentingBalls = productionPlanning.FermentingBalls,
+            UnballedBalls = productionPlanning.UnballedBalls,
+            MissingBallsForProductionWindow = productionPlanning.MissingBallsForProductionWindow,
+            RecommendedCasesToMakeToday = productionPlanning.RecommendedCasesToMakeToday,
+            RecommendedLoadsToMakeToday = productionPlanning.RecommendedLoadsToMakeToday,
+            RecommendedBallsToBallToday = productionPlanning.RecommendedBallsToBallToday,
+            Reason = productionPlanning.Reason,
+            UpcomingNeeds = productionPlanning.UpcomingNeeds
+                .Select(need => new DoughNeedByDateViewModel
+                {
+                    NeedDate = need.NeedDate,
+                    RestaurantBaselineBalls = need.RestaurantBaselineBalls,
+                    EventBalls = need.EventBalls,
+                    TotalRequiredBalls = need.TotalRequiredBalls,
+                    ProductionWindowStart = need.ProductionWindowStart,
+                    ProductionWindowEnd = need.ProductionWindowEnd,
+                    RecommendedMakeDate = need.RecommendedMakeDate,
+                    UsesShortFermentation = need.UsesShortFermentation,
+                    IsRecommendedForSelectedProductionDate = need.RecommendedMakeDate == productionPlanning.ProductionDate
+                })
+                .ToArray()
         };
     }
 

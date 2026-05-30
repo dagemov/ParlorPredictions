@@ -1,0 +1,131 @@
+@model DoughProductionPlanningViewModel?
+
+<section class="content-card content-card--padded">
+    <div class="section-heading">
+        <span class="eyebrow">Daily Operations</span>
+        <h2>Today's Production Recommendation</h2>
+        @if (Model is null)
+        {
+            <p>No production planning summary is available right now.</p>
+        }
+        else
+        {
+            <p>Production date: @Model.ProductionDate.ToString("dddd, MMM d"). Upcoming needs cover the next @Model.DaysAhead day(s).</p>
+        }
+    </div>
+
+    @if (Model is null)
+    {
+        <div class="empty-state">
+            <i class="fa-regular fa-calendar"></i>
+            <span>The system could not build a production plan for this work date.</span>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="status-pill @(Model.HasProductionWorkToday ? "status-pill--warning" : "status-pill--success")">
+                @(Model.HasProductionWorkToday ? "Production Work Today" : "No New Mixing Needed")
+            </span>
+            <span class="status-pill @(Model.RecommendedBallsToBallToday > 0 ? "status-pill--info" : "status-pill--neutral")">
+                @(Model.RecommendedBallsToBallToday > 0 ? "Ball Existing Dough" : "No Extra Balling")
+            </span>
+        </div>
+
+        <div class="metric-grid">
+            <article class="metric-card">
+                <span class="metric-card__label">Future Need</span>
+                <strong>@Model.TotalFutureRequiredBalls</strong>
+                <small>Total balls across the planning horizon</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Ready Balls</span>
+                <strong>@Model.ReadyBalls</strong>
+                <small>Latest available dough snapshot</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Fermenting</span>
+                <strong>@Model.FermentingBalls</strong>
+                <small>Produced dough still aging</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Unballed</span>
+                <strong>@Model.UnballedBalls</strong>
+                <small>Dough mixed but not yet portioned</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Make Today</span>
+                <strong>@Model.MissingBallsForProductionWindow</strong>
+                <small>@Model.RecommendedCasesToMakeToday cases / @Model.RecommendedLoadsToMakeToday loads</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Ball Today</span>
+                <strong>@Model.RecommendedBallsToBallToday</strong>
+                <small>Existing dough to portion now</small>
+            </article>
+        </div>
+
+        <div class="recommendation-note">
+            <h3>Why this production plan?</h3>
+            <p>@Model.Reason</p>
+        </div>
+
+        @if (Model.HasUpcomingNeeds)
+        {
+            <div class="table-responsive mt-4">
+                <table class="table prep-table align-middle">
+                    <thead>
+                        <tr>
+                            <th scope="col">Need Date</th>
+                            <th scope="col">Baseline</th>
+                            <th scope="col">Event</th>
+                            <th scope="col">Total</th>
+                            <th scope="col">Production Window</th>
+                            <th scope="col">Make Date</th>
+                            <th scope="col">Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var need in Model.UpcomingNeeds)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@need.NeedDate.ToString("ddd, MMM d")</strong>
+                                </td>
+                                <td>@need.RestaurantBaselineBalls</td>
+                                <td>@need.EventBalls</td>
+                                <td><strong>@need.TotalRequiredBalls</strong></td>
+                                <td>@need.ProductionWindowStart.ToString("MMM d") - @need.ProductionWindowEnd.ToString("MMM d")</td>
+                                <td>
+                                    <span class="status-pill @(need.IsRecommendedForSelectedProductionDate ? "status-pill--warning" : "status-pill--neutral")">
+                                        @need.RecommendedMakeDate.ToString("MMM d")
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (need.UsesShortFermentation)
+                                    {
+                                        <span class="inline-hint">
+                                            <i class="fa-solid fa-sun"></i>
+                                            Summer short fermentation
+                                        </span>
+                                    }
+                                    else if (need.IsRecommendedForSelectedProductionDate)
+                                    {
+                                        <span class="inline-hint">
+                                            <i class="fa-solid fa-circle-check"></i>
+                                            Make on this work date
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span>—</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</section>
