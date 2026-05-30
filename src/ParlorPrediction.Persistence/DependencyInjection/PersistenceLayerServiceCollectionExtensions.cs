@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ParlorPrediction.Application.Interfaces.Auth;
+using ParlorPrediction.Application.Interfaces.Dough;
 using ParlorPrediction.Application.Interfaces.Persistence;
 using ParlorPrediction.Domain.Entities;
 using ParlorPrediction.Persistence.Identity;
@@ -39,6 +40,9 @@ public static class PersistenceLayerServiceCollectionExtensions
             .AddDefaultTokenProviders();
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IDoughInventoryReadRepository, DoughInventoryReadRepository>();
+        services.AddScoped<IRestaurantEventReadRepository, RestaurantEventReadRepository>();
+        services.AddScoped<ISalesHistoryReadRepository, SalesHistoryReadRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<AuthBootstrapper>();
 
