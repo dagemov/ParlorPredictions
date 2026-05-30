@@ -1,0 +1,54 @@
+@{
+    ViewData["Title"] = "Setup Base";
+}
+
+<section class="hero-panel">
+    <p class="eyebrow">Parlor Pizza · Wilton, CT</p>
+    <h1>Parlor Prediction está listo para crecer por subfases.</h1>
+    <p class="hero-copy">
+        Esta base deja la solución organizada en Clean Architecture para arrancar Dough Prep sin mezclar
+        autenticación, persistencia avanzada ni módulos futuros antes de tiempo.
+    </p>
+</section>
+
+<section class="status-grid" aria-label="Estado de la solución">
+    <article class="status-card">
+        <h2>Subfase actual</h2>
+        <p>Setup de solución, proyectos por capa y MVC funcional.</p>
+    </article>
+    <article class="status-card">
+        <h2>Siguiente paso natural</h2>
+        <p>Revisar <code>Shifts</code> y mapear qué piezas de autenticación se podrían reutilizar sin copiar nada todavía.</p>
+    </article>
+    <article class="status-card">
+        <h2>Fuera de alcance por ahora</h2>
+        <p>JWT, UnitOfWork, Blob Storage, IA, migraciones grandes y dashboard final.</p>
+    </article>
+</section>
+
+<section class="layer-list" aria-label="Capas iniciales">
+    <article class="layer-item">
+        <span class="layer-name">Domain</span>
+        <p>Entidades, value objects y reglas puras de negocio.</p>
+    </article>
+    <article class="layer-item">
+        <span class="layer-name">Application</span>
+        <p>Casos de uso, servicios de aplicación e interfaces.</p>
+    </article>
+    <article class="layer-item">
+        <span class="layer-name">Contracts</span>
+        <p>Requests, responses y contratos públicos entre MVC y Application.</p>
+    </article>
+    <article class="layer-item">
+        <span class="layer-name">Persistence</span>
+        <p>DbContext, EF Core, migraciones y persistencia transaccional futura.</p>
+    </article>
+    <article class="layer-item">
+        <span class="layer-name">Infrastructure</span>
+        <p>Servicios externos como email, archivos, IA y Blob Storage.</p>
+    </article>
+    <article class="layer-item">
+        <span class="layer-name">MVC</span>
+        <p>Controllers, views, HTMX, TypeScript ligero y experiencia operativa.</p>
+    </article>
+</section>

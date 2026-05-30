@@ -1,0 +1,157 @@
+:root {
+  --pp-ink: #1b1917;
+  --pp-muted: #645b57;
+  --pp-paper: #f8f3ea;
+  --pp-accent: #c75b2e;
+  --pp-accent-deep: #8f3514;
+  --pp-line: rgba(27, 25, 23, 0.12);
+  --pp-shadow: 0 18px 40px rgba(34, 28, 24, 0.08);
+}
+
+html {
+  font-size: 16px;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--pp-ink);
+  background:
+    radial-gradient(circle at top left, rgba(199, 91, 46, 0.14), transparent 32%),
+    linear-gradient(180deg, #f2e6d3 0%, var(--pp-paper) 48%, #efe5d6 100%);
+  font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+}
+
+a {
+  color: inherit;
+}
+
+.app-shell {
+  max-width: 1120px;
+}
+
+.app-header {
+  padding: 1.5rem 0 1rem;
+}
+
+.app-brand {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.app-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid rgba(143, 53, 20, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 253, 249, 0.8);
+  color: var(--pp-accent-deep);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.hero-panel,
+.status-card,
+.layer-item {
+  border: 1px solid var(--pp-line);
+  border-radius: 24px;
+  background: rgba(255, 253, 249, 0.82);
+  box-shadow: var(--pp-shadow);
+}
+
+.hero-panel {
+  padding: 2rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  color: var(--pp-accent-deep);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hero-panel h1 {
+  margin: 0;
+  max-width: 12ch;
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  line-height: 0.96;
+}
+
+.hero-copy {
+  margin: 1.25rem 0 0;
+  max-width: 44rem;
+  color: var(--pp-muted);
+  font-size: 1.05rem;
+}
+
+.status-grid,
+.layer-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.status-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.status-card,
+.layer-item {
+  padding: 1.25rem;
+}
+
+.status-card h2,
+.layer-name {
+  margin: 0 0 0.7rem;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.status-card p,
+.layer-item p {
+  margin: 0;
+  color: var(--pp-muted);
+}
+
+.layer-list {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  padding-bottom: 2rem;
+}
+
+.footer {
+  padding: 0 0 2rem;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--pp-muted);
+  font-size: 0.92rem;
+}
+
+@media (max-width: 767.98px) {
+  .app-header {
+    padding-top: 1rem;
+  }
+
+  .app-shell {
+    padding-inline: 1rem;
+  }
+
+  .hero-panel {
+    padding: 1.5rem;
+  }
+
+  .footer-content {
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ParlorPrediction.Application\ParlorPrediction.Application.csproj" />
+    <ProjectReference Include="..\ParlorPrediction.Contracts\ParlorPrediction.Contracts.csproj" />
+    <ProjectReference Include="..\ParlorPrediction.Persistence\ParlorPrediction.Persistence.csproj" />
+    <ProjectReference Include="..\ParlorPrediction.Infrastructure\ParlorPrediction.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>
