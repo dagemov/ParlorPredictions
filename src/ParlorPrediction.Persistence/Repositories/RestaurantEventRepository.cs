@@ -35,6 +35,22 @@ public sealed class RestaurantEventRepository : IRestaurantEventRepository
             .ToArrayAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyCollection<RestaurantEvent>> GetBetweenDatesAsync(
+        DateOnly startDate,
+        DateOnly endDate,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.RestaurantEvents
+            .AsNoTracking()
+            .Where(restaurantEvent =>
+                restaurantEvent.IsActive &&
+                restaurantEvent.EventDate >= startDate &&
+                restaurantEvent.EventDate <= endDate)
+            .OrderBy(restaurantEvent => restaurantEvent.EventDate)
+            .ThenBy(restaurantEvent => restaurantEvent.Name)
+            .ToArrayAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyCollection<RestaurantEvent>> SearchAsync(
         DateOnly? fromDate,
         DateOnly? toDate,
