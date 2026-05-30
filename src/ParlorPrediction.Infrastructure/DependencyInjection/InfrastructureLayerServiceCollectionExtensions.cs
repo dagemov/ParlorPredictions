@@ -20,6 +20,7 @@ public static class InfrastructureLayerServiceCollectionExtensions
         services.Configure<FrontendOptions>(configuration.GetSection("Frontend"));
         services.Configure<TemplatePathOptions>(configuration.GetSection("TemplatePaths"));
         services.Configure<BootstrapAdminOptions>(configuration.GetSection("BootstrapAdmin"));
+        services.Configure<DevelopmentSeedUsersOptions>(configuration.GetSection("DevelopmentSeedUsers"));
 
         var jwtKey = configuration["Jwt:Key"] ?? string.Empty;
         services.AddAuthentication()
