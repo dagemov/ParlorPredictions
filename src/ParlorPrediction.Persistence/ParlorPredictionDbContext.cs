@@ -12,6 +12,10 @@ public sealed class ParlorPredictionDbContext : IdentityDbContext<User>
     {
     }
 
+    public DbSet<PrepItem> PrepItems => Set<PrepItem>();
+
+    public DbSet<PrepStation> PrepStations => Set<PrepStation>();
+
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder builder)
