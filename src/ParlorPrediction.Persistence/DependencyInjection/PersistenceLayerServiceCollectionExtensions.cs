@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ParlorPrediction.Application.Interfaces.Auth;
 using ParlorPrediction.Application.Interfaces.Dough;
 using ParlorPrediction.Application.Interfaces.Persistence;
+using ParlorPrediction.Application.Interfaces.Prep;
 using ParlorPrediction.Domain.Entities;
 using ParlorPrediction.Persistence.Identity;
 using ParlorPrediction.Persistence.Repositories;
@@ -41,7 +42,10 @@ public static class PersistenceLayerServiceCollectionExtensions
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IDoughInventoryReadRepository, DoughInventoryReadRepository>();
+        services.AddScoped<IDoughPrepRecommendationReadRepository, DoughPrepRecommendationReadRepository>();
         services.AddScoped<IDoughPrepRecommendationRepository, DoughPrepRecommendationRepository>();
+        services.AddScoped<IPrepItemReadRepository, PrepItemReadRepository>();
+        services.AddScoped<IPrepTaskRepository, PrepTaskRepository>();
         services.AddScoped<IRestaurantEventReadRepository, RestaurantEventReadRepository>();
         services.AddScoped<ISalesHistoryReadRepository, SalesHistoryReadRepository>();
         services.AddScoped<IUserRepository, UserRepository>();

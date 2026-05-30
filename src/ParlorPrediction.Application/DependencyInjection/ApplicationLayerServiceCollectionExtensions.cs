@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using ParlorPrediction.Application.Interfaces.Dough;
+using ParlorPrediction.Application.Interfaces.Prep;
 using ParlorPrediction.Application.Services.Dough;
+using ParlorPrediction.Application.Services.Prep;
 
 namespace ParlorPrediction.Application.DependencyInjection;
 
@@ -10,6 +12,7 @@ public static class ApplicationLayerServiceCollectionExtensions
     {
         services.AddScoped<IDoughPrepCalculationService, DoughPrepCalculationService>();
         services.AddScoped<IDoughPrepRecommendationService, DoughPrepRecommendationService>();
+        services.AddScoped<IPrepTaskService, PrepTaskService>();
 
         return services;
     }
