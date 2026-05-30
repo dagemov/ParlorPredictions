@@ -9,15 +9,18 @@ namespace ParlorPrediction.Application.Services.Dough;
 
 public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
 {
+    private readonly IDoughDemandPlanReadRepository _doughDemandPlanReadRepository;
     private readonly IDoughInventoryReadRepository _doughInventoryReadRepository;
     private readonly IRestaurantEventReadRepository _restaurantEventReadRepository;
     private readonly ISalesHistoryReadRepository _salesHistoryReadRepository;
 
     public DoughPrepCalculationService(
+        IDoughDemandPlanReadRepository doughDemandPlanReadRepository,
         IDoughInventoryReadRepository doughInventoryReadRepository,
         IRestaurantEventReadRepository restaurantEventReadRepository,
         ISalesHistoryReadRepository salesHistoryReadRepository)
     {
+        _doughDemandPlanReadRepository = doughDemandPlanReadRepository;
         _doughInventoryReadRepository = doughInventoryReadRepository;
         _restaurantEventReadRepository = restaurantEventReadRepository;
         _salesHistoryReadRepository = salesHistoryReadRepository;
@@ -34,13 +37,18 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
             request.TargetDate,
             request.HistoricalWeeksToUse,
             cancellationToken);
+        var demandPlans = await _doughDemandPlanReadRepository.GetActiveByDayOfWeekAsync(
+            request.TargetDate.DayOfWeek,
+            cancellationToken);
 
         var events = await _restaurantEventReadRepository.GetByDateAsync(request.TargetDate, cancellationToken);
         var latestInventorySnapshot = await _doughInventoryReadRepository.GetLatestSnapshotOnOrBeforeAsync(
             request.TargetDate,
             cancellationToken);
 
-        var historicalAverageBalls = CalculateHistoricalAverageBalls(historicalSales);
+        var historicalAverageBalls = demandPlans.Count > 0
+            ? CalculateDemandPlanBaselineBalls(demandPlans)
+            : CalculateHistoricalAverageBalls(historicalSales);
         var eventEstimatedBalls = events.Sum(restaurantEvent => restaurantEvent.EstimatedDoughBalls);
         var requiredBalls = checked(historicalAverageBalls + eventEstimatedBalls);
         var availableBalls = latestInventorySnapshot?.AvailableBalls ?? 0;
@@ -71,6 +79,7 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
             UsesShortFermentationException = usesShortFermentationException,
             Reason = BuildReason(
                 request,
+                demandPlans,
                 historicalSales,
                 events,
                 historicalAverageBalls,
@@ -106,6 +115,16 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
         return (int)Math.Ceiling(historicalSales.Average(sale => sale.DoughBallsUsed));
     }
 
+    private static int CalculateDemandPlanBaselineBalls(IReadOnlyCollection<DoughDemandPlan> demandPlans)
+    {
+        if (demandPlans.Count == 0)
+        {
+            return 0;
+        }
+
+        return demandPlans.Sum(plan => plan.GetBaselineDoughBalls());
+    }
+
     private static int CalculateRoundedUpUnits(int totalUnitsNeeded, int unitsPerGroup)
     {
         if (totalUnitsNeeded <= 0)
@@ -118,6 +137,7 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
 
     private static string BuildReason(
         CalculateDoughPrepRequest request,
+        IReadOnlyCollection<DoughDemandPlan> demandPlans,
         IReadOnlyCollection<SalesHistory> historicalSales,
         IReadOnlyCollection<RestaurantEvent> events,
         int historicalAverageBalls,
@@ -130,7 +150,12 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
     {
         var reasonBuilder = new StringBuilder();
 
-        if (historicalSales.Count == 0)
+        if (demandPlans.Count > 0)
+        {
+            reasonBuilder.Append(
+                $"Using {demandPlans.Count} active dough demand plan(s) for {request.TargetDate.DayOfWeek}, the baseline is {historicalAverageBalls} dough balls.");
+        }
+        else if (historicalSales.Count == 0)
         {
             reasonBuilder.Append(
                 $"No historical {request.TargetDate.DayOfWeek} sales were found in the last {request.HistoricalWeeksToUse} weeks, so the historical baseline is 0 dough balls.");
