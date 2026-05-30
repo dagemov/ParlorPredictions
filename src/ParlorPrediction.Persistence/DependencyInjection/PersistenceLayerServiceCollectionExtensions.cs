@@ -41,6 +41,7 @@ public static class PersistenceLayerServiceCollectionExtensions
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IDoughInventoryReadRepository, DoughInventoryReadRepository>();
+        services.AddScoped<IDoughPrepRecommendationRepository, DoughPrepRecommendationRepository>();
         services.AddScoped<IRestaurantEventReadRepository, RestaurantEventReadRepository>();
         services.AddScoped<ISalesHistoryReadRepository, SalesHistoryReadRepository>();
         services.AddScoped<IUserRepository, UserRepository>();

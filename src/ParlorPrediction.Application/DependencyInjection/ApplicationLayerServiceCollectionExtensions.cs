@@ -9,6 +9,7 @@ public static class ApplicationLayerServiceCollectionExtensions
     public static IServiceCollection AddApplicationLayer(this IServiceCollection services)
     {
         services.AddScoped<IDoughPrepCalculationService, DoughPrepCalculationService>();
+        services.AddScoped<IDoughPrepRecommendationService, DoughPrepRecommendationService>();
 
         return services;
     }
