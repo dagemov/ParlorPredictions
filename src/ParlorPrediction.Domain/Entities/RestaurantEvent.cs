@@ -17,6 +17,7 @@ public sealed class RestaurantEvent
         int estimatedPizzas,
         int estimatedDoughBalls,
         bool allowShortFermentation,
+        bool isActive = true,
         string? notes = null,
         string? externalCalendarEventId = null)
     {
@@ -26,6 +27,7 @@ public sealed class RestaurantEvent
         EstimatedPizzas = EnsureNonNegative(estimatedPizzas, nameof(estimatedPizzas));
         EstimatedDoughBalls = EnsureNonNegative(estimatedDoughBalls, nameof(estimatedDoughBalls));
         AllowShortFermentation = allowShortFermentation;
+        IsActive = isActive;
         Notes = NormalizeOptional(notes);
         ExternalCalendarEventId = NormalizeOptional(externalCalendarEventId);
         CreatedAtUtc = DateTime.UtcNow;
@@ -44,6 +46,8 @@ public sealed class RestaurantEvent
 
     public bool AllowShortFermentation { get; private set; }
 
+    public bool IsActive { get; private set; }
+
     public string? ExternalCalendarEventId { get; private set; }
 
     public string? Notes { get; private set; }
@@ -58,6 +62,7 @@ public sealed class RestaurantEvent
         int estimatedPizzas,
         int estimatedDoughBalls,
         bool allowShortFermentation,
+        bool isActive = true,
         string? notes = null,
         string? externalCalendarEventId = null)
     {
@@ -66,8 +71,31 @@ public sealed class RestaurantEvent
         EstimatedPizzas = EnsureNonNegative(estimatedPizzas, nameof(estimatedPizzas));
         EstimatedDoughBalls = EnsureNonNegative(estimatedDoughBalls, nameof(estimatedDoughBalls));
         AllowShortFermentation = allowShortFermentation;
+        IsActive = isActive;
         Notes = NormalizeOptional(notes);
         ExternalCalendarEventId = NormalizeOptional(externalCalendarEventId);
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    public void Activate()
+    {
+        if (IsActive)
+        {
+            return;
+        }
+
+        IsActive = true;
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    public void Deactivate()
+    {
+        if (!IsActive)
+        {
+            return;
+        }
+
+        IsActive = false;
         UpdatedAtUtc = DateTime.UtcNow;
     }
 

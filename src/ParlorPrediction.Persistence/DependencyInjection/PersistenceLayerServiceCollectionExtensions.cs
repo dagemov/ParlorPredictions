@@ -49,12 +49,15 @@ public static class PersistenceLayerServiceCollectionExtensions
         });
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IDoughDemandPlanReadRepository, DoughDemandPlanRepository>();
+        services.AddScoped<IDoughDemandPlanRepository, DoughDemandPlanRepository>();
         services.AddScoped<IDoughInventoryReadRepository, DoughInventoryReadRepository>();
         services.AddScoped<IDoughPrepRecommendationReadRepository, DoughPrepRecommendationReadRepository>();
         services.AddScoped<IDoughPrepRecommendationRepository, DoughPrepRecommendationRepository>();
         services.AddScoped<IPrepItemReadRepository, PrepItemReadRepository>();
         services.AddScoped<IPrepTaskRepository, PrepTaskRepository>();
-        services.AddScoped<IRestaurantEventReadRepository, RestaurantEventReadRepository>();
+        services.AddScoped<IRestaurantEventReadRepository, RestaurantEventRepository>();
+        services.AddScoped<IRestaurantEventRepository, RestaurantEventRepository>();
         services.AddScoped<ISalesHistoryReadRepository, SalesHistoryReadRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<AuthBootstrapper>();

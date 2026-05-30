@@ -36,6 +36,9 @@ public sealed class RestaurantEventConfiguration : IEntityTypeConfiguration<Rest
         builder.Property(evt => evt.AllowShortFermentation)
             .HasDefaultValue(false);
 
+        builder.Property(evt => evt.IsActive)
+            .HasDefaultValue(true);
+
         builder.Property(evt => evt.ExternalCalendarEventId)
             .HasMaxLength(RestaurantEvent.ExternalCalendarEventIdMaxLength);
 
@@ -48,6 +51,6 @@ public sealed class RestaurantEventConfiguration : IEntityTypeConfiguration<Rest
         builder.Property(evt => evt.UpdatedAtUtc)
             .HasDefaultValueSql("GETUTCDATE()");
 
-        builder.HasIndex(evt => evt.EventDate);
+        builder.HasIndex(evt => new { evt.EventDate, evt.IsActive });
     }
 }

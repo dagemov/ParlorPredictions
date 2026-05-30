@@ -13,9 +13,11 @@ public static class ApplicationLayerServiceCollectionExtensions
     public static IServiceCollection AddApplicationLayer(this IServiceCollection services)
     {
         services.AddScoped<IAiPrepRecommendationService, AiPrepRecommendationService>();
+        services.AddScoped<IDoughDemandPlanService, DoughDemandPlanService>();
         services.AddScoped<IDoughPrepCalculationService, DoughPrepCalculationService>();
         services.AddScoped<IDoughPrepRecommendationReadService, DoughPrepRecommendationReadService>();
         services.AddScoped<IDoughPrepRecommendationService, DoughPrepRecommendationService>();
+        services.AddScoped<IRestaurantEventManagementService, RestaurantEventManagementService>();
         services.AddScoped<IPrepDashboardReadService, PrepDashboardReadService>();
         services.AddScoped<IPrepTaskReadService, PrepTaskReadService>();
         services.AddScoped<IPrepTaskService, PrepTaskService>();
