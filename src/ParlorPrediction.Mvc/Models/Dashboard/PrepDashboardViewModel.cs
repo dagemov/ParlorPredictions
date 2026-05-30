@@ -23,4 +23,6 @@ public sealed class PrepDashboardViewModel
     public string? LastRecommendationReason { get; set; }
 
     public DateTime? LastRecommendationSavedAtUtc { get; set; }
+
+    public AiRecommendationPanelViewModel AiRecommendation { get; set; } = new();
 }

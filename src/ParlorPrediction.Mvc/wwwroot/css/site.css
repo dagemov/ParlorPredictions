@@ -484,6 +484,38 @@ a {
   color: var(--pp-muted);
 }
 
+.dashboard-ai-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.dashboard-ai-message {
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(31, 111, 235, 0.12);
+  border-radius: var(--pp-radius-md);
+  background: rgba(246, 249, 255, 0.75);
+}
+
+.dashboard-ai-message p {
+  margin: 0;
+  color: var(--pp-text);
+}
+
+.dashboard-ai-message--error {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  border-color: rgba(209, 67, 67, 0.16);
+  background: rgba(255, 245, 245, 0.9);
+}
+
+.dashboard-ai-message--error i {
+  margin-top: 0.15rem;
+  color: var(--pp-danger);
+}
+
 .task-form-grid .form-control-sm {
   min-width: 120px;
 }
