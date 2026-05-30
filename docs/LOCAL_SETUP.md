@@ -22,6 +22,7 @@ PARLOR_SQL_SA_PASSWORD=<local-sa-password>
 2. Start SQL Server:
 
 ```powershell
+dotnet tool restore
 docker compose up -d
 docker ps
 ```
@@ -46,4 +47,13 @@ dotnet user-secrets set "Mail:Password" "<smtp-app-password>" --project src/Parl
 dotnet run --project src/ParlorPrediction.Mvc
 ```
 
-In development, auth bootstrap will create the database on first run when the configured login has permission.
+## EF Core migrations
+
+Use the local tool manifest already committed in the repo:
+
+```powershell
+dotnet tool restore
+dotnet dotnet-ef database update --project src/ParlorPrediction.Persistence --startup-project src/ParlorPrediction.Mvc --context ParlorPredictionDbContext
+```
+
+In development, run the migration first. After that, the auth bootstrap will only seed roles and the initial manager when `BootstrapAdmin:Password` exists in user secrets.
