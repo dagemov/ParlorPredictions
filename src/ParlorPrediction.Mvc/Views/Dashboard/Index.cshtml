@@ -1,0 +1,129 @@
+@model PrepDashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<section class="page-hero page-hero--compact">
+    <div>
+        <span class="eyebrow">Prep Dashboard</span>
+        <h1>Today's dough prep at a glance.</h1>
+        <p class="page-copy">Keep the morning summary simple: current recommendation, shortage, cases, loads, and how many dough tasks are still open.</p>
+    </div>
+
+    <div class="hero-actions">
+        <form asp-action="Index" asp-controller="Dashboard" method="get" class="dashboard-date-form">
+            <label class="visually-hidden" for="dashboardTargetDate">Target date</label>
+            <input id="dashboardTargetDate"
+                   name="targetDate"
+                   type="date"
+                   value="@Model.TargetDate.ToString("yyyy-MM-dd")"
+                   class="form-control" />
+            <button type="submit" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-calendar-day me-2"></i>
+                Load Day
+            </button>
+        </form>
+
+        <a class="btn btn-primary" asp-controller="Prep" asp-action="Dough" asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")">
+            <i class="fa-solid fa-bread-slice me-2"></i>
+            Open Dough Prep
+        </a>
+    </div>
+</section>
+
+<div class="prep-grid prep-grid-wide">
+    <section class="content-card content-card--padded">
+        <div class="section-heading">
+            <span class="eyebrow">Dough Summary</span>
+            <h2>@Model.TargetDate.ToString("dddd, MMM d")</h2>
+            @if (Model.HasRecommendation)
+            {
+                <p>The latest saved dough recommendation for this date is reflected below.</p>
+            }
+            else
+            {
+                <p>No saved recommendation exists for this date yet.</p>
+            }
+        </div>
+
+        @if (Model.HasRecommendation)
+        {
+            <div class="metric-grid">
+                <article class="metric-card">
+                    <span class="metric-card__label">Required Balls</span>
+                    <strong>@Model.RequiredBalls</strong>
+                    <small>Total expected demand for the selected day.</small>
+                </article>
+                <article class="metric-card">
+                    <span class="metric-card__label">Available Balls</span>
+                    <strong>@Model.AvailableBalls</strong>
+                    <small>Inventory captured in the saved recommendation.</small>
+                </article>
+                <article class="metric-card">
+                    <span class="metric-card__label">Missing Balls</span>
+                    <strong>@Model.MissingBalls</strong>
+                    <small>Shortage that still needs production coverage.</small>
+                </article>
+                <article class="metric-card">
+                    <span class="metric-card__label">Recommended Cases</span>
+                    <strong>@Model.RecommendedCases</strong>
+                    <small>Rounded up from the missing dough balls.</small>
+                </article>
+                <article class="metric-card">
+                    <span class="metric-card__label">Recommended Loads</span>
+                    <strong>@Model.RecommendedLoads</strong>
+                    <small>Based on 14 cases per standard dough load.</small>
+                </article>
+            </div>
+
+            <div class="recommendation-note">
+                <h3>Latest dough recommendation</h3>
+                <p>@Model.LastRecommendationReason</p>
+                @if (Model.LastRecommendationSavedAtUtc.HasValue)
+                {
+                    <small>Saved @Model.LastRecommendationSavedAtUtc.Value.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</small>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <i class="fa-regular fa-lightbulb"></i>
+                <span>No dough recommendation exists for this day yet. Generate one from Dough Prep.</span>
+                <a class="btn btn-primary" asp-controller="Prep" asp-action="Dough" asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")">
+                    <i class="fa-solid fa-arrow-right me-2"></i>
+                    Go To Dough Prep
+                </a>
+            </div>
+        }
+    </section>
+
+    <section class="content-card content-card--padded">
+        <div class="section-heading">
+            <span class="eyebrow">Task Snapshot</span>
+            <h2>Dough tasks</h2>
+            <p>Open work stays visible here so managers can see whether the recommendation has already turned into execution.</p>
+        </div>
+
+        <div class="dashboard-task-grid">
+            <article class="metric-card">
+                <span class="metric-card__label">Pending Tasks</span>
+                <strong>@Model.PendingTasks</strong>
+                <small>Tasks still open or in progress.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Completed Tasks</span>
+                <strong>@Model.CompletedTasks</strong>
+                <small>Tasks already closed for the selected day.</small>
+            </article>
+        </div>
+
+        <div class="dashboard-note">
+            <i class="fa-solid fa-circle-info"></i>
+            <div>
+                <strong>Need to act on this summary?</strong>
+                <p>Open Dough Prep to calculate a new recommendation, save a snapshot, create a task, or mark it as completed.</p>
+            </div>
+        </div>
+    </section>
+</div>

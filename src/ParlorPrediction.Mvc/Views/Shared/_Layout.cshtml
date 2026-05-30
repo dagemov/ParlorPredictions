@@ -14,6 +14,8 @@
     @{
         var canSeePrep = User.Identity?.IsAuthenticated == true &&
             (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("PizzaMaker"));
+        var canSeeDashboard = User.Identity?.IsAuthenticated == true &&
+            (User.IsInRole("Admin") || User.IsInRole("Manager"));
     }
 
     <div class="app-frame">
@@ -29,6 +31,10 @@
                     </a>
                     <nav class="app-nav" aria-label="Primary">
                         <a asp-controller="Home" asp-action="Index">Home</a>
+                        @if (canSeeDashboard)
+                        {
+                            <a asp-controller="Dashboard" asp-action="Index">Dashboard</a>
+                        }
                         @if (canSeePrep)
                         {
                             <a asp-controller="Prep" asp-action="Index">Prep</a>

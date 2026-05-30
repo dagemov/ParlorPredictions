@@ -63,6 +63,7 @@ a {
 .header-actions,
 .app-nav,
 .hero-actions,
+.dashboard-date-form,
 .toolbar-header,
 .footer-content,
 .task-main,
@@ -246,7 +247,8 @@ a {
 
 .feature-grid,
 .prep-grid,
-.metric-grid {
+.metric-grid,
+.dashboard-task-grid {
   display: grid;
   gap: 1rem;
 }
@@ -337,6 +339,11 @@ a {
 .metric-grid {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   margin: 1.35rem 0;
+}
+
+.dashboard-task-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-bottom: 1.35rem;
 }
 
 .metric-card {
@@ -440,6 +447,41 @@ a {
 
 .task-complete-form {
   min-width: min(100%, 420px);
+}
+
+.dashboard-date-form {
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.dashboard-date-form .form-control {
+  min-width: 210px;
+}
+
+.dashboard-note {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+  padding: 1rem 1.1rem;
+  border-radius: var(--pp-radius-md);
+  border: 1px solid rgba(31, 111, 235, 0.12);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.dashboard-note i {
+  margin-top: 0.15rem;
+  color: var(--pp-primary);
+}
+
+.dashboard-note strong,
+.dashboard-note p {
+  display: block;
+}
+
+.dashboard-note p {
+  margin: 0.35rem 0 0;
+  color: var(--pp-muted);
 }
 
 .task-form-grid .form-control-sm {
