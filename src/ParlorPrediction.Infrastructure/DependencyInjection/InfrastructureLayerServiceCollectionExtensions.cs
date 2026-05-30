@@ -4,9 +4,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using ParlorPrediction.Application.Configuration;
+using ParlorPrediction.Application.Interfaces.Ai;
 using ParlorPrediction.Application.Interfaces.Auth;
 using ParlorPrediction.Application.Interfaces.Files;
 using ParlorPrediction.Infrastructure.Services.Auth;
+using ParlorPrediction.Infrastructure.Services.Ai;
 using ParlorPrediction.Infrastructure.Services.Storage;
 
 namespace ParlorPrediction.Infrastructure.DependencyInjection;
@@ -21,6 +23,7 @@ public static class InfrastructureLayerServiceCollectionExtensions
         services.Configure<TemplatePathOptions>(configuration.GetSection("TemplatePaths"));
         services.Configure<BootstrapAdminOptions>(configuration.GetSection("BootstrapAdmin"));
         services.Configure<DevelopmentSeedUsersOptions>(configuration.GetSection("DevelopmentSeedUsers"));
+        services.Configure<AiOptions>(configuration.GetSection("Ai"));
 
         var jwtKey = configuration["Jwt:Key"] ?? string.Empty;
         services.AddAuthentication()
@@ -39,6 +42,7 @@ public static class InfrastructureLayerServiceCollectionExtensions
 
         services.AddAuthorization();
 
+        services.AddScoped<IAiTextGenerationProvider, DeterministicAiTextGenerationProvider>();
         services.AddScoped<ITokenProvider, JwtTokenProvider>();
         services.AddScoped<IFileStorage, AzureBlobFileStorage>();
 
