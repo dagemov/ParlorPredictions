@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using System.Net;
 using ParlorPrediction.Application.Interfaces.Auth;
+using ParlorPrediction.Application.Interfaces.Persistence;
 using ParlorPrediction.Application.Mappings;
 using ParlorPrediction.Contracts.Common;
 using ParlorPrediction.Contracts.Requests.Auth;
@@ -13,13 +14,16 @@ public sealed class AccountService : IAccountService
 {
     private readonly IUserRepository _userRepository;
     private readonly IEmailConfirmationService _emailConfirmationService;
+    private readonly IUnitOfWork _unitOfWork;
 
     public AccountService(
         IUserRepository userRepository,
-        IEmailConfirmationService emailConfirmationService)
+        IEmailConfirmationService emailConfirmationService,
+        IUnitOfWork unitOfWork)
     {
         _userRepository = userRepository;
         _emailConfirmationService = emailConfirmationService;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<ApiResponse<UserResponse>> RegisterAsync(
@@ -43,25 +47,50 @@ public sealed class AccountService : IAccountService
         }
 
         var user = request.ToUser(parsedRole);
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
-        await _userRepository.EnsureRoleExistsAsync(parsedRole.GetCanonicalName());
-
-        var createResult = await _userRepository.CreateAsync(user, request.Password);
-        if (!createResult.Succeeded)
+        try
         {
-            return ApiResponse<UserResponse>.Failure(
-                "We could not create the account.",
-                HttpStatusCode.BadRequest,
-                createResult.Errors.Select(static error => error.Description).ToArray());
+            var roleResult = await _userRepository.EnsureRoleExistsAsync(parsedRole.GetCanonicalName());
+            if (!roleResult.Succeeded)
+            {
+                await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                return ApiResponse<UserResponse>.Failure(
+                    "We could not prepare the user role.",
+                    HttpStatusCode.BadRequest,
+                    roleResult.Errors.Select(static error => error.Description).ToArray());
+            }
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            var createResult = await _userRepository.CreateAsync(user, request.Password);
+            if (!createResult.Succeeded)
+            {
+                await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                return ApiResponse<UserResponse>.Failure(
+                    "We could not create the account.",
+                    HttpStatusCode.BadRequest,
+                    createResult.Errors.Select(static error => error.Description).ToArray());
+            }
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            var addToRoleResult = await _userRepository.AddToRoleAsync(user, parsedRole.GetCanonicalName());
+            if (!addToRoleResult.Succeeded)
+            {
+                await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                return ApiResponse<UserResponse>.Failure(
+                    "The account was created, but the role assignment failed.",
+                    HttpStatusCode.BadRequest,
+                    addToRoleResult.Errors.Select(static error => error.Description).ToArray());
+            }
+
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
         }
-
-        var roleResult = await _userRepository.AddToRoleAsync(user, parsedRole.GetCanonicalName());
-        if (!roleResult.Succeeded)
+        catch
         {
-            return ApiResponse<UserResponse>.Failure(
-                "The account was created, but the role assignment failed.",
-                HttpStatusCode.BadRequest,
-                roleResult.Errors.Select(static error => error.Description).ToArray());
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            throw;
         }
 
         var mailResponse = await _emailConfirmationService.SendConfirmationEmailAsync(user, fallbackBaseUrl, cancellationToken);
@@ -94,6 +123,8 @@ public sealed class AccountService : IAccountService
                 HttpStatusCode.BadRequest,
                 result.Errors.Select(static error => error.Description).ToArray());
         }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return ApiResponse<UserResponse>.Success(
             user.ToUserResponse(),

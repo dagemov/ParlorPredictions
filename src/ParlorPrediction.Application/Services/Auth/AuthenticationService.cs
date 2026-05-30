@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using System.Net;
 using System.Security.Claims;
 using ParlorPrediction.Application.Interfaces.Auth;
+using ParlorPrediction.Application.Interfaces.Persistence;
 using ParlorPrediction.Contracts.Common;
 using ParlorPrediction.Contracts.Requests.Auth;
 using ParlorPrediction.Contracts.Responses.Auth;
@@ -13,13 +14,16 @@ public sealed class AuthenticationService : IAuthenticationService
 {
     private readonly ITokenProvider _tokenProvider;
     private readonly IUserRepository _userRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
     public AuthenticationService(
         ITokenProvider tokenProvider,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        IUnitOfWork unitOfWork)
     {
         _tokenProvider = tokenProvider;
         _userRepository = userRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<ApiResponse<TokenResponse>> LoginAsync(
@@ -40,6 +44,8 @@ public sealed class AuthenticationService : IAuthenticationService
         var signInResult = await _userRepository.PasswordSignInAsync(request.Email, request.Password);
         if (!signInResult.Succeeded)
         {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
             if (signInResult.IsNotAllowed)
             {
                 return ApiResponse<TokenResponse>.Failure(
@@ -66,6 +72,8 @@ public sealed class AuthenticationService : IAuthenticationService
             IsRevoked = false,
             IsUsed = false
         }, cancellationToken);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         tokenResponse.RefreshToken = refreshToken;
 
@@ -120,6 +128,8 @@ public sealed class AuthenticationService : IAuthenticationService
             IsRevoked = false,
             IsUsed = false
         }, cancellationToken);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var tokenResponse = _tokenProvider.BuildToken(user);
         tokenResponse.RefreshToken = newRefreshToken;

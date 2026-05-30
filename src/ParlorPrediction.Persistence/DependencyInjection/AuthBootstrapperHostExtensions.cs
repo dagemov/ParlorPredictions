@@ -8,7 +8,7 @@ public static class AuthBootstrapperHostExtensions
 {
     public static async Task InitializeAuthBootstrapAsync(this IHost host, CancellationToken cancellationToken = default)
     {
-        using var scope = host.Services.CreateScope();
+        await using var scope = host.Services.CreateAsyncScope();
         var bootstrapper = scope.ServiceProvider.GetRequiredService<AuthBootstrapper>();
         await bootstrapper.InitializeAsync(cancellationToken);
     }

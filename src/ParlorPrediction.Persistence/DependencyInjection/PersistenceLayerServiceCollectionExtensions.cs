@@ -3,7 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ParlorPrediction.Application.Interfaces.Auth;
+using ParlorPrediction.Application.Interfaces.Persistence;
 using ParlorPrediction.Domain.Entities;
+using ParlorPrediction.Persistence.Identity;
 using ParlorPrediction.Persistence.Repositories;
 using ParlorPrediction.Persistence.Services;
 
@@ -32,9 +34,11 @@ public static class PersistenceLayerServiceCollectionExtensions
                 options.Lockout.MaxFailedAccessAttempts = 5;
                 options.Lockout.AllowedForNewUsers = true;
             })
-            .AddEntityFrameworkStores<ParlorPredictionDbContext>()
+            .AddUserStore<ParlorPredictionUserStore>()
+            .AddRoleStore<ParlorPredictionRoleStore>()
             .AddDefaultTokenProviders();
 
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<AuthBootstrapper>();
 

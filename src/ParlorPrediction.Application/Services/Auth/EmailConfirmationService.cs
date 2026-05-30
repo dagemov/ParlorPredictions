@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using ParlorPrediction.Application.Configuration;
 using ParlorPrediction.Application.Interfaces.Auth;
 using ParlorPrediction.Application.Interfaces.Common;
+using ParlorPrediction.Application.Interfaces.Persistence;
 using ParlorPrediction.Contracts.Common;
 using ParlorPrediction.Contracts.Requests.Auth;
 using ParlorPrediction.Domain.Entities;
@@ -17,6 +18,7 @@ public sealed class EmailConfirmationService : IEmailConfirmationService
     private readonly IUserTokenService _userTokenService;
     private readonly ITemplateProvider _templateProvider;
     private readonly IEmailSender _emailSender;
+    private readonly IUnitOfWork _unitOfWork;
 
     public EmailConfirmationService(
         IOptions<FrontendOptions> frontendOptions,
@@ -24,7 +26,8 @@ public sealed class EmailConfirmationService : IEmailConfirmationService
         IUserRepository userRepository,
         IUserTokenService userTokenService,
         ITemplateProvider templateProvider,
-        IEmailSender emailSender)
+        IEmailSender emailSender,
+        IUnitOfWork unitOfWork)
     {
         _frontendOptions = frontendOptions.Value;
         _mailOptions = mailOptions.Value;
@@ -32,6 +35,7 @@ public sealed class EmailConfirmationService : IEmailConfirmationService
         _userTokenService = userTokenService;
         _templateProvider = templateProvider;
         _emailSender = emailSender;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<ApiResponse<bool>> ConfirmEmailAsync(
@@ -52,6 +56,8 @@ public sealed class EmailConfirmationService : IEmailConfirmationService
                 HttpStatusCode.BadRequest,
                 result.Errors.Select(static error => error.Description).ToArray());
         }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return ApiResponse<bool>.Success(true, "Email confirmed successfully.", HttpStatusCode.OK);
     }

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using ParlorPrediction.Application.Configuration;
 using ParlorPrediction.Application.Interfaces.Auth;
 using ParlorPrediction.Application.Interfaces.Common;
+using ParlorPrediction.Application.Interfaces.Persistence;
 using ParlorPrediction.Contracts.Common;
 using ParlorPrediction.Contracts.Requests.Auth;
 using ParlorPrediction.Contracts.Responses.Auth;
@@ -19,6 +20,7 @@ public sealed class PasswordService : IPasswordService
     private readonly IUserTokenService _userTokenService;
     private readonly ITemplateProvider _templateProvider;
     private readonly IEmailSender _emailSender;
+    private readonly IUnitOfWork _unitOfWork;
 
     public PasswordService(
         IOptions<FrontendOptions> frontendOptions,
@@ -26,7 +28,8 @@ public sealed class PasswordService : IPasswordService
         IUserRepository userRepository,
         IUserTokenService userTokenService,
         ITemplateProvider templateProvider,
-        IEmailSender emailSender)
+        IEmailSender emailSender,
+        IUnitOfWork unitOfWork)
     {
         _frontendOptions = frontendOptions.Value;
         _mailOptions = mailOptions.Value;
@@ -34,6 +37,7 @@ public sealed class PasswordService : IPasswordService
         _userTokenService = userTokenService;
         _templateProvider = templateProvider;
         _emailSender = emailSender;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<ApiResponse<UserResponse>> ChangePasswordAsync(
@@ -55,6 +59,8 @@ public sealed class PasswordService : IPasswordService
                 HttpStatusCode.BadRequest,
                 result.Errors.Select(static error => error.Description).ToArray());
         }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return ApiResponse<UserResponse>.Success(
             new UserResponse
@@ -138,6 +144,8 @@ public sealed class PasswordService : IPasswordService
                 HttpStatusCode.BadRequest,
                 result.Errors.Select(static error => error.Description).ToArray());
         }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return ApiResponse<bool>.Success(true, "Password reset successfully.", HttpStatusCode.OK);
     }

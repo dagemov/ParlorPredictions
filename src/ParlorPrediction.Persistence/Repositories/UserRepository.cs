@@ -60,18 +60,23 @@ public sealed class UserRepository : IUserRepository
         return _userManager.AddToRoleAsync(user, ApplicationRoleExtensions.Normalize(roleName));
     }
 
-    public async Task EnsureRoleExistsAsync(string roleName)
+    public async Task<IdentityResult> EnsureRoleExistsAsync(string roleName)
     {
         var normalizedRole = ApplicationRoleExtensions.Normalize(roleName);
         if (string.IsNullOrWhiteSpace(normalizedRole))
         {
-            return;
+            return IdentityResult.Failed(new IdentityError
+            {
+                Description = "A valid role name is required."
+            });
         }
 
         if (!await _roleManager.RoleExistsAsync(normalizedRole))
         {
-            await _roleManager.CreateAsync(new IdentityRole(normalizedRole));
+            return await _roleManager.CreateAsync(new IdentityRole(normalizedRole));
         }
+
+        return IdentityResult.Success;
     }
 
     public async Task<SignInResult> PasswordSignInAsync(string email, string password)
@@ -122,7 +127,6 @@ public sealed class UserRepository : IUserRepository
     public async Task StoreRefreshTokenAsync(RefreshToken refreshToken, CancellationToken cancellationToken = default)
     {
         await _dbContext.RefreshTokens.AddAsync(refreshToken, cancellationToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public Task<RefreshToken?> FindRefreshTokenAsync(string token, CancellationToken cancellationToken = default)
@@ -131,9 +135,9 @@ public sealed class UserRepository : IUserRepository
             .FirstOrDefaultAsync(refreshToken => refreshToken.Token == token, cancellationToken);
     }
 
-    public async Task UpdateRefreshTokenAsync(RefreshToken refreshToken, CancellationToken cancellationToken = default)
+    public Task UpdateRefreshTokenAsync(RefreshToken refreshToken, CancellationToken cancellationToken = default)
     {
         _dbContext.RefreshTokens.Update(refreshToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        return Task.CompletedTask;
     }
 }

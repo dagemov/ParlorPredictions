@@ -15,7 +15,7 @@ public interface IUserRepository
 
     Task<IdentityResult> AddToRoleAsync(User user, string roleName);
 
-    Task EnsureRoleExistsAsync(string roleName);
+    Task<IdentityResult> EnsureRoleExistsAsync(string roleName);
 
     Task<SignInResult> PasswordSignInAsync(string email, string password);
 
