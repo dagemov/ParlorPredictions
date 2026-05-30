@@ -19,4 +19,15 @@ public sealed class DoughPrepRecommendationReadRepository : IDoughPrepRecommenda
             .AsNoTracking()
             .FirstOrDefaultAsync(recommendation => recommendation.Id == id, cancellationToken);
     }
+
+    public Task<DoughPrepRecommendation?> GetLatestByDateAsync(
+        DateOnly targetDate,
+        CancellationToken cancellationToken = default)
+    {
+        return _dbContext.DoughPrepRecommendations
+            .AsNoTracking()
+            .Where(recommendation => recommendation.RecommendationDate == targetDate)
+            .OrderByDescending(recommendation => recommendation.CreatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
 }

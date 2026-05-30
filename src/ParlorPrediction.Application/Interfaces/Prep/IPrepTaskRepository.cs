@@ -9,4 +9,6 @@ public interface IPrepTaskRepository
     Task<PrepTask?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<PrepTask?> GetByDoughPrepRecommendationIdAsync(Guid doughPrepRecommendationId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<PrepTask>> GetDoughTasksByDateAsync(DateOnly taskDate, CancellationToken cancellationToken = default);
 }

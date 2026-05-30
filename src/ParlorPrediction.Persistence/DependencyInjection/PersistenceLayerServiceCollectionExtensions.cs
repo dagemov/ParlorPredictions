@@ -40,6 +40,14 @@ public static class PersistenceLayerServiceCollectionExtensions
             .AddRoleStore<ParlorPredictionRoleStore>()
             .AddDefaultTokenProviders();
 
+        services.ConfigureApplicationCookie(options =>
+        {
+            options.LoginPath = "/session/login";
+            options.AccessDeniedPath = "/session/access-denied";
+            options.Cookie.Name = "ParlorPrediction.Auth";
+            options.SlidingExpiration = true;
+        });
+
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IDoughInventoryReadRepository, DoughInventoryReadRepository>();
         services.AddScoped<IDoughPrepRecommendationReadRepository, DoughPrepRecommendationReadRepository>();

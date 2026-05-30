@@ -22,7 +22,7 @@ public static class InfrastructureLayerServiceCollectionExtensions
         services.Configure<BootstrapAdminOptions>(configuration.GetSection("BootstrapAdmin"));
 
         var jwtKey = configuration["Jwt:Key"] ?? string.Empty;
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        services.AddAuthentication()
             .AddJwtBearer(options =>
             {
                 options.TokenValidationParameters = new TokenValidationParameters
