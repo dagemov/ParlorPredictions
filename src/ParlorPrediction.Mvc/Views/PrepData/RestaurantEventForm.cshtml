@@ -1,0 +1,88 @@
+@model RestaurantEventFormViewModel
+@{
+    ViewData["Title"] = Model.IsEditMode ? "Edit Restaurant Event" : "New Restaurant Event";
+}
+
+<section class="page-hero page-hero--compact">
+    <div>
+        <span class="eyebrow">Prep Data</span>
+        <h1>@(Model.IsEditMode ? "Edit restaurant event" : "Create restaurant event")</h1>
+        <p class="page-copy">Record private parties and special service windows so the dough recommendation can account for them without changing inventory directly.</p>
+    </div>
+</section>
+
+<section class="content-card content-card--padded">
+    <div class="toolbar-header">
+        <div class="section-heading mb-0">
+            <span class="eyebrow">Event Form</span>
+            <h2>@(Model.IsEditMode ? "Update event details" : "Enter new event details")</h2>
+            <p>Short fermentation is only a planning flag for now. The manager still controls final decisions in Dough Prep.</p>
+        </div>
+
+        <a class="btn btn-outline-secondary" asp-action="Events" asp-controller="PrepData">
+            <i class="fa-solid fa-arrow-left me-2"></i>
+            Back To Events
+        </a>
+    </div>
+
+    <form method="post" class="row g-3">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="col-md-7">
+            <label asp-for="Name" class="form-label"></label>
+            <input asp-for="Name" class="form-control" placeholder="Private Party, Town Event, Holiday Rush..." />
+            <span asp-validation-for="Name" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-5">
+            <label asp-for="EventDate" class="form-label"></label>
+            <input asp-for="EventDate" class="form-control" type="date" value="@Model.EventDate.ToString("yyyy-MM-dd")" />
+            <span asp-validation-for="EventDate" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label asp-for="EstimatedDoughBalls" class="form-label"></label>
+            <input asp-for="EstimatedDoughBalls" class="form-control" type="number" min="0" />
+            <span asp-validation-for="EstimatedDoughBalls" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label asp-for="EstimatedPizzas" class="form-label"></label>
+            <input asp-for="EstimatedPizzas" class="form-control" type="number" min="0" />
+            <span asp-validation-for="EstimatedPizzas" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-4">
+            <div class="form-check admin-form-check">
+                <input asp-for="AllowShortFermentation" class="form-check-input" />
+                <label asp-for="AllowShortFermentation" class="form-check-label"></label>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <label asp-for="Notes" class="form-label"></label>
+            <textarea asp-for="Notes" class="form-control" rows="3" placeholder="Optional notes for operators, weather, or service expectations."></textarea>
+            <span asp-validation-for="Notes" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-4">
+            <div class="form-check admin-form-check">
+                <input asp-for="IsActive" class="form-check-input" />
+                <label asp-for="IsActive" class="form-check-label"></label>
+            </div>
+        </div>
+
+        <div class="col-12 d-flex flex-wrap gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk me-2"></i>
+                @(Model.IsEditMode ? "Save Changes" : "Create Event")
+            </button>
+            <a class="btn btn-outline-secondary" asp-action="Events" asp-controller="PrepData">Cancel</a>
+        </div>
+    </form>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

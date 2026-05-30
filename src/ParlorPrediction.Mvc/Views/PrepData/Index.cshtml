@@ -1,0 +1,41 @@
+@{
+    ViewData["Title"] = "Prep Data";
+}
+
+<section class="page-hero page-hero--compact">
+    <div>
+        <span class="eyebrow">Admin Data Entry</span>
+        <h1>Load the data that drives Dough Prep.</h1>
+        <p class="page-copy">Use these admin screens to maintain expected dough demand baselines and special restaurant events before running the daily dough workflow.</p>
+    </div>
+</section>
+
+<section class="feature-grid">
+    <a class="feature-card feature-card--link" asp-action="DoughDemand" asp-controller="PrepData">
+        <div class="feature-card__icon">
+            <i class="fa-solid fa-chart-column"></i>
+        </div>
+        <div class="feature-card__body">
+            <div class="feature-card__meta">Baseline Planning</div>
+            <h2>Dough Demand Plans</h2>
+            <p>Manage weekly demand baselines by day and source so Dough Prep has a reliable starting point.</p>
+        </div>
+        <span class="feature-card__arrow">
+            <i class="fa-solid fa-arrow-right"></i>
+        </span>
+    </a>
+
+    <a class="feature-card feature-card--link" asp-action="Events" asp-controller="PrepData">
+        <div class="feature-card__icon">
+            <i class="fa-solid fa-calendar-check"></i>
+        </div>
+        <div class="feature-card__body">
+            <div class="feature-card__meta">Special Demand</div>
+            <h2>Restaurant Events</h2>
+            <p>Track private parties and one-off events that should increase dough demand for a specific date.</p>
+        </div>
+        <span class="feature-card__arrow">
+            <i class="fa-solid fa-arrow-right"></i>
+        </span>
+    </a>
+</section>

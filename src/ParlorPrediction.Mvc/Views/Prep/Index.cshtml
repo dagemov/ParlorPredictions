@@ -35,4 +35,21 @@
             <p>This area is reserved for future prep items after the dough workflow is stable and approved.</p>
         </div>
     </article>
+
+    @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+    {
+        <a class="feature-card feature-card--link" asp-action="Index" asp-controller="PrepData">
+            <div class="feature-card__icon">
+                <i class="fa-solid fa-database"></i>
+            </div>
+            <div class="feature-card__body">
+                <div class="feature-card__meta">Admin Data</div>
+                <h2>Prep Data</h2>
+                <p>Load dough demand baselines and special events so the Dough Prep workflow has better operating context.</p>
+            </div>
+            <span class="feature-card__arrow">
+                <i class="fa-solid fa-arrow-right"></i>
+            </span>
+        </a>
+    }
 </section>

@@ -1,0 +1,87 @@
+@model RestaurantEventListPageViewModel
+
+<section id="restaurant-event-list" class="content-card">
+    <div class="content-card--padded">
+        @if (Model.Events.Count == 0)
+        {
+            <div class="empty-state">
+                <i class="fa-solid fa-calendar-xmark"></i>
+                <div>
+                    <strong>No restaurant events match the current filters.</strong>
+                    <p>Create a new private party or relax the filters to review historical special-demand entries.</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table prep-table align-middle">
+                    <thead>
+                        <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Dough Balls</th>
+                            <th scope="col">Short Fermentation</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Notes</th>
+                            <th scope="col" class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var restaurantEvent in Model.Events)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@restaurantEvent.EventDate.ToString("ddd, MMM d")</strong>
+                                    <div class="task-timestamp">Updated @restaurantEvent.UpdatedAtUtc.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</div>
+                                </td>
+                                <td>
+                                    @restaurantEvent.Name
+                                    @if (restaurantEvent.EstimatedPizzas > 0)
+                                    {
+                                        <div class="task-timestamp">@restaurantEvent.EstimatedPizzas estimated pizzas</div>
+                                    }
+                                </td>
+                                <td><strong>@restaurantEvent.EstimatedDoughBalls</strong> balls</td>
+                                <td>
+                                    <span class="status-pill @(restaurantEvent.AllowShortFermentation ? "status-pill--warning" : "status-pill--neutral")">
+                                        <i class="fa-solid @(restaurantEvent.AllowShortFermentation ? "fa-sun" : "fa-hourglass-half")"></i>
+                                        @(restaurantEvent.AllowShortFermentation ? "Allowed" : "Standard only")
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="status-pill @(restaurantEvent.IsActive ? "status-pill--success" : "status-pill--neutral")">
+                                        <i class="fa-solid @(restaurantEvent.IsActive ? "fa-circle-check" : "fa-circle-pause")"></i>
+                                        @(restaurantEvent.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </td>
+                                <td>@(string.IsNullOrWhiteSpace(restaurantEvent.Notes) ? "—" : restaurantEvent.Notes)</td>
+                                <td class="text-end">
+                                    <div class="d-flex justify-content-end flex-wrap gap-2">
+                                        <a class="btn btn-sm btn-outline-secondary"
+                                           asp-action="EditEvent"
+                                           asp-controller="PrepData"
+                                           asp-route-id="@restaurantEvent.Id">
+                                            Edit
+                                        </a>
+                                        <button type="button"
+                                                class="btn btn-sm @(restaurantEvent.IsActive ? "btn-outline-danger" : "btn-outline-secondary")"
+                                                hx-post="@Url.Action("ToggleEvent", "PrepData", new { id = restaurantEvent.Id })"
+                                                hx-include="#prep-events-anti-forgery,#event-filters"
+                                                hx-target="#restaurant-event-list"
+                                                hx-swap="outerHTML"
+                                                data-swal-confirm
+                                                data-confirm-title="@(restaurantEvent.IsActive ? "Deactivate event?" : "Reactivate event?")"
+                                                data-confirm-text="@(restaurantEvent.IsActive ? "The event will stay in history but will no longer affect dough calculations until reactivated." : "The event will count again in future dough calculations for its date.")">
+                                            @(restaurantEvent.IsActive ? "Deactivate" : "Reactivate")
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</section>

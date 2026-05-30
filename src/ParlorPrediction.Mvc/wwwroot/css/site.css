@@ -516,6 +516,33 @@ a {
   color: var(--pp-danger);
 }
 
+.status-banner {
+  margin-bottom: 1rem;
+  border-radius: var(--pp-radius-md);
+  border: none;
+  box-shadow: var(--pp-shadow);
+}
+
+.admin-form-check {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 3rem;
+  padding-left: 0;
+}
+
+.admin-form-check .form-check-input {
+  margin: 0;
+  position: static;
+  float: none;
+}
+
+.admin-form-check .form-check-label {
+  margin: 0;
+  color: var(--pp-text);
+  font-weight: 600;
+}
+
 .task-form-grid .form-control-sm {
   min-width: 120px;
 }
