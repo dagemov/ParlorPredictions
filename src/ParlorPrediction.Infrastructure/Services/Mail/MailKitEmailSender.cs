@@ -23,8 +23,12 @@ public sealed class MailKitEmailSender : IEmailSender
         string htmlBody,
         CancellationToken cancellationToken = default)
     {
+        var fromAddress = _mailOptions.GetFromAddress();
+        var smtpHost = _mailOptions.GetSmtpHost();
+        var smtpUsername = _mailOptions.GetUsername();
+
         var message = new MimeMessage();
-        message.From.Add(new MailboxAddress(_mailOptions.FromName, _mailOptions.FromAddress));
+        message.From.Add(new MailboxAddress(_mailOptions.FromName, fromAddress));
         message.To.Add(new MailboxAddress(toName, toEmail));
         message.Subject = subject;
         message.Body = new BodyBuilder
@@ -34,9 +38,9 @@ public sealed class MailKitEmailSender : IEmailSender
 
         using var client = new SmtpClient();
         client.CheckCertificateRevocation = false;
-        await client.ConnectAsync(_mailOptions.SmtpHost, _mailOptions.Port, SecureSocketOptions.StartTls, cancellationToken);
+        await client.ConnectAsync(smtpHost, _mailOptions.Port, SecureSocketOptions.StartTls, cancellationToken);
         client.AuthenticationMechanisms.Remove("XOAUTH2");
-        await client.AuthenticateAsync(_mailOptions.FromAddress, _mailOptions.Password, cancellationToken);
+        await client.AuthenticateAsync(smtpUsername, _mailOptions.Password, cancellationToken);
         await client.SendAsync(message, cancellationToken);
         await client.DisconnectAsync(true, cancellationToken);
     }
