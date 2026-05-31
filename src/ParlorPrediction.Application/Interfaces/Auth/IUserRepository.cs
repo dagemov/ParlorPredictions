@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using ParlorPrediction.Domain.Entities;
+using ParlorPrediction.Domain.Enums;
 
 namespace ParlorPrediction.Application.Interfaces.Auth;
 
@@ -13,9 +14,22 @@ public interface IUserRepository
 
     Task<IdentityResult> UpdateAsync(User user);
 
+    Task<IReadOnlyList<User>> SearchAsync(
+        string? term,
+        ApplicationRole? role,
+        bool activeOnly,
+        IReadOnlyCollection<ApplicationRole> allowedRoles,
+        CancellationToken cancellationToken = default);
+
     Task<IdentityResult> AddToRoleAsync(User user, string roleName);
 
+    Task<IdentityResult> RemoveFromRolesAsync(User user, IEnumerable<string> roleNames);
+
     Task<IdentityResult> EnsureRoleExistsAsync(string roleName);
+
+    Task<IReadOnlyList<string>> GetRoleNamesAsync(User user);
+
+    Task ReloadAsync(User user, CancellationToken cancellationToken = default);
 
     Task<SignInResult> PasswordSignInAsync(string email, string password);
 

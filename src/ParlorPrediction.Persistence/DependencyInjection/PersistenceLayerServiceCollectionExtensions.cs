@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,6 +9,7 @@ using ParlorPrediction.Application.Interfaces.Dough;
 using ParlorPrediction.Application.Interfaces.Persistence;
 using ParlorPrediction.Application.Interfaces.Prep;
 using ParlorPrediction.Domain.Entities;
+using ParlorPrediction.Domain.Enums;
 using ParlorPrediction.Persistence.Identity;
 using ParlorPrediction.Persistence.Repositories;
 using ParlorPrediction.Persistence.Services;
@@ -46,6 +49,26 @@ public static class PersistenceLayerServiceCollectionExtensions
             options.AccessDeniedPath = "/session/access-denied";
             options.Cookie.Name = "ParlorPrediction.Auth";
             options.SlidingExpiration = true;
+            options.Events.OnValidatePrincipal = async context =>
+            {
+                var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<User>>();
+                var principal = context.Principal;
+                var user = principal is null ? null : await userManager.GetUserAsync(principal);
+
+                if (user is null || !user.IsActive)
+                {
+                    context.RejectPrincipal();
+                    await context.HttpContext.SignOutAsync();
+                    return;
+                }
+
+                var currentRoleClaim = principal?.FindFirstValue(ClaimTypes.Role);
+                if (!string.Equals(currentRoleClaim, user.Role.GetCanonicalName(), StringComparison.OrdinalIgnoreCase))
+                {
+                    context.RejectPrincipal();
+                    await context.HttpContext.SignOutAsync();
+                }
+            };
         });
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
