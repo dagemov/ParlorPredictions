@@ -22,6 +22,7 @@ public static class ApplicationLayerServiceCollectionExtensions
         services.AddScoped<IPrepDashboardReadService, PrepDashboardReadService>();
         services.AddScoped<IPrepTaskReadService, PrepTaskReadService>();
         services.AddScoped<IPrepTaskService, PrepTaskService>();
+        services.AddScoped<IPrepWeeklyDoughCalendarService, PrepWeeklyDoughCalendarService>();
 
         return services;
     }
