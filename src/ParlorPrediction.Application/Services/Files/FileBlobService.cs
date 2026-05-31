@@ -123,6 +123,53 @@ public sealed class FileBlobService : IFileBlobService
             HttpStatusCode.Created);
     }
 
+    public async Task<ApiResponse<FileUploadResponse>> ReplaceFileAsync(
+        FileUploadPayload payload,
+        string currentFilePath,
+        string containerName,
+        CancellationToken cancellationToken = default)
+    {
+        var validationError = await ValidatePayloadAsync(payload);
+        if (validationError is not null)
+        {
+            return validationError;
+        }
+
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return ApiResponse<FileUploadResponse>.Failure(
+                "A valid container name is required.",
+                HttpStatusCode.BadRequest);
+        }
+
+        try
+        {
+            var safeFileName = _validationFileService.SanitizeFileName(payload.OriginalFileName);
+            var canonicalContentType = _validationFileService.GetCanonicalContentType(payload.Extension);
+
+            var url = await _fileStorage.ReplaceFileAsync(
+                payload.Content,
+                payload.Extension,
+                canonicalContentType,
+                currentFilePath,
+                containerName,
+                safeFileName,
+                cancellationToken);
+
+            return ApiResponse<FileUploadResponse>.Success(
+                new FileUploadResponse { Url = url },
+                "File updated successfully.",
+                HttpStatusCode.OK);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Error replacing file {FileName}", payload.OriginalFileName);
+            return ApiResponse<FileUploadResponse>.Failure(
+                "We could not update the file right now.",
+                HttpStatusCode.InternalServerError);
+        }
+    }
+
     public async Task<ApiResponse<bool>> DeleteFileAsync(
         string filePath,
         string containerName,
@@ -171,32 +218,7 @@ public sealed class FileBlobService : IFileBlobService
             return validationError;
         }
 
-        try
-        {
-            var safeFileName = _validationFileService.SanitizeFileName(request.NewFile.FileName);
-            var canonicalContentType = _validationFileService.GetCanonicalContentType(extension);
-
-            var url = await _fileStorage.ReplaceFileAsync(
-                content,
-                extension,
-                canonicalContentType,
-                currentFilePath,
-                request.ContainerName,
-                safeFileName,
-                cancellationToken);
-
-            return ApiResponse<FileUploadResponse>.Success(
-                new FileUploadResponse { Url = url },
-                "File updated successfully.",
-                HttpStatusCode.OK);
-        }
-        catch (Exception exception)
-        {
-            _logger.LogError(exception, "Error updating file {FilePath}", currentFilePath);
-            return ApiResponse<FileUploadResponse>.Failure(
-                "We could not update the file right now.",
-                HttpStatusCode.InternalServerError);
-        }
+        return await ReplaceFileAsync(payload, currentFilePath, request.ContainerName, cancellationToken);
     }
 
     private async Task<ApiResponse<FileUploadResponse>?> ValidatePayloadAsync(FileUploadPayload payload)

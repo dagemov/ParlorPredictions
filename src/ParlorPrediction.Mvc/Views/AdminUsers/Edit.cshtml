@@ -1,0 +1,71 @@
+@model ParlorPrediction.Mvc.Models.AdminUsers.AdminUserEditViewModel
+@{
+    ViewData["Title"] = "Edit User";
+}
+
+<section class="page-hero page-hero--compact">
+    <div>
+        <span class="eyebrow">Admin</span>
+        <h1>Edit User</h1>
+        <p class="page-copy">Keep user names, contact info, and sign-in details accurate before changing tasks or roles.</p>
+    </div>
+</section>
+
+<section class="content-card content-card--padded">
+    <div class="toolbar-header">
+        <div class="section-heading mb-0">
+            <span class="eyebrow">Account Edit</span>
+            <h2>Basic profile details</h2>
+            <p>Changing the email will require a fresh confirmation before the user can sign in again.</p>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-secondary" asp-action="Details" asp-controller="AdminUsers" asp-route-id="@Model.Id">
+                <i class="fa-solid fa-arrow-left me-2"></i>
+                Back to User
+            </a>
+        </div>
+    </div>
+
+    <form asp-action="Edit" asp-controller="AdminUsers" asp-route-id="@Model.Id" method="post" class="row g-3">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded-4"></div>
+
+        <div class="col-md-6">
+            <label asp-for="FirstName" class="form-label"></label>
+            <input asp-for="FirstName" class="form-control" />
+            <span asp-validation-for="FirstName" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="LastName" class="form-label"></label>
+            <input asp-for="LastName" class="form-control" />
+            <span asp-validation-for="LastName" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="UserName" class="form-label"></label>
+            <input asp-for="UserName" class="form-control" />
+            <span asp-validation-for="UserName" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Email" class="form-label"></label>
+            <input asp-for="Email" class="form-control" />
+            <span asp-validation-for="Email" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="PhoneNumber" class="form-label"></label>
+            <input asp-for="PhoneNumber" class="form-control" />
+            <span asp-validation-for="PhoneNumber" class="text-danger small"></span>
+        </div>
+        <div class="col-12 d-flex flex-wrap gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk me-2"></i>
+                Save Changes
+            </button>
+            <a class="btn btn-outline-secondary" asp-action="Details" asp-controller="AdminUsers" asp-route-id="@Model.Id">Cancel</a>
+        </div>
+    </form>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,147 @@
+@model WeeklyDoughCalendarViewModel
+@{
+    ViewData["Title"] = "Weekly Dough Calendar";
+    var previousWeekDate = Model.WeekStartDate.AddDays(-7);
+    var nextWeekDate = Model.WeekStartDate.AddDays(7);
+}
+
+<section class="page-hero page-hero--compact">
+    <div>
+        <span class="eyebrow">Weekly Dough Calendar</span>
+        <h1>@Model.WeekStartDate.ToString("MMM d") - @Model.WeekEndDate.ToString("MMM d")</h1>
+        <p class="page-copy">See what dough is usually needed from Tuesday through Sunday, what events add to the week, what is already done, and where the kitchen still needs attention.</p>
+    </div>
+
+    <div class="hero-actions">
+        <a class="btn btn-primary" asp-action="Dough" asp-controller="Prep" asp-route-targetDate="@Model.SelectedDate.ToString("yyyy-MM-dd")" asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse">
+            <i class="fa-solid fa-bread-slice me-2"></i>
+            Back To Dough Prep
+        </a>
+        <a class="btn btn-outline-secondary" asp-action="DoughWeek" asp-controller="Prep" asp-route-targetDate="@previousWeekDate.ToString("yyyy-MM-dd")" asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse">
+            <i class="fa-solid fa-arrow-left me-2"></i>
+            Previous Week
+        </a>
+        <a class="btn btn-outline-secondary" asp-action="DoughWeek" asp-controller="Prep" asp-route-targetDate="@nextWeekDate.ToString("yyyy-MM-dd")" asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse">
+            Next Week
+            <i class="fa-solid fa-arrow-right ms-2"></i>
+        </a>
+    </div>
+</section>
+
+<section class="content-card content-card--padded">
+    <div class="toolbar-header">
+        <div class="section-heading mb-0">
+            <span class="eyebrow">Week Picker</span>
+            <h2>Load a dough week</h2>
+            <p>The calendar always shows the operational week from Tuesday through Sunday.</p>
+        </div>
+    </div>
+
+    <form asp-action="DoughWeek" asp-controller="Prep" method="get" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label" for="weekTargetDate">Any date in the week</label>
+            <input id="weekTargetDate"
+                   name="targetDate"
+                   type="date"
+                   value="@Model.SelectedDate.ToString("yyyy-MM-dd")"
+                   class="form-control" />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label" for="weekHistoricalWeeksToUse">Past weeks to review</label>
+            <input id="weekHistoricalWeeksToUse"
+                   name="historicalWeeksToUse"
+                   type="number"
+                   min="1"
+                   value="@Model.HistoricalWeeksToUse"
+                   class="form-control" />
+        </div>
+
+        <div class="col-md-5">
+            <button type="submit" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-calendar-day me-2"></i>
+                Load Weekly View
+            </button>
+        </div>
+    </form>
+</section>
+
+<section class="content-card content-card--padded mt-4">
+    <div class="section-heading">
+        <span class="eyebrow">Weekly Summary</span>
+        <h2>Dough progress for the week</h2>
+        <p>This summary helps the kitchen see the week's dough picture before jumping into any single day.</p>
+    </div>
+
+    <div class="metric-grid">
+        <article class="metric-card">
+            <span class="metric-card__label">Week Total Dough Needed</span>
+            <strong>@Model.WeekTotalNeededBalls</strong>
+            <small>Usual dough plus event dough from Tuesday through Sunday.</small>
+        </article>
+        <article class="metric-card">
+            <span class="metric-card__label">Week Completed Dough</span>
+            <strong>@Model.WeekCompletedBalls</strong>
+            <small>Dough balls already completed through dough tasks.</small>
+        </article>
+        <article class="metric-card">
+            <span class="metric-card__label">Week Missing Dough</span>
+            <strong>@Model.WeekMissingBalls</strong>
+            <small>Dough still not covered after available and completed dough.</small>
+        </article>
+        <article class="metric-card">
+            <span class="metric-card__label">Upcoming Event Dough</span>
+            <strong>@Model.UpcomingEventBalls</strong>
+            <small>Extra dough tied to events during this week.</small>
+        </article>
+    </div>
+</section>
+
+<section class="content-card content-card--padded mt-4">
+    <div class="section-heading">
+        <span class="eyebrow">Tuesday To Sunday</span>
+        <h2>Weekly dough calendar</h2>
+        <p>Each row shows the usual dough needed, event dough, what is already done, and what still needs attention.</p>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table prep-table align-middle weekly-calendar-table">
+            <thead>
+                <tr>
+                    <th scope="col">Day</th>
+                    <th scope="col">Usual Dough</th>
+                    <th scope="col">Event Dough</th>
+                    <th scope="col">Total Needed</th>
+                    <th scope="col">Current Dough Available</th>
+                    <th scope="col">Dough Already Done</th>
+                    <th scope="col">Dough Still Missing</th>
+                    <th scope="col">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var day in Model.Days)
+                {
+                    <tr class="@(day.IsToday ? "weekly-calendar-table__today" : string.Empty)">
+                        <td>
+                            <div class="task-main">
+                                <strong>@day.Date.ToString("dddd")</strong>
+                                <span>@day.Date.ToString("MMM d")</span>
+                            </div>
+                        </td>
+                        <td>@day.RestaurantDoughBalls</td>
+                        <td>@day.EventDoughBalls</td>
+                        <td><strong>@day.TotalNeededBalls</strong></td>
+                        <td>@day.AvailableBalls</td>
+                        <td>@day.CompletedBalls</td>
+                        <td><strong>@day.StillMissingBalls</strong></td>
+                        <td>
+                            <span class="status-pill @day.StatusCssClass">
+                                @day.Status
+                            </span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

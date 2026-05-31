@@ -4,14 +4,14 @@
     <div class="section-heading">
         <span class="eyebrow">Tasks</span>
         <h2>Dough tasks for @Model.TargetDate.ToString("dddd, MMM d")</h2>
-        <p>Pizza Makers and Managers can use this list to track what still needs to be prepared.</p>
+        <p>Use this list to see what the team still needs to finish and what has already been completed.</p>
     </div>
 
     @if (Model.Tasks.Count == 0)
     {
         <div class="empty-state">
             <i class="fa-regular fa-clipboard"></i>
-            <span>No dough tasks exist for this date yet.</span>
+            <span>No dough tasks have been created for this date yet.</span>
         </div>
     }
     else
@@ -21,8 +21,8 @@
                 <thead>
                     <tr>
                         <th scope="col">Task</th>
-                        <th scope="col">Assigned Role</th>
-                        <th scope="col">Recommended</th>
+                        <th scope="col">Assigned To</th>
+                        <th scope="col">Needed</th>
                         <th scope="col">Completed</th>
                         <th scope="col">Status</th>
                         <th scope="col" class="text-end">Action</th>

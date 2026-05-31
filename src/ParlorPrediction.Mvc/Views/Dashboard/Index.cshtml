@@ -6,8 +6,8 @@
 <section class="page-hero page-hero--compact">
     <div>
         <span class="eyebrow">Prep Dashboard</span>
-        <h1>Today's dough prep at a glance.</h1>
-        <p class="page-copy">Keep the morning summary simple: current recommendation, shortage, cases, loads, and how many dough tasks are still open.</p>
+        <h1>Today's dough picture at a glance.</h1>
+        <p class="page-copy">Start with a simple kitchen summary: what dough is needed, what is already covered, and what still needs attention this week.</p>
     </div>
 
     <div class="hero-actions">
@@ -20,7 +20,7 @@
                    class="form-control" />
             <button type="submit" class="btn btn-outline-secondary">
                 <i class="fa-solid fa-calendar-day me-2"></i>
-                Load Day
+                Load Day View
             </button>
         </form>
 
@@ -38,11 +38,11 @@
             <h2>@Model.TargetDate.ToString("dddd, MMM d")</h2>
             @if (Model.HasRecommendation)
             {
-                <p>The latest saved dough recommendation for this date is reflected below.</p>
+                <p>The latest saved dough guidance for this date is reflected below.</p>
             }
             else
             {
-                <p>No saved recommendation exists for this date yet.</p>
+                <p>No saved dough guidance exists for this date yet.</p>
             }
         </div>
 
@@ -50,34 +50,34 @@
         {
             <div class="metric-grid">
                 <article class="metric-card">
-                    <span class="metric-card__label">Required Balls</span>
+                    <span class="metric-card__label">Expected Dough For The Day</span>
                     <strong>@Model.RequiredBalls</strong>
-                    <small>Total expected demand for the selected day.</small>
+                    <small>Total dough expected for the selected day.</small>
                 </article>
                 <article class="metric-card">
-                    <span class="metric-card__label">Available Balls</span>
+                    <span class="metric-card__label">Current Dough Available</span>
                     <strong>@Model.AvailableBalls</strong>
-                    <small>Inventory captured in the saved recommendation.</small>
+                    <small>Dough counted in the saved guidance.</small>
                 </article>
                 <article class="metric-card">
-                    <span class="metric-card__label">Missing Balls</span>
+                    <span class="metric-card__label">Dough Still Needed</span>
                     <strong>@Model.MissingBalls</strong>
-                    <small>Shortage that still needs production coverage.</small>
+                    <small>What still needs to be covered.</small>
                 </article>
                 <article class="metric-card">
-                    <span class="metric-card__label">Recommended Cases</span>
+                    <span class="metric-card__label">Cases To Plan</span>
                     <strong>@Model.RecommendedCases</strong>
-                    <small>Rounded up from the missing dough balls.</small>
+                    <small>Rounded up from the dough still needed.</small>
                 </article>
                 <article class="metric-card">
-                    <span class="metric-card__label">Recommended Loads</span>
+                    <span class="metric-card__label">Full Batches To Plan</span>
                     <strong>@Model.RecommendedLoads</strong>
-                    <small>Based on 14 cases per standard dough load.</small>
+                    <small>Based on 14 cases per full dough batch.</small>
                 </article>
             </div>
 
             <div class="recommendation-note">
-                <h3>Latest dough recommendation</h3>
+                <h3>Latest dough guidance</h3>
                 <p>@Model.LastRecommendationReason</p>
                 @if (Model.LastRecommendationSavedAtUtc.HasValue)
                 {
@@ -89,7 +89,7 @@
         {
             <div class="empty-state">
                 <i class="fa-regular fa-lightbulb"></i>
-                <span>No dough recommendation exists for this day yet. Generate one from Dough Prep.</span>
+                <span>No dough guidance exists for this day yet. Generate one from Dough Prep.</span>
                 <a class="btn btn-primary" asp-controller="Prep" asp-action="Dough" asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")">
                     <i class="fa-solid fa-arrow-right me-2"></i>
                     Go To Dough Prep
@@ -102,17 +102,17 @@
         <div class="section-heading">
             <span class="eyebrow">Task Snapshot</span>
             <h2>Dough tasks</h2>
-            <p>Open work stays visible here so managers can see whether the recommendation has already turned into execution.</p>
+            <p>Open work stays visible here so managers can see whether the guidance has already turned into real kitchen execution.</p>
         </div>
 
         <div class="dashboard-task-grid">
             <article class="metric-card">
-                <span class="metric-card__label">Pending Tasks</span>
+                <span class="metric-card__label">Tasks Still Open</span>
                 <strong>@Model.PendingTasks</strong>
-                <small>Tasks still open or in progress.</small>
+                <small>Tasks still open or in progress for this day.</small>
             </article>
             <article class="metric-card">
-                <span class="metric-card__label">Completed Tasks</span>
+                <span class="metric-card__label">Tasks Already Done</span>
                 <strong>@Model.CompletedTasks</strong>
                 <small>Tasks already closed for the selected day.</small>
             </article>
@@ -122,11 +122,52 @@
             <i class="fa-solid fa-circle-info"></i>
             <div>
                 <strong>Need to act on this summary?</strong>
-                <p>Open Dough Prep to calculate a new recommendation, save a snapshot, create a task, or mark it as completed.</p>
+                <p>Open Dough Prep to calculate new guidance, save it, create a task, or mark a task as done.</p>
             </div>
         </div>
     </section>
 </div>
+
+<section class="content-card content-card--padded mt-4">
+    <div class="section-heading">
+        <span class="eyebrow">Weekly Dough Progress</span>
+        <h2>@Model.TargetDate.ToString("MMM d") - @Model.WeeklyWindowEndDate.ToString("MMM d")</h2>
+        <p>A simple week-ahead summary so the manager can see what is already covered and what still needs attention.</p>
+    </div>
+
+    <div class="metric-grid">
+        <article class="metric-card">
+            <span class="metric-card__label">Dough Needed This Week</span>
+            <strong>@Model.WeeklyNeededBalls</strong>
+            <small>Total dough from saved guidance in the next 7 days.</small>
+        </article>
+        <article class="metric-card">
+            <span class="metric-card__label">Dough Already Covered</span>
+            <strong>@Model.WeeklyCoveredBalls</strong>
+            <small>Dough already covered by saved availability.</small>
+        </article>
+        <article class="metric-card">
+            <span class="metric-card__label">Dough Still Pending</span>
+            <strong>@Model.WeeklyPendingBalls</strong>
+            <small>Dough that still needs coverage this week.</small>
+        </article>
+        <article class="metric-card">
+            <span class="metric-card__label">Tasks Completed</span>
+            <strong>@Model.WeeklyCompletedTasks</strong>
+            <small>Completed dough tasks across the weekly window.</small>
+        </article>
+        <article class="metric-card">
+            <span class="metric-card__label">Tasks Pending</span>
+            <strong>@Model.WeeklyPendingTasks</strong>
+            <small>Open dough tasks across the weekly window.</small>
+        </article>
+        <article class="metric-card">
+            <span class="metric-card__label">Upcoming Event Dough</span>
+            <strong>@Model.WeeklyUpcomingEventBalls</strong>
+            <small>Extra dough tied to active events in the next 7 days.</small>
+        </article>
+    </div>
+</section>
 
 <div class="stack-lg mt-4">
     <partial name="_AiRecommendationPartial" model="Model.AiRecommendation" />

@@ -1,0 +1,92 @@
+name: Build and deploy Parlor Prediction Prep to Azure App Service
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: 10.0.x
+  SOLUTION_PATH: ParlorPrediction.sln
+  WEB_PROJECT_PATH: src/ParlorPrediction.Mvc/ParlorPrediction.Mvc.csproj
+  PUBLISH_OUTPUT: published-app
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore local tools
+        run: dotnet tool restore
+
+      - name: Restore solution
+        run: dotnet restore ${{ env.SOLUTION_PATH }}
+
+      - name: Build solution
+        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /nodeReuse:false
+
+      - name: Publish MVC app
+        run: dotnet publish ${{ env.WEB_PROJECT_PATH }} --configuration Release --no-build --output ${{ env.PUBLISH_OUTPUT }}
+
+      - name: Upload published artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: parlorprediction-mvc
+          path: ${{ env.PUBLISH_OUTPUT }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore local tools
+        run: dotnet tool restore
+
+      - name: Run production migrations when configured
+        shell: bash
+        env:
+          ConnectionStrings__ParlorPredictionDb: ${{ secrets.AZURE_SQL_CONNECTIONSTRING }}
+        run: |
+          if [ -z "$ConnectionStrings__ParlorPredictionDb" ]; then
+            echo "Skipping EF Core migration because AZURE_SQL_CONNECTIONSTRING is not configured."
+            exit 0
+          fi
+
+          dotnet dotnet-ef database update \
+            --project src/ParlorPrediction.Persistence \
+            --startup-project src/ParlorPrediction.Mvc \
+            --context ParlorPredictionDbContext
+
+      - name: Download published artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: parlorprediction-mvc
+          path: ${{ env.PUBLISH_OUTPUT }}
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ${{ env.PUBLISH_OUTPUT }}

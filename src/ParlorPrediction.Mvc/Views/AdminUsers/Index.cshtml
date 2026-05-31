@@ -1,0 +1,99 @@
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@model ParlorPrediction.Mvc.Models.AdminUsers.AdminUserListPageViewModel
+@{
+    ViewData["Title"] = "User Management";
+    var requestToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
+}
+
+<section class="page-hero page-hero--compact">
+    <div>
+        <span class="eyebrow">Admin</span>
+        <h1>User Management</h1>
+        <p class="page-copy">Create, update, and support the Parlor team without leaving the internal workflow app.</p>
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div class="alert alert-@Model.StatusType status-banner" role="alert">
+        @Model.StatusMessage
+    </div>
+}
+
+<section class="content-card content-card--padded stack-lg">
+    <div class="toolbar-header">
+        <div class="section-heading mb-0">
+            <span class="eyebrow">Team Directory</span>
+            <h2>Search internal users</h2>
+            <p>Find a user by name, email, or role, then jump into account details, status, or role management.</p>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">
+                <i class="fa-solid fa-arrow-left me-2"></i>
+                Home
+            </a>
+            <a class="btn btn-primary" asp-action="Create" asp-controller="AdminUsers">
+                <i class="fa-solid fa-user-plus me-2"></i>
+                New User
+            </a>
+        </div>
+    </div>
+
+    <input id="admin-users-anti-forgery" type="hidden" name="__RequestVerificationToken" value="@requestToken" />
+
+    <form id="admin-users-filters"
+          asp-action="Index"
+          asp-controller="AdminUsers"
+          method="get"
+          class="row g-3 align-items-end"
+          hx-get="@Url.Action("Index", "AdminUsers")"
+          hx-target="#admin-users-list"
+          hx-swap="outerHTML"
+          hx-push-url="true">
+        <div class="col-md-5">
+            <label class="form-label" for="term">Search</label>
+            <input id="term"
+                   name="term"
+                   type="text"
+                   value="@Model.Term"
+                   class="form-control"
+                   placeholder="Name, email, or username..." />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label" for="role">Role</label>
+            <select id="role"
+                    name="role"
+                    class="form-select"
+                    asp-items="Model.RoleOptions">
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <div class="form-check admin-form-check">
+                <input id="activeOnly"
+                       name="activeOnly"
+                       class="form-check-input"
+                       type="checkbox"
+                       value="true"
+                       checked="@Model.ActiveOnly" />
+                <label class="form-check-label" for="activeOnly">Active only</label>
+            </div>
+        </div>
+
+        <div class="col-md-2">
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-outline-secondary">
+                    <i class="fa-solid fa-filter me-2"></i>
+                    Search
+                </button>
+                <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="AdminUsers">
+                    Clear
+                </a>
+            </div>
+        </div>
+    </form>
+</section>
+
+<partial name="_UserListPartial" model="Model" />

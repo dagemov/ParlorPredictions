@@ -12,6 +12,8 @@ public sealed class DoughPrepCalculationResult
 
     public int AvailableBalls { get; set; }
 
+    public int CompletedBalls { get; set; }
+
     public int MissingBalls { get; set; }
 
     public int RecommendedCases { get; set; }

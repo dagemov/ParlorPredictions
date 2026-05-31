@@ -8,9 +8,9 @@
     <section class="content-card content-card--padded">
         <div class="toolbar-header">
             <div class="section-heading mb-0">
-                <span class="eyebrow">Run Prep For A Day</span>
-                <h2>Dough prep date</h2>
-                <p>Use the selector to load saved activity for a day. Managers can calculate a fresh recommendation without reloading the page.</p>
+                <span class="eyebrow">Daily Dough View</span>
+                <h2>Pick the day you want to review</h2>
+                <p>Load the saved dough picture for a day, then calculate fresh guidance without leaving the page.</p>
             </div>
         </div>
 
@@ -27,7 +27,7 @@
             </div>
 
             <div class="col-md-3">
-                <label class="form-label" for="historicalWeeksToUse">Historical weeks</label>
+                <label class="form-label" for="historicalWeeksToUse">Past weeks to review</label>
                 <input id="historicalWeeksToUse"
                        name="historicalWeeksToUse"
                        type="number"
@@ -40,7 +40,7 @@
                 <div class="d-flex flex-wrap gap-2">
                     <button type="submit" class="btn btn-outline-secondary">
                         <i class="fa-solid fa-calendar-day me-2"></i>
-                        Load Day
+                        Load Day View
                     </button>
 
                     @if (Model.CanManageRecommendations)
@@ -52,13 +52,29 @@
                                 hx-target="#dough-prep-workspace"
                                 hx-swap="outerHTML">
                             <i class="fa-solid fa-wand-magic-sparkles me-2"></i>
-                            Calculate Recommendation
+                            Calculate Dough Guidance
                         </button>
                     }
+
+                    <a class="btn btn-outline-secondary" asp-action="Help" asp-controller="Prep">
+                        <i class="fa-regular fa-circle-question me-2"></i>
+                        Help
+                    </a>
+
+                    <a class="btn btn-outline-secondary"
+                       asp-action="DoughWeek"
+                       asp-controller="Prep"
+                       asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
+                       asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse">
+                        <i class="fa-regular fa-calendar-days me-2"></i>
+                        Weekly Dough Calendar
+                    </a>
                 </div>
             </div>
         </form>
     </section>
+
+    <partial name="_DoughProductionPlanningPartial" model="Model.ProductionPlanning" />
 
     <div class="prep-grid prep-grid-wide">
         <partial name="_DoughRecommendationPartial" model="Model.Recommendation" />

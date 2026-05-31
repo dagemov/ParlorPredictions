@@ -55,9 +55,54 @@ public sealed class UserRepository : IUserRepository
         return _userManager.UpdateAsync(user);
     }
 
+    public async Task<IReadOnlyList<User>> SearchAsync(
+        string? term,
+        ApplicationRole? role,
+        bool activeOnly,
+        IReadOnlyCollection<ApplicationRole> allowedRoles,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.Users.AsNoTracking().AsQueryable();
+
+        if (allowedRoles.Count > 0)
+        {
+            query = query.Where(user => allowedRoles.Contains(user.Role));
+        }
+
+        if (role.HasValue)
+        {
+            query = query.Where(user => user.Role == role.Value);
+        }
+
+        if (activeOnly)
+        {
+            query = query.Where(user => user.IsActive);
+        }
+
+        var normalizedTerm = term?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedTerm))
+        {
+            query = query.Where(user =>
+                (user.FirstName + " " + user.LastName).Contains(normalizedTerm) ||
+                (user.Email ?? string.Empty).Contains(normalizedTerm) ||
+                (user.UserName ?? string.Empty).Contains(normalizedTerm));
+        }
+
+        return await query
+            .OrderBy(user => user.LastName)
+            .ThenBy(user => user.FirstName)
+            .ThenBy(user => user.Email)
+            .ToArrayAsync(cancellationToken);
+    }
+
     public Task<IdentityResult> AddToRoleAsync(User user, string roleName)
     {
         return _userManager.AddToRoleAsync(user, ApplicationRoleExtensions.Normalize(roleName));
+    }
+
+    public Task<IdentityResult> RemoveFromRolesAsync(User user, IEnumerable<string> roleNames)
+    {
+        return _userManager.RemoveFromRolesAsync(user, roleNames);
     }
 
     public async Task<IdentityResult> EnsureRoleExistsAsync(string roleName)
@@ -77,6 +122,16 @@ public sealed class UserRepository : IUserRepository
         }
 
         return IdentityResult.Success;
+    }
+
+    public async Task<IReadOnlyList<string>> GetRoleNamesAsync(User user)
+    {
+        return (await _userManager.GetRolesAsync(user)).ToArray();
+    }
+
+    public Task ReloadAsync(User user, CancellationToken cancellationToken = default)
+    {
+        return _dbContext.Entry(user).ReloadAsync(cancellationToken);
     }
 
     public async Task<SignInResult> PasswordSignInAsync(string email, string password)

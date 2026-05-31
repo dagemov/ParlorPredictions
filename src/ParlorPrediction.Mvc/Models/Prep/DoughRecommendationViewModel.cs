@@ -16,6 +16,8 @@ public sealed class DoughRecommendationViewModel
 
     public int AvailableBalls { get; set; }
 
+    public int CompletedBalls { get; set; }
+
     public int MissingBalls { get; set; }
 
     public int RecommendedCases { get; set; }
@@ -39,4 +41,6 @@ public sealed class DoughRecommendationViewModel
     public bool TaskAlreadyExists { get; set; }
 
     public DateTime? SavedAtUtc { get; set; }
+
+    public IReadOnlyList<string> ActionPlanSteps { get; set; } = Array.Empty<string>();
 }

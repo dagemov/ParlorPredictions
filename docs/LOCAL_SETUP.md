@@ -39,9 +39,18 @@ dotnet user-secrets set "ConnectionStrings:ParlorPredictionDb" "Server=localhost
 dotnet user-secrets set "ConnectionStrings:AzureStorage" "<azure-storage-connection-string>" --project src/ParlorPrediction.Mvc
 dotnet user-secrets set "Jwt:Key" "<jwt-signing-key>" --project src/ParlorPrediction.Mvc
 dotnet user-secrets set "Mail:Password" "<smtp-app-password>" --project src/ParlorPrediction.Mvc
+dotnet user-secrets set "Mail:Username" "<smtp-username-if-different-from-from-address>" --project src/ParlorPrediction.Mvc
 ```
 
-5. Start the app:
+5. If you want the known local prep users, add their passwords through user secrets instead of committing them:
+
+```powershell
+dotnet user-secrets set "DevelopmentSeedUsers:Users:0:Password" "Polondrolo3*" --project src/ParlorPrediction.Mvc
+dotnet user-secrets set "DevelopmentSeedUsers:Users:1:Password" "Polondrolo3*" --project src/ParlorPrediction.Mvc
+dotnet user-secrets set "DevelopmentSeedUsers:Users:2:Password" "Polondrolo3*" --project src/ParlorPrediction.Mvc
+```
+
+6. Start the app:
 
 ```powershell
 dotnet run --project src/ParlorPrediction.Mvc

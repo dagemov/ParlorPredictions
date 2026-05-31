@@ -16,6 +16,8 @@
             (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("PizzaMaker"));
         var canSeeDashboard = User.Identity?.IsAuthenticated == true &&
             (User.IsInRole("Admin") || User.IsInRole("Manager"));
+        var canManageUsers = User.Identity?.IsAuthenticated == true &&
+            (User.IsInRole("Admin") || User.IsInRole("Manager"));
     }
 
     <div class="app-frame">
@@ -34,6 +36,10 @@
                         @if (canSeeDashboard)
                         {
                             <a asp-controller="Dashboard" asp-action="Index">Dashboard</a>
+                        }
+                        @if (canManageUsers)
+                        {
+                            <a asp-controller="AdminUsers" asp-action="Index">Users</a>
                         }
                         @if (canSeePrep)
                         {

@@ -134,7 +134,7 @@ public sealed class EmailConfirmationService : IEmailConfirmationService
             ["AppName"] = string.IsNullOrWhiteSpace(_mailOptions.BrandName) ? "Parlor Prediction" : _mailOptions.BrandName,
             ["UserName"] = string.IsNullOrWhiteSpace(user.FullName) ? user.Email ?? "there" : user.FullName,
             ["ActionUrl"] = actionUrl,
-            ["SupportEmail"] = _mailOptions.FromAddress,
+            ["SupportEmail"] = _mailOptions.GetFromAddress(),
             ["CurrentYear"] = DateTime.UtcNow.Year.ToString()
         };
 

@@ -42,22 +42,22 @@
                            min="1"
                            value="@(Math.Max(Model.QuantityRecommended - Model.QuantityCompleted, 1))"
                            class="form-control form-control-sm"
-                           aria-label="Quantity completed" />
+                           aria-label="Dough balls completed" />
                     <input name="Notes"
                            type="text"
                            maxlength="500"
                            class="form-control form-control-sm"
-                           placeholder="Optional note" />
+                           placeholder="Optional kitchen note" />
                     <button type="submit" class="btn btn-sm btn-outline-primary">
                         <i class="fa-solid fa-check me-1"></i>
-                        Complete
+                        Mark Done
                     </button>
                 </div>
             </form>
         }
         else
         {
-            <span class="inline-hint">No action needed</span>
+            <span class="inline-hint">Nothing else needed here</span>
         }
     </td>
 </tr>

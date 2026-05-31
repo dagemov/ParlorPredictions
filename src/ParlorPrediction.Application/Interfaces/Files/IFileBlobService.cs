@@ -17,6 +17,12 @@ public interface IFileBlobService
         int maxFiles = 4,
         CancellationToken cancellationToken = default);
 
+    Task<ApiResponse<FileUploadResponse>> ReplaceFileAsync(
+        FileUploadPayload payload,
+        string currentFilePath,
+        string containerName,
+        CancellationToken cancellationToken = default);
+
     Task<ApiResponse<bool>> DeleteFileAsync(
         string filePath,
         string containerName,

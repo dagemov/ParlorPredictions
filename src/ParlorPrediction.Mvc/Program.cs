@@ -37,10 +37,7 @@ builder.Services.AddPersistenceLayer(builder.Configuration);
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    await app.InitializeAuthBootstrapAsync();
-}
+await app.InitializeAuthBootstrapAsync();
 
 if (!app.Environment.IsDevelopment())
 {

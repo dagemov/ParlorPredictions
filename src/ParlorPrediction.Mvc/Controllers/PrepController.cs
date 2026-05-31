@@ -9,6 +9,7 @@ using ParlorPrediction.Contracts.Requests.Prep;
 using ParlorPrediction.Contracts.Responses.Dough;
 using ParlorPrediction.Contracts.Responses.Prep;
 using ParlorPrediction.Domain.Enums;
+using ParlorPrediction.Domain.Rules;
 using ParlorPrediction.Mvc.Models.Prep;
 
 namespace ParlorPrediction.Mvc.Controllers;
@@ -18,29 +19,42 @@ namespace ParlorPrediction.Mvc.Controllers;
 public sealed class PrepController : Controller
 {
     private const int DefaultHistoricalWeeksToUse = 8;
+    private const int DefaultPlanningDaysAhead = 7;
 
     private readonly IDoughPrepCalculationService _doughPrepCalculationService;
+    private readonly IDoughProductionPlanningService _doughProductionPlanningService;
     private readonly IDoughPrepRecommendationReadService _doughPrepRecommendationReadService;
     private readonly IDoughPrepRecommendationService _doughPrepRecommendationService;
+    private readonly IPrepWeeklyDoughCalendarService _prepWeeklyDoughCalendarService;
     private readonly IPrepTaskReadService _prepTaskReadService;
     private readonly IPrepTaskService _prepTaskService;
 
     public PrepController(
         IDoughPrepCalculationService doughPrepCalculationService,
+        IDoughProductionPlanningService doughProductionPlanningService,
         IDoughPrepRecommendationReadService doughPrepRecommendationReadService,
         IDoughPrepRecommendationService doughPrepRecommendationService,
+        IPrepWeeklyDoughCalendarService prepWeeklyDoughCalendarService,
         IPrepTaskReadService prepTaskReadService,
         IPrepTaskService prepTaskService)
     {
         _doughPrepCalculationService = doughPrepCalculationService;
+        _doughProductionPlanningService = doughProductionPlanningService;
         _doughPrepRecommendationReadService = doughPrepRecommendationReadService;
         _doughPrepRecommendationService = doughPrepRecommendationService;
+        _prepWeeklyDoughCalendarService = prepWeeklyDoughCalendarService;
         _prepTaskReadService = prepTaskReadService;
         _prepTaskService = prepTaskService;
     }
 
     [HttpGet("")]
     public IActionResult Index()
+    {
+        return View();
+    }
+
+    [HttpGet("help")]
+    public IActionResult Help()
     {
         return View();
     }
@@ -59,6 +73,45 @@ public sealed class PrepController : Controller
             cancellationToken);
 
         return View(pageModel);
+    }
+
+    [HttpGet("dough/week")]
+    public async Task<IActionResult> DoughWeek(
+        DateOnly? targetDate,
+        int historicalWeeksToUse = DefaultHistoricalWeeksToUse,
+        CancellationToken cancellationToken = default)
+    {
+        var selectedDate = targetDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var calendar = await _prepWeeklyDoughCalendarService.GetWeekAsync(
+            selectedDate,
+            NormalizeHistoricalWeeks(historicalWeeksToUse),
+            cancellationToken);
+
+        return View(new WeeklyDoughCalendarViewModel
+        {
+            SelectedDate = selectedDate,
+            HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse),
+            WeekStartDate = calendar.WeekStartDate,
+            WeekEndDate = calendar.WeekEndDate,
+            WeekTotalNeededBalls = calendar.WeekTotalNeededBalls,
+            WeekCompletedBalls = calendar.WeekCompletedBalls,
+            WeekMissingBalls = calendar.WeekMissingBalls,
+            UpcomingEventBalls = calendar.UpcomingEventBalls,
+            Days = calendar.Days
+                .Select(day => new WeeklyDoughCalendarDayViewModel
+                {
+                    Date = day.Date,
+                    RestaurantDoughBalls = day.RestaurantDoughBalls,
+                    EventDoughBalls = day.EventDoughBalls,
+                    TotalNeededBalls = day.TotalNeededBalls,
+                    AvailableBalls = day.AvailableBalls,
+                    CompletedBalls = day.CompletedBalls,
+                    StillMissingBalls = day.StillMissingBalls,
+                    Status = day.Status,
+                    IsToday = day.Date == DateOnly.FromDateTime(DateTime.Today)
+                })
+                .ToArray()
+        });
     }
 
     [Authorize(Roles = $"{nameof(ApplicationRole.Admin)},{nameof(ApplicationRole.Manager)}")]
@@ -278,6 +331,14 @@ public sealed class PrepController : Controller
         int historicalWeeksToUse,
         CancellationToken cancellationToken)
     {
+        var productionPlanning = await _doughProductionPlanningService.PlanAsync(
+            new DoughProductionPlanningRequest
+            {
+                ProductionDate = targetDate,
+                DaysAhead = DefaultPlanningDaysAhead
+            },
+            cancellationToken);
+
         var taskResponses = await _prepTaskReadService.GetDoughTasksByDateAsync(targetDate, cancellationToken);
         var taskViewModels = taskResponses
             .Select(MapTask)
@@ -300,6 +361,12 @@ public sealed class PrepController : Controller
         if (recommendation is not null)
         {
             recommendation.HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse);
+            recommendation.CompletedBalls = taskResponses
+                .Where(task => string.Equals(task.Status, nameof(PrepTaskStatus.Completed), StringComparison.OrdinalIgnoreCase))
+                .Sum(task => task.QuantityCompleted);
+            recommendation.MissingBalls = Math.Max(
+                recommendation.RequiredBalls - recommendation.AvailableBalls - recommendation.CompletedBalls,
+                0);
             recommendation.CanSaveRecommendation = CanManageRecommendations() && !recommendation.IsPersisted;
 
             var taskAlreadyExists = recommendation.RecommendationId.HasValue &&
@@ -317,6 +384,7 @@ public sealed class PrepController : Controller
             TargetDate = targetDate,
             HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse),
             Recommendation = recommendation,
+            ProductionPlanning = MapProductionPlanning(productionPlanning),
             Tasks = taskViewModels,
             CanManageRecommendations = CanManageRecommendations()
         };
@@ -371,6 +439,14 @@ public sealed class PrepController : Controller
         DoughPrepCalculationResult calculation,
         int historicalWeeksToUse)
     {
+        var actionPlanSteps = BuildRecommendationActionPlan(
+            calculation.MissingBalls,
+            calculation.RecommendedCases,
+            calculation.RecommendedLoads,
+            calculation.ShouldBallDough,
+            calculation.UsesShortFermentationException,
+            calculation.EventEstimatedBalls);
+
         return new DoughRecommendationViewModel
         {
             RecommendationDate = calculation.TargetDate,
@@ -378,6 +454,7 @@ public sealed class PrepController : Controller
             HistoricalAverageBalls = calculation.HistoricalAverageBalls,
             EventEstimatedBalls = calculation.EventEstimatedBalls,
             AvailableBalls = calculation.AvailableBalls,
+            CompletedBalls = calculation.CompletedBalls,
             MissingBalls = calculation.MissingBalls,
             RecommendedCases = calculation.RecommendedCases,
             RecommendedLoads = calculation.RecommendedLoads,
@@ -386,7 +463,8 @@ public sealed class PrepController : Controller
             UsesShortFermentationException = calculation.UsesShortFermentationException,
             Reason = calculation.Reason,
             HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse),
-            IsPersisted = false
+            IsPersisted = false,
+            ActionPlanSteps = actionPlanSteps
         };
     }
 
@@ -394,6 +472,14 @@ public sealed class PrepController : Controller
         DoughRecommendationDetailResponse recommendation,
         int historicalWeeksToUse)
     {
+        var actionPlanSteps = BuildRecommendationActionPlan(
+            recommendation.MissingBalls,
+            recommendation.RecommendedCases,
+            recommendation.RecommendedLoads,
+            recommendation.ShouldBallDough,
+            recommendation.UsesShortFermentationException,
+            recommendation.EventEstimatedBalls);
+
         return new DoughRecommendationViewModel
         {
             RecommendationId = recommendation.RecommendationId,
@@ -411,7 +497,8 @@ public sealed class PrepController : Controller
             Reason = recommendation.Reason,
             HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse),
             IsPersisted = true,
-            SavedAtUtc = recommendation.CreatedAtUtc
+            SavedAtUtc = recommendation.CreatedAtUtc,
+            ActionPlanSteps = actionPlanSteps
         };
     }
 
@@ -419,6 +506,14 @@ public sealed class PrepController : Controller
         GenerateDoughPrepRecommendationResponse recommendation,
         int historicalWeeksToUse)
     {
+        var actionPlanSteps = BuildRecommendationActionPlan(
+            recommendation.MissingBalls,
+            recommendation.RecommendedCases,
+            recommendation.RecommendedLoads,
+            recommendation.ShouldBallDough,
+            recommendation.UsesShortFermentationException,
+            recommendation.EventEstimatedBalls);
+
         return new DoughRecommendationViewModel
         {
             RecommendationId = recommendation.RecommendationId,
@@ -436,7 +531,41 @@ public sealed class PrepController : Controller
             Reason = recommendation.Reason,
             HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse),
             IsPersisted = true,
-            SavedAtUtc = DateTime.UtcNow
+            SavedAtUtc = DateTime.UtcNow,
+            ActionPlanSteps = actionPlanSteps
+        };
+    }
+
+    private static DoughProductionPlanningViewModel MapProductionPlanning(
+        DoughProductionPlanningResponse productionPlanning)
+    {
+        return new DoughProductionPlanningViewModel
+        {
+            ProductionDate = productionPlanning.ProductionDate,
+            DaysAhead = productionPlanning.UpcomingNeeds.Count,
+            TotalFutureRequiredBalls = productionPlanning.TotalFutureRequiredBalls,
+            ReadyBalls = productionPlanning.ReadyBalls,
+            FermentingBalls = productionPlanning.FermentingBalls,
+            UnballedBalls = productionPlanning.UnballedBalls,
+            MissingBallsForProductionWindow = productionPlanning.MissingBallsForProductionWindow,
+            RecommendedCasesToMakeToday = productionPlanning.RecommendedCasesToMakeToday,
+            RecommendedLoadsToMakeToday = productionPlanning.RecommendedLoadsToMakeToday,
+            RecommendedBallsToBallToday = productionPlanning.RecommendedBallsToBallToday,
+            Reason = productionPlanning.Reason,
+            UpcomingNeeds = productionPlanning.UpcomingNeeds
+                .Select(need => new DoughNeedByDateViewModel
+                {
+                    NeedDate = need.NeedDate,
+                    RestaurantBaselineBalls = need.RestaurantBaselineBalls,
+                    EventBalls = need.EventBalls,
+                    TotalRequiredBalls = need.TotalRequiredBalls,
+                    ProductionWindowStart = need.ProductionWindowStart,
+                    ProductionWindowEnd = need.ProductionWindowEnd,
+                    RecommendedMakeDate = need.RecommendedMakeDate,
+                    UsesShortFermentation = need.UsesShortFermentation,
+                    IsRecommendedForSelectedProductionDate = need.RecommendedMakeDate == productionPlanning.ProductionDate
+                })
+                .ToArray()
         };
     }
 
@@ -478,5 +607,51 @@ public sealed class PrepController : Controller
     private static int NormalizeHistoricalWeeks(int historicalWeeksToUse)
     {
         return historicalWeeksToUse < 1 ? DefaultHistoricalWeeksToUse : historicalWeeksToUse;
+    }
+
+    private static IReadOnlyList<string> BuildRecommendationActionPlan(
+        int missingBalls,
+        int recommendedCases,
+        int recommendedLoads,
+        bool shouldBallDough,
+        bool usesShortFermentationException,
+        int eventEstimatedBalls)
+    {
+        var steps = new List<string>();
+
+        if (missingBalls <= 0)
+        {
+            steps.Add("No new dough batch is needed for this day. Use the dough already available and keep an eye on the next prep date.");
+        }
+        else if (recommendedLoads > 0)
+        {
+            var producedBalls = recommendedLoads * DoughRules.StandardBatchBalls;
+            steps.Add(
+                $"Make {recommendedLoads} full dough batch{(recommendedLoads == 1 ? string.Empty : "es")} today. That gives the kitchen about {producedBalls} dough balls and covers the current shortage of {missingBalls}.");
+
+            if (recommendedLoads == 1 && missingBalls < DoughRules.StandardBatchBalls)
+            {
+                steps.Add("One full batch will leave extra dough that can roll into the next prep day if fermentation timing still works.");
+            }
+            else
+            {
+                steps.Add($"Plan for about {recommendedCases} case{(recommendedCases == 1 ? string.Empty : "s")} of dough from that production run.");
+            }
+        }
+
+        if (shouldBallDough)
+        {
+            steps.Add("Ball any dough that has already finished fermenting so the team can use it without delay.");
+        }
+
+        if (eventEstimatedBalls > 0)
+        {
+            steps.Add(
+                usesShortFermentationException
+                    ? "Part of this dough supports an upcoming summer event, so the shorter 1 to 2 day fermentation window may be used if the manager confirms it."
+                    : "Part of this dough supports an upcoming event, so make sure that dough is mixed ahead of the event date.");
+        }
+
+        return steps;
     }
 }

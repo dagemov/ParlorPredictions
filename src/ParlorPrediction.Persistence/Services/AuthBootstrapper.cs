@@ -191,11 +191,18 @@ public sealed class AuthBootstrapper
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(options.Email) ||
-            string.IsNullOrWhiteSpace(options.Password) ||
             string.IsNullOrWhiteSpace(options.UserName))
         {
             _logger.LogWarning("A development seed user is missing required values. The entry was skipped.");
-            return false;
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(options.Password))
+        {
+            _logger.LogInformation(
+                "Development seed user {Email} was skipped because no password is configured in secrets or environment variables.",
+                options.Email);
+            return true;
         }
 
         if (!ApplicationRoleExtensions.TryParse(options.Role, out var parsedRole))
@@ -204,7 +211,7 @@ public sealed class AuthBootstrapper
                 "Development seed user {Email} has an invalid role value {Role}.",
                 options.Email,
                 options.Role);
-            return false;
+            return true;
         }
 
         var desiredRoleName = parsedRole.GetCanonicalName();

@@ -1,8 +1,10 @@
 using System.Text;
 using ParlorPrediction.Application.Interfaces.Dough;
+using ParlorPrediction.Application.Interfaces.Prep;
 using ParlorPrediction.Contracts.Requests.Dough;
 using ParlorPrediction.Contracts.Responses.Dough;
 using ParlorPrediction.Domain.Entities;
+using ParlorPrediction.Domain.Enums;
 using ParlorPrediction.Domain.Rules;
 
 namespace ParlorPrediction.Application.Services.Dough;
@@ -11,17 +13,20 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
 {
     private readonly IDoughDemandPlanReadRepository _doughDemandPlanReadRepository;
     private readonly IDoughInventoryReadRepository _doughInventoryReadRepository;
+    private readonly IPrepTaskRepository _prepTaskRepository;
     private readonly IRestaurantEventReadRepository _restaurantEventReadRepository;
     private readonly ISalesHistoryReadRepository _salesHistoryReadRepository;
 
     public DoughPrepCalculationService(
         IDoughDemandPlanReadRepository doughDemandPlanReadRepository,
         IDoughInventoryReadRepository doughInventoryReadRepository,
+        IPrepTaskRepository prepTaskRepository,
         IRestaurantEventReadRepository restaurantEventReadRepository,
         ISalesHistoryReadRepository salesHistoryReadRepository)
     {
         _doughDemandPlanReadRepository = doughDemandPlanReadRepository;
         _doughInventoryReadRepository = doughInventoryReadRepository;
+        _prepTaskRepository = prepTaskRepository;
         _restaurantEventReadRepository = restaurantEventReadRepository;
         _salesHistoryReadRepository = salesHistoryReadRepository;
     }
@@ -45,6 +50,7 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
         var latestInventorySnapshot = await _doughInventoryReadRepository.GetLatestSnapshotOnOrBeforeAsync(
             request.TargetDate,
             cancellationToken);
+        var prepTasks = await _prepTaskRepository.GetDoughTasksByDateAsync(request.TargetDate, cancellationToken);
 
         var historicalAverageBalls = demandPlans.Count > 0
             ? CalculateDemandPlanBaselineBalls(demandPlans)
@@ -52,7 +58,10 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
         var eventEstimatedBalls = events.Sum(restaurantEvent => restaurantEvent.EstimatedDoughBalls);
         var requiredBalls = checked(historicalAverageBalls + eventEstimatedBalls);
         var availableBalls = latestInventorySnapshot?.AvailableBalls ?? 0;
-        var missingBalls = Math.Max(requiredBalls - availableBalls, 0);
+        var completedBalls = prepTasks
+            .Where(task => task.Status == PrepTaskStatus.Completed)
+            .Sum(task => task.QuantityCompleted);
+        var missingBalls = Math.Max(requiredBalls - availableBalls - completedBalls, 0);
         var recommendedCases = CalculateRoundedUpUnits(missingBalls, DoughRules.BallsPerCase);
         var recommendedLoads = CalculateRoundedUpUnits(recommendedCases, DoughRules.StandardBatchCases);
         var shouldMakeDough = missingBalls > 0;
@@ -71,6 +80,7 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
             HistoricalAverageBalls = historicalAverageBalls,
             EventEstimatedBalls = eventEstimatedBalls,
             AvailableBalls = availableBalls,
+            CompletedBalls = completedBalls,
             MissingBalls = missingBalls,
             RecommendedCases = recommendedCases,
             RecommendedLoads = recommendedLoads,
@@ -85,6 +95,7 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
                 historicalAverageBalls,
                 eventEstimatedBalls,
                 availableBalls,
+                completedBalls,
                 missingBalls,
                 recommendedCases,
                 recommendedLoads,
@@ -143,6 +154,7 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
         int historicalAverageBalls,
         int eventEstimatedBalls,
         int availableBalls,
+        int completedBalls,
         int missingBalls,
         int recommendedCases,
         int recommendedLoads,
@@ -153,35 +165,56 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
         if (demandPlans.Count > 0)
         {
             reasonBuilder.Append(
-                $"Using {demandPlans.Count} active dough demand plan(s) for {request.TargetDate.DayOfWeek}, the baseline is {historicalAverageBalls} dough balls.");
+                $"For {request.TargetDate.DayOfWeek}, the restaurant usually needs about {historicalAverageBalls} dough balls based on {demandPlans.Count} active planning entr{(demandPlans.Count == 1 ? "y" : "ies")}.");
         }
         else if (historicalSales.Count == 0)
         {
             reasonBuilder.Append(
-                $"No historical {request.TargetDate.DayOfWeek} sales were found in the last {request.HistoricalWeeksToUse} weeks, so the historical baseline is 0 dough balls.");
+                $"There is no recent sales history for {request.TargetDate.DayOfWeek} in the last {request.HistoricalWeeksToUse} weeks, so the usual dough needed for that day is starting from 0.");
         }
         else
         {
             reasonBuilder.Append(
-                $"Based on the last {request.HistoricalWeeksToUse} weeks of {request.TargetDate.DayOfWeek} sales, the system expects {historicalAverageBalls} dough balls.");
+                $"Looking at the last {request.HistoricalWeeksToUse} {request.TargetDate.DayOfWeek} service day{(request.HistoricalWeeksToUse == 1 ? string.Empty : "s")}, the restaurant usually needs about {historicalAverageBalls} dough balls.");
         }
 
-        reasonBuilder.Append($" Events add {eventEstimatedBalls} dough balls across {events.Count} event(s).");
-        reasonBuilder.Append($" Current available dough is {availableBalls} balls, leaving a shortage of {missingBalls} balls.");
+        if (eventEstimatedBalls > 0)
+        {
+            reasonBuilder.Append(
+                $" Scheduled event demand adds another {eventEstimatedBalls} dough balls across {events.Count} event{(events.Count == 1 ? string.Empty : "s")}.");
+        }
+        else
+        {
+            reasonBuilder.Append(" There is no extra event dough planned for this day.");
+        }
+
+        reasonBuilder.Append($" You currently have {availableBalls} dough balls available.");
+
+        if (completedBalls > 0)
+        {
+            reasonBuilder.Append($" The team has already finished {completedBalls} dough balls for this day.");
+        }
+
+        reasonBuilder.Append($" That leaves {missingBalls} dough balls still missing.");
 
         if (recommendedCases > 0)
         {
             reasonBuilder.Append(
-                $" Recommended production is {recommendedCases} case(s) across {recommendedLoads} load(s).");
+                $" That means the kitchen should plan for about {recommendedCases} case{(recommendedCases == 1 ? string.Empty : "s")} of dough, which rounds to {recommendedLoads} full batch{(recommendedLoads == 1 ? string.Empty : "es")}.");
+
+            if (recommendedLoads == 1 && missingBalls < DoughRules.StandardBatchBalls)
+            {
+                reasonBuilder.Append(" One full batch will cover today's shortage and leave extra dough moving into the next prep day.");
+            }
         }
         else
         {
-            reasonBuilder.Append(" Current inventory covers expected demand, so no additional dough production is recommended.");
+            reasonBuilder.Append(" Current dough available already covers the day, so no new mixing is needed right now.");
         }
 
         if (usesShortFermentationException)
         {
-            reasonBuilder.Append(" A short-fermentation exception may be considered because at least one summer event allows it.");
+            reasonBuilder.Append(" A shorter 1 to 2 day fermentation window may be considered because at least one summer event allows it.");
         }
 
         return reasonBuilder.ToString();
