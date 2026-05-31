@@ -34,6 +34,7 @@ public sealed class DashboardController : Controller
         return View(new PrepDashboardViewModel
         {
             TargetDate = summary.TargetDate,
+            WeeklyWindowEndDate = summary.WeeklyWindowEndDate,
             HasRecommendation = summary.HasRecommendation,
             RequiredBalls = summary.RequiredBalls,
             AvailableBalls = summary.AvailableBalls,
@@ -42,6 +43,12 @@ public sealed class DashboardController : Controller
             RecommendedLoads = summary.RecommendedLoads,
             PendingTasks = summary.PendingTasks,
             CompletedTasks = summary.CompletedTasks,
+            WeeklyNeededBalls = summary.WeeklyNeededBalls,
+            WeeklyCoveredBalls = summary.WeeklyCoveredBalls,
+            WeeklyPendingBalls = summary.WeeklyPendingBalls,
+            WeeklyCompletedTasks = summary.WeeklyCompletedTasks,
+            WeeklyPendingTasks = summary.WeeklyPendingTasks,
+            WeeklyUpcomingEventBalls = summary.WeeklyUpcomingEventBalls,
             LastRecommendationReason = summary.LastRecommendationReason,
             LastRecommendationSavedAtUtc = summary.LastRecommendationSavedAtUtc,
             AiRecommendation = new AiRecommendationPanelViewModel

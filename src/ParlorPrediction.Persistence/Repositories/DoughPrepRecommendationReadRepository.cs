@@ -30,4 +30,24 @@ public sealed class DoughPrepRecommendationReadRepository : IDoughPrepRecommenda
             .OrderByDescending(recommendation => recommendation.CreatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<DoughPrepRecommendation>> GetLatestBetweenDatesAsync(
+        DateOnly startDate,
+        DateOnly endDate,
+        CancellationToken cancellationToken = default)
+    {
+        var recommendations = await _dbContext.DoughPrepRecommendations
+            .AsNoTracking()
+            .Where(recommendation =>
+                recommendation.RecommendationDate >= startDate &&
+                recommendation.RecommendationDate <= endDate)
+            .OrderByDescending(recommendation => recommendation.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+
+        return recommendations
+            .GroupBy(recommendation => recommendation.RecommendationDate)
+            .Select(group => group.First())
+            .OrderBy(recommendation => recommendation.RecommendationDate)
+            .ToArray();
+    }
 }

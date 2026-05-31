@@ -50,4 +50,23 @@ public sealed class PrepTaskRepository : IPrepTaskRepository
             .ThenBy(task => task.CreatedAtUtc)
             .ToArrayAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<PrepTask>> GetDoughTasksBetweenDatesAsync(
+        DateOnly startDate,
+        DateOnly endDate,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.PrepTasks
+            .AsNoTracking()
+            .Include(task => task.PrepItem)
+            .Include(task => task.PrepStation)
+            .Where(task =>
+                task.TaskDate >= startDate &&
+                task.TaskDate <= endDate &&
+                task.PrepItem.Code == PrepCatalogCodes.DoughItem)
+            .OrderBy(task => task.TaskDate)
+            .ThenBy(task => task.Status)
+            .ThenBy(task => task.CreatedAtUtc)
+            .ToArrayAsync(cancellationToken);
+    }
 }

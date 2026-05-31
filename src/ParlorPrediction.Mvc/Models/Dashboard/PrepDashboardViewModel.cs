@@ -4,6 +4,8 @@ public sealed class PrepDashboardViewModel
 {
     public DateOnly TargetDate { get; set; }
 
+    public DateOnly WeeklyWindowEndDate { get; set; }
+
     public bool HasRecommendation { get; set; }
 
     public int RequiredBalls { get; set; }
@@ -19,6 +21,18 @@ public sealed class PrepDashboardViewModel
     public int PendingTasks { get; set; }
 
     public int CompletedTasks { get; set; }
+
+    public int WeeklyNeededBalls { get; set; }
+
+    public int WeeklyCoveredBalls { get; set; }
+
+    public int WeeklyPendingBalls { get; set; }
+
+    public int WeeklyCompletedTasks { get; set; }
+
+    public int WeeklyPendingTasks { get; set; }
+
+    public int WeeklyUpcomingEventBalls { get; set; }
 
     public string? LastRecommendationReason { get; set; }
 
