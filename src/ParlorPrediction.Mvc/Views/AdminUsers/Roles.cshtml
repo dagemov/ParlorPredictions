@@ -1,0 +1,65 @@
+@model ParlorPrediction.Mvc.Models.AdminUsers.UserRoleManagementViewModel
+@{
+    ViewData["Title"] = "Manage Role";
+}
+
+<section class="page-hero page-hero--compact">
+    <div>
+        <span class="eyebrow">Admin</span>
+        <h1>Manage Role</h1>
+        <p class="page-copy">Change the kitchen role only when the user’s day-to-day responsibilities have actually changed.</p>
+    </div>
+</section>
+
+<section class="content-card content-card--padded stack-lg">
+    <div class="toolbar-header">
+        <div class="section-heading mb-0">
+            <span class="eyebrow">Role Management</span>
+            <h2>@Model.FullName</h2>
+            <p>@Model.Email</p>
+        </div>
+
+        <a class="btn btn-outline-secondary" asp-action="Details" asp-controller="AdminUsers" asp-route-id="@Model.Id">
+            <i class="fa-solid fa-arrow-left me-2"></i>
+            Back to User
+        </a>
+    </div>
+
+    <div class="user-detail-grid">
+        <div class="user-detail-card">
+            <span class="metric-card__label">Current role</span>
+            <strong>@Model.CurrentRole</strong>
+        </div>
+        <div class="user-detail-card">
+            <span class="metric-card__label">Account status</span>
+            <strong>@(Model.IsActive ? "Active" : "Inactive")</strong>
+        </div>
+        <div class="user-detail-card">
+            <span class="metric-card__label">Email confirmation</span>
+            <strong>@(Model.EmailConfirmed ? "Confirmed" : "Pending")</strong>
+        </div>
+    </div>
+
+    <form asp-action="Roles" asp-controller="AdminUsers" asp-route-id="@Model.Id" method="post" class="row g-3">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded-4"></div>
+
+        <div class="col-md-6">
+            <label asp-for="Role" class="form-label">New role</label>
+            <select asp-for="Role" asp-items="Model.RoleOptions" class="form-select"></select>
+            <span asp-validation-for="Role" class="text-danger small"></span>
+        </div>
+
+        <div class="col-12 d-flex flex-wrap gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-user-gear me-2"></i>
+                Save Role
+            </button>
+            <a class="btn btn-outline-secondary" asp-action="Details" asp-controller="AdminUsers" asp-route-id="@Model.Id">Cancel</a>
+        </div>
+    </form>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

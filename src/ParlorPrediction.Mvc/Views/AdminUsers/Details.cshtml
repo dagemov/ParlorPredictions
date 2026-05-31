@@ -1,0 +1,112 @@
+@model ParlorPrediction.Mvc.Models.AdminUsers.AdminUserDetailsViewModel
+@{
+    ViewData["Title"] = "User Details";
+    var profilePhotoModel = new ParlorPrediction.Mvc.Models.AdminUsers.ProfilePhotoUploadViewModel
+    {
+        UserId = Model.Id,
+        FullName = Model.FullName,
+        CurrentPhotoUrl = Model.ProfileImageUrl
+    };
+}
+
+<section class="page-hero page-hero--compact">
+    <div>
+        <span class="eyebrow">Admin</span>
+        <h1>@Model.FullName</h1>
+        <p class="page-copy">Review account status, confirmation state, role, and profile photo before adjusting the user.</p>
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div class="alert alert-@Model.StatusType status-banner" role="alert">
+        @Model.StatusMessage
+    </div>
+}
+
+<section class="prep-grid prep-grid-wide">
+    <article class="content-card content-card--padded stack-lg">
+        <div class="toolbar-header">
+            <div class="section-heading mb-0">
+                <span class="eyebrow">Account Summary</span>
+                <h2>User details</h2>
+                <p>Everything the manager needs to verify before assigning prep responsibilities.</p>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="AdminUsers">
+                    <i class="fa-solid fa-arrow-left me-2"></i>
+                    Back to Users
+                </a>
+                <a class="btn btn-outline-secondary" asp-action="Edit" asp-controller="AdminUsers" asp-route-id="@Model.Id">
+                    Edit
+                </a>
+                <a class="btn btn-primary" asp-action="Roles" asp-controller="AdminUsers" asp-route-id="@Model.Id">
+                    Manage Role
+                </a>
+            </div>
+        </div>
+
+        <div class="user-detail-grid">
+            <div class="user-detail-card">
+                <span class="metric-card__label">Sign-in</span>
+                <strong>@Model.Email</strong>
+                <small>@($"@{Model.UserName}")</small>
+            </div>
+            <div class="user-detail-card">
+                <span class="metric-card__label">Role</span>
+                <strong>@Model.Role</strong>
+                <small>Kitchen access and permissions</small>
+            </div>
+            <div class="user-detail-card">
+                <span class="metric-card__label">Status</span>
+                <strong>@(Model.IsActive ? "Active" : "Inactive")</strong>
+                <small>Updated @Model.UpdatedAtUtc.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</small>
+            </div>
+            <div class="user-detail-card">
+                <span class="metric-card__label">Email confirmation</span>
+                <strong>@(Model.EmailConfirmed ? "Confirmed" : "Pending")</strong>
+                <small>Created @Model.CreatedAtUtc.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</small>
+            </div>
+        </div>
+
+        <div class="recommendation-note">
+            <h3>Contact details</h3>
+            <p><strong>Name:</strong> @Model.FirstName @Model.LastName</p>
+            <p><strong>Phone:</strong> @(string.IsNullOrWhiteSpace(Model.PhoneNumber) ? "No phone on file yet." : Model.PhoneNumber)</p>
+        </div>
+    </article>
+
+    <aside class="content-card content-card--padded stack-lg">
+        <partial name="_ProfilePhotoUpload" model="profilePhotoModel" />
+
+        <section class="recommendation-note">
+            <h3>Support actions</h3>
+            <p>Use these actions when a teammate is blocked, unconfirmed, or needs a quick status change.</p>
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                @if (Model.CanResendConfirmation)
+                {
+                    <form asp-action="ResendConfirmation" asp-controller="AdminUsers" asp-route-id="@Model.Id" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-secondary">
+                            <i class="fa-solid fa-paper-plane me-2"></i>
+                            Resend Confirmation
+                        </button>
+                    </form>
+                }
+
+                <form asp-action="ToggleActive" asp-controller="AdminUsers" asp-route-id="@Model.Id" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit"
+                            class="btn @(Model.IsActive ? "btn-outline-danger" : "btn-outline-secondary")"
+                            data-swal-confirm
+                            data-confirm-title="@(Model.IsActive ? "Deactivate user?" : "Reactivate user?")"
+                            data-confirm-text="@(Model.IsActive ? "The account will stop working until it is reactivated." : "The account will be able to sign in again.")">
+                        <i class="fa-solid @(Model.IsActive ? "fa-user-slash" : "fa-user-check") me-2"></i>
+                        @(Model.IsActive ? "Deactivate User" : "Reactivate User")
+                    </button>
+                </form>
+            </div>
+        </section>
+    </aside>
+</section>

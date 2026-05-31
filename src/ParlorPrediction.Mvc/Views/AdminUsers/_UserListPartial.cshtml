@@ -1,0 +1,113 @@
+@model ParlorPrediction.Mvc.Models.AdminUsers.AdminUserListPageViewModel
+
+<section id="admin-users-list" class="content-card">
+    <div class="content-card--padded">
+        @if (Model.Users.Count == 0)
+        {
+            <div class="empty-state">
+                <i class="fa-solid fa-users-slash"></i>
+                <div>
+                    <strong>No users match the current filters.</strong>
+                    <p>Try a broader search or create a new teammate account.</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table prep-table align-middle">
+                    <thead>
+                        <tr>
+                            <th scope="col">User</th>
+                            <th scope="col">Role</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Confirmation</th>
+                            <th scope="col">Updated</th>
+                            <th scope="col" class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in Model.Users)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="user-cell">
+                                        <div class="user-avatar">
+                                            @if (!string.IsNullOrWhiteSpace(user.ProfileImageUrl))
+                                            {
+                                                <img src="@user.ProfileImageUrl" alt="@user.FullName profile photo" />
+                                            }
+                                            else
+                                            {
+                                                <span>@(string.IsNullOrWhiteSpace(user.FullName) ? "U" : user.FullName[0].ToString().ToUpperInvariant())</span>
+                                            }
+                                        </div>
+                                        <div class="task-main">
+                                            <strong>@user.FullName</strong>
+                                            <span>@user.Email</span>
+                                            <span class="task-timestamp">@($"@{user.UserName}")</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="status-pill status-pill--info">
+                                        <i class="fa-solid fa-user-tag"></i>
+                                        @user.Role
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="status-pill @(user.IsActive ? "status-pill--success" : "status-pill--neutral")">
+                                        <i class="fa-solid @(user.IsActive ? "fa-circle-check" : "fa-circle-pause")"></i>
+                                        @(user.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="status-pill @(user.EmailConfirmed ? "status-pill--success" : "status-pill--warning")">
+                                        <i class="fa-solid @(user.EmailConfirmed ? "fa-envelope-circle-check" : "fa-envelope")"></i>
+                                        @(user.EmailConfirmed ? "Confirmed" : "Pending")
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="task-timestamp">@user.UpdatedAtUtc.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</div>
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-flex justify-content-end flex-wrap gap-2">
+                                        <a class="btn btn-sm btn-outline-secondary"
+                                           asp-action="Details"
+                                           asp-controller="AdminUsers"
+                                           asp-route-id="@user.Id">
+                                            View
+                                        </a>
+                                        <a class="btn btn-sm btn-outline-secondary"
+                                           asp-action="Edit"
+                                           asp-controller="AdminUsers"
+                                           asp-route-id="@user.Id">
+                                            Edit
+                                        </a>
+                                        <a class="btn btn-sm btn-outline-secondary"
+                                           asp-action="Roles"
+                                           asp-controller="AdminUsers"
+                                           asp-route-id="@user.Id">
+                                            Role
+                                        </a>
+                                        <button type="button"
+                                                class="btn btn-sm @(user.IsActive ? "btn-outline-danger" : "btn-outline-secondary")"
+                                                hx-post="@Url.Action("ToggleActive", "AdminUsers", new { id = user.Id })"
+                                                hx-include="#admin-users-anti-forgery,#admin-users-filters"
+                                                hx-target="#admin-users-list"
+                                                hx-swap="outerHTML"
+                                                data-swal-confirm
+                                                data-confirm-title="@(user.IsActive ? "Deactivate user?" : "Reactivate user?")"
+                                                data-confirm-text="@(user.IsActive ? "The user will keep their history but will not be able to sign in until reactivated." : "The user will be able to sign in again after reactivation.")">
+                                            @(user.IsActive ? "Deactivate" : "Activate")
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</section>

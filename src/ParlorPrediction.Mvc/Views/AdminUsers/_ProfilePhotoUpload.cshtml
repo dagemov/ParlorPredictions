@@ -1,0 +1,47 @@
+@model ParlorPrediction.Mvc.Models.AdminUsers.ProfilePhotoUploadViewModel
+
+<section class="recommendation-note">
+    <h3>Profile photo</h3>
+    <p>Upload a clean JPG, PNG, or WEBP image so the team can recognize the user quickly on internal screens.</p>
+
+    <div class="profile-photo-panel mt-3">
+        <div class="user-avatar user-avatar--xl">
+            @if (!string.IsNullOrWhiteSpace(Model.CurrentPhotoUrl))
+            {
+                <img src="@Model.CurrentPhotoUrl" alt="@Model.FullName profile photo" />
+            }
+            else
+            {
+                <span>@(string.IsNullOrWhiteSpace(Model.FullName) ? "U" : Model.FullName[0].ToString().ToUpperInvariant())</span>
+            }
+        </div>
+
+        <form asp-action="UpdatePhoto"
+              asp-controller="AdminUsers"
+              asp-route-id="@Model.UserId"
+              method="post"
+              enctype="multipart/form-data"
+              class="stack-lg w-100">
+            @Html.AntiForgeryToken()
+            <div>
+                <label class="form-label" for="profilePhoto">Choose image</label>
+                <input id="profilePhoto"
+                       name="profilePhoto"
+                       type="file"
+                       class="form-control"
+                       accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" />
+                <div class="inline-hint mt-2">
+                    <i class="fa-regular fa-image"></i>
+                    Up to 3 MB. Existing photo is replaced automatically.
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-outline-secondary">
+                    <i class="fa-solid fa-cloud-arrow-up me-2"></i>
+                    Upload Photo
+                </button>
+            </div>
+        </form>
+    </div>
+</section>

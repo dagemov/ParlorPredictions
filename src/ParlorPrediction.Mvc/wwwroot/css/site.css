@@ -299,6 +299,69 @@ a {
   font-size: 1.15rem;
 }
 
+.user-cell,
+.profile-photo-panel {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.user-avatar {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(31, 111, 235, 0.14), rgba(15, 157, 116, 0.12));
+  color: var(--pp-primary-strong);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-avatar--xl {
+  width: 6.5rem;
+  height: 6.5rem;
+  border-radius: 1.6rem;
+  font-size: 2rem;
+}
+
+.user-detail-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.user-detail-card {
+  padding: 1rem;
+  border: 1px solid rgba(31, 111, 235, 0.08);
+  border-radius: var(--pp-radius-md);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.user-detail-card strong,
+.user-detail-card small {
+  display: block;
+}
+
+.user-detail-card strong {
+  margin-top: 0.35rem;
+  font-size: 1.25rem;
+}
+
+.user-detail-card small {
+  margin-top: 0.3rem;
+  color: var(--pp-muted);
+}
+
 .feature-card__body {
   flex: 1;
 }

@@ -1,0 +1,84 @@
+@model ParlorPrediction.Mvc.Models.AdminUsers.AdminUserCreateViewModel
+@{
+    ViewData["Title"] = "Create User";
+}
+
+<section class="page-hero page-hero--compact">
+    <div>
+        <span class="eyebrow">Admin</span>
+        <h1>Create User</h1>
+        <p class="page-copy">Create a teammate account, assign the right kitchen role, and send the confirmation email right away.</p>
+    </div>
+</section>
+
+<section class="content-card content-card--padded">
+    <div class="toolbar-header">
+        <div class="section-heading mb-0">
+            <span class="eyebrow">New Account</span>
+            <h2>User details</h2>
+            <p>Managers can create PizzaMaker and Expo users. Admins can create every Parlor role.</p>
+        </div>
+
+        <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="AdminUsers">
+            <i class="fa-solid fa-arrow-left me-2"></i>
+            Back to Users
+        </a>
+    </div>
+
+    <form asp-action="Create" asp-controller="AdminUsers" method="post" class="row g-3">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded-4"></div>
+
+        <div class="col-md-6">
+            <label asp-for="FirstName" class="form-label"></label>
+            <input asp-for="FirstName" class="form-control" />
+            <span asp-validation-for="FirstName" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="LastName" class="form-label"></label>
+            <input asp-for="LastName" class="form-control" />
+            <span asp-validation-for="LastName" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="UserName" class="form-label"></label>
+            <input asp-for="UserName" class="form-control" />
+            <span asp-validation-for="UserName" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Email" class="form-label"></label>
+            <input asp-for="Email" class="form-control" />
+            <span asp-validation-for="Email" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="PhoneNumber" class="form-label"></label>
+            <input asp-for="PhoneNumber" class="form-control" />
+            <span asp-validation-for="PhoneNumber" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Role" class="form-label"></label>
+            <select asp-for="Role" asp-items="Model.RoleOptions" class="form-select"></select>
+            <span asp-validation-for="Role" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Password" class="form-label"></label>
+            <input asp-for="Password" class="form-control" />
+            <span asp-validation-for="Password" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="PasswordConfirmation" class="form-label"></label>
+            <input asp-for="PasswordConfirmation" class="form-control" />
+            <span asp-validation-for="PasswordConfirmation" class="text-danger small"></span>
+        </div>
+        <div class="col-12 d-flex flex-wrap gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-user-plus me-2"></i>
+                Create User
+            </button>
+            <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="AdminUsers">Cancel</a>
+        </div>
+    </form>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
