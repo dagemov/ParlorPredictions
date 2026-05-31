@@ -1,8 +1,10 @@
 using System.Text;
 using ParlorPrediction.Application.Interfaces.Dough;
+using ParlorPrediction.Application.Interfaces.Prep;
 using ParlorPrediction.Contracts.Requests.Dough;
 using ParlorPrediction.Contracts.Responses.Dough;
 using ParlorPrediction.Domain.Entities;
+using ParlorPrediction.Domain.Enums;
 using ParlorPrediction.Domain.Rules;
 
 namespace ParlorPrediction.Application.Services.Dough;
@@ -11,17 +13,20 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
 {
     private readonly IDoughDemandPlanReadRepository _doughDemandPlanReadRepository;
     private readonly IDoughInventoryReadRepository _doughInventoryReadRepository;
+    private readonly IPrepTaskRepository _prepTaskRepository;
     private readonly IRestaurantEventReadRepository _restaurantEventReadRepository;
     private readonly ISalesHistoryReadRepository _salesHistoryReadRepository;
 
     public DoughPrepCalculationService(
         IDoughDemandPlanReadRepository doughDemandPlanReadRepository,
         IDoughInventoryReadRepository doughInventoryReadRepository,
+        IPrepTaskRepository prepTaskRepository,
         IRestaurantEventReadRepository restaurantEventReadRepository,
         ISalesHistoryReadRepository salesHistoryReadRepository)
     {
         _doughDemandPlanReadRepository = doughDemandPlanReadRepository;
         _doughInventoryReadRepository = doughInventoryReadRepository;
+        _prepTaskRepository = prepTaskRepository;
         _restaurantEventReadRepository = restaurantEventReadRepository;
         _salesHistoryReadRepository = salesHistoryReadRepository;
     }
@@ -45,6 +50,7 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
         var latestInventorySnapshot = await _doughInventoryReadRepository.GetLatestSnapshotOnOrBeforeAsync(
             request.TargetDate,
             cancellationToken);
+        var prepTasks = await _prepTaskRepository.GetDoughTasksByDateAsync(request.TargetDate, cancellationToken);
 
         var historicalAverageBalls = demandPlans.Count > 0
             ? CalculateDemandPlanBaselineBalls(demandPlans)
@@ -52,7 +58,10 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
         var eventEstimatedBalls = events.Sum(restaurantEvent => restaurantEvent.EstimatedDoughBalls);
         var requiredBalls = checked(historicalAverageBalls + eventEstimatedBalls);
         var availableBalls = latestInventorySnapshot?.AvailableBalls ?? 0;
-        var missingBalls = Math.Max(requiredBalls - availableBalls, 0);
+        var completedBalls = prepTasks
+            .Where(task => task.Status == PrepTaskStatus.Completed)
+            .Sum(task => task.QuantityCompleted);
+        var missingBalls = Math.Max(requiredBalls - availableBalls - completedBalls, 0);
         var recommendedCases = CalculateRoundedUpUnits(missingBalls, DoughRules.BallsPerCase);
         var recommendedLoads = CalculateRoundedUpUnits(recommendedCases, DoughRules.StandardBatchCases);
         var shouldMakeDough = missingBalls > 0;
@@ -71,6 +80,7 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
             HistoricalAverageBalls = historicalAverageBalls,
             EventEstimatedBalls = eventEstimatedBalls,
             AvailableBalls = availableBalls,
+            CompletedBalls = completedBalls,
             MissingBalls = missingBalls,
             RecommendedCases = recommendedCases,
             RecommendedLoads = recommendedLoads,
@@ -85,6 +95,7 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
                 historicalAverageBalls,
                 eventEstimatedBalls,
                 availableBalls,
+                completedBalls,
                 missingBalls,
                 recommendedCases,
                 recommendedLoads,
@@ -143,6 +154,7 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
         int historicalAverageBalls,
         int eventEstimatedBalls,
         int availableBalls,
+        int completedBalls,
         int missingBalls,
         int recommendedCases,
         int recommendedLoads,
@@ -176,7 +188,14 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
             reasonBuilder.Append(" There is no extra event dough planned for this day.");
         }
 
-        reasonBuilder.Append($" You currently have {availableBalls} dough balls available, so you are short by {missingBalls}.");
+        reasonBuilder.Append($" You currently have {availableBalls} dough balls available.");
+
+        if (completedBalls > 0)
+        {
+            reasonBuilder.Append($" The team has already finished {completedBalls} dough balls for this day.");
+        }
+
+        reasonBuilder.Append($" That leaves {missingBalls} dough balls still missing.");
 
         if (recommendedCases > 0)
         {
