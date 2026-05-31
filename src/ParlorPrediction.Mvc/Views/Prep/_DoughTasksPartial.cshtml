@@ -1,10 +1,19 @@
 @model DoughPrepPageViewModel
 
 <section class="content-card content-card--padded">
-    <div class="section-heading">
-        <span class="eyebrow">Tasks</span>
-        <h2>Dough tasks for @Model.TargetDate.ToString("dddd, MMM d")</h2>
-        <p>Use this list to see what the team still needs to finish and what has already been completed.</p>
+    <div class="section-heading section-heading--split">
+        <div>
+            <span class="eyebrow">Tasks</span>
+            <h2>Dough tasks for @Model.TargetDate.ToString("dddd, MMM d")</h2>
+            <p>Use this list to see what the team still needs to finish and what has already been completed.</p>
+        </div>
+        <a class="btn btn-outline-secondary"
+           asp-controller="PrepTasks"
+           asp-action="Index"
+           asp-route-taskDate="@Model.TargetDate.ToString("yyyy-MM-dd")">
+            <i class="fa-solid fa-clipboard-list me-2"></i>
+            Open Task Board
+        </a>
     </div>
 
     @if (Model.Tasks.Count == 0)

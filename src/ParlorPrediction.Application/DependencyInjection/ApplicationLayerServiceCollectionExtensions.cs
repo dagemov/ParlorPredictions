@@ -21,7 +21,9 @@ public static class ApplicationLayerServiceCollectionExtensions
         services.AddScoped<IDoughProductionPlanningService, DoughProductionPlanningService>();
         services.AddScoped<IDoughPrepRecommendationReadService, DoughPrepRecommendationReadService>();
         services.AddScoped<IDoughPrepRecommendationService, DoughPrepRecommendationService>();
+        services.AddScoped<IManagerPrepRecommendationService, ManagerPrepRecommendationService>();
         services.AddScoped<IRestaurantEventManagementService, RestaurantEventManagementService>();
+        services.AddScoped<IPrepCatalogReadService, PrepCatalogReadService>();
         services.AddScoped<IPrepDashboardReadService, PrepDashboardReadService>();
         services.AddScoped<IPrepTaskReadService, PrepTaskReadService>();
         services.AddScoped<IPrepTaskService, PrepTaskService>();

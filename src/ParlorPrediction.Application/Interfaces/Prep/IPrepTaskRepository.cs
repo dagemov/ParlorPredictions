@@ -1,4 +1,5 @@
 using ParlorPrediction.Domain.Entities;
+using ParlorPrediction.Domain.Enums;
 
 namespace ParlorPrediction.Application.Interfaces.Prep;
 
@@ -16,4 +17,13 @@ public interface IPrepTaskRepository
         DateOnly startDate,
         DateOnly endDate,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<PrepTask>> SearchDoughTasksAsync(
+        DateOnly? taskDate,
+        PrepTaskStatus? status,
+        ApplicationRole? assignedRole,
+        Guid? prepItemId,
+        CancellationToken cancellationToken = default);
+
+    void Remove(PrepTask task);
 }

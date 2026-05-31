@@ -10,6 +10,7 @@ using ParlorPrediction.Contracts.Responses.Dough;
 using ParlorPrediction.Contracts.Responses.Prep;
 using ParlorPrediction.Domain.Enums;
 using ParlorPrediction.Domain.Rules;
+using ParlorPrediction.Mvc.Helpers;
 using ParlorPrediction.Mvc.Models.Prep;
 
 namespace ParlorPrediction.Mvc.Controllers;
@@ -248,7 +249,7 @@ public sealed class PrepController : Controller
         }
     }
 
-    [HttpPost("tasks/complete")]
+    [HttpPost("dough/tasks/complete")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CompleteTask(
         CompletePrepTaskFormModel model,
@@ -263,7 +264,7 @@ public sealed class PrepController : Controller
             return await RenderErrorPageAsync(
                 selectedDate,
                 NormalizeHistoricalWeeks(model.HistoricalWeeksToUse),
-                "Enter either dough balls completed or full loads completed.",
+                "Choose dough balls, cases, or full loads and enter the quantity completed.",
                 cancellationToken);
         }
 
@@ -440,13 +441,22 @@ public sealed class PrepController : Controller
             PrepTaskId = task.PrepTaskId,
             DoughPrepRecommendationId = task.DoughPrepRecommendationId,
             TaskDate = task.TaskDate,
+            PrepItemId = task.PrepItemId,
             PrepItemName = task.PrepItemName,
+            PrepItemCode = task.PrepItemCode,
+            PrepStationId = task.PrepStationId,
             PrepStationName = task.PrepStationName,
+            PrepStationCode = task.PrepStationCode,
             AssignedRole = task.AssignedRole,
             QuantityRecommended = task.QuantityRecommended,
             QuantityCompleted = task.QuantityCompleted,
             Status = task.Status,
+            Notes = task.Notes,
+            CompletedByUserId = task.CompletedByUserId,
+            CompletedByUserName = task.CompletedByUserName,
             CompletedAtUtc = task.CompletedAtUtc,
+            CreatedAtUtc = task.CreatedAtUtc,
+            IsManualTask = task.IsManualTask,
             CanComplete = CanCompleteTask(task)
         };
     }
@@ -643,33 +653,11 @@ public sealed class PrepController : Controller
         out int completedBalls,
         out string validationMessage)
     {
-        var ballsCompleted = Math.Max(model.QuantityCompleted, 0);
-        var loadsCompleted = Math.Max(model.FullLoadsCompleted, 0);
-
-        if (ballsCompleted > 0 && loadsCompleted > 0)
-        {
-            completedBalls = 0;
-            validationMessage = "Use either dough balls completed or full loads completed, not both at the same time.";
-            return false;
-        }
-
-        if (loadsCompleted > 0)
-        {
-            completedBalls = loadsCompleted * DoughRules.StandardBatchBalls;
-            validationMessage = string.Empty;
-            return true;
-        }
-
-        if (ballsCompleted > 0)
-        {
-            completedBalls = ballsCompleted;
-            validationMessage = string.Empty;
-            return true;
-        }
-
-        completedBalls = 0;
-        validationMessage = "Enter dough balls completed or full loads completed before finishing the task.";
-        return false;
+        return DoughQuantityInputConverter.TryConvertToBalls(
+            model.CompletionType,
+            model.QuantityValue,
+            out completedBalls,
+            out validationMessage);
     }
 
     private static IReadOnlyList<string> BuildRecommendationActionPlan(

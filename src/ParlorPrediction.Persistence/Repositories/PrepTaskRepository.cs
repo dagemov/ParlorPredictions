@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using ParlorPrediction.Application.Interfaces.Prep;
 using ParlorPrediction.Domain.Constants;
 using ParlorPrediction.Domain.Entities;
+using ParlorPrediction.Domain.Enums;
 
 namespace ParlorPrediction.Persistence.Repositories;
 
@@ -24,6 +25,7 @@ public sealed class PrepTaskRepository : IPrepTaskRepository
         return _dbContext.PrepTasks
             .Include(task => task.PrepItem)
             .Include(task => task.PrepStation)
+            .Include(task => task.CompletedByUser)
             .FirstOrDefaultAsync(task => task.Id == id, cancellationToken);
     }
 
@@ -43,6 +45,7 @@ public sealed class PrepTaskRepository : IPrepTaskRepository
             .AsNoTracking()
             .Include(task => task.PrepItem)
             .Include(task => task.PrepStation)
+            .Include(task => task.CompletedByUser)
             .Where(task =>
                 task.TaskDate == taskDate &&
                 task.PrepItem.Code == PrepCatalogCodes.DoughItem)
@@ -60,6 +63,7 @@ public sealed class PrepTaskRepository : IPrepTaskRepository
             .AsNoTracking()
             .Include(task => task.PrepItem)
             .Include(task => task.PrepStation)
+            .Include(task => task.CompletedByUser)
             .Where(task =>
                 task.TaskDate >= startDate &&
                 task.TaskDate <= endDate &&
@@ -68,5 +72,52 @@ public sealed class PrepTaskRepository : IPrepTaskRepository
             .ThenBy(task => task.Status)
             .ThenBy(task => task.CreatedAtUtc)
             .ToArrayAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<PrepTask>> SearchDoughTasksAsync(
+        DateOnly? taskDate,
+        PrepTaskStatus? status,
+        ApplicationRole? assignedRole,
+        Guid? prepItemId,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.PrepTasks
+            .AsNoTracking()
+            .Include(task => task.PrepItem)
+            .Include(task => task.PrepStation)
+            .Include(task => task.CompletedByUser)
+            .Where(task => task.PrepItem.Code == PrepCatalogCodes.DoughItem)
+            .AsQueryable();
+
+        if (taskDate.HasValue)
+        {
+            query = query.Where(task => task.TaskDate == taskDate.Value);
+        }
+
+        if (status.HasValue)
+        {
+            query = query.Where(task => task.Status == status.Value);
+        }
+
+        if (assignedRole.HasValue)
+        {
+            query = query.Where(task => task.AssignedRole == assignedRole.Value);
+        }
+
+        if (prepItemId.HasValue && prepItemId.Value != Guid.Empty)
+        {
+            query = query.Where(task => task.PrepItemId == prepItemId.Value);
+        }
+
+        return await query
+            .OrderBy(task => task.TaskDate)
+            .ThenBy(task => task.Status)
+            .ThenBy(task => task.CreatedAtUtc)
+            .ToArrayAsync(cancellationToken);
+    }
+
+    public void Remove(PrepTask task)
+    {
+        _dbContext.PrepTasks.Remove(task);
     }
 }

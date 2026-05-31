@@ -5,6 +5,7 @@ using ParlorPrediction.Application.Interfaces.Ai;
 using ParlorPrediction.Application.Interfaces.Prep;
 using ParlorPrediction.Contracts.Requests.Ai;
 using ParlorPrediction.Contracts.Responses.Ai;
+using ParlorPrediction.Domain.Constants;
 
 namespace ParlorPrediction.Application.Services.Ai;
 
@@ -14,16 +15,22 @@ public sealed class AiPrepRecommendationService : IAiPrepRecommendationService
 
     private readonly AiOptions _aiOptions;
     private readonly IAiTextGenerationProvider _aiTextGenerationProvider;
+    private readonly IManagerPrepRecommendationRepository _managerPrepRecommendationRepository;
     private readonly ILogger<AiPrepRecommendationService> _logger;
+    private readonly IPrepItemReadRepository _prepItemReadRepository;
     private readonly IPrepDashboardReadService _prepDashboardReadService;
 
     public AiPrepRecommendationService(
         IPrepDashboardReadService prepDashboardReadService,
+        IPrepItemReadRepository prepItemReadRepository,
+        IManagerPrepRecommendationRepository managerPrepRecommendationRepository,
         IAiTextGenerationProvider aiTextGenerationProvider,
         IOptions<AiOptions> aiOptions,
         ILogger<AiPrepRecommendationService> logger)
     {
         _prepDashboardReadService = prepDashboardReadService;
+        _prepItemReadRepository = prepItemReadRepository;
+        _managerPrepRecommendationRepository = managerPrepRecommendationRepository;
         _aiTextGenerationProvider = aiTextGenerationProvider;
         _logger = logger;
         _aiOptions = aiOptions.Value;
@@ -47,7 +54,15 @@ public sealed class AiPrepRecommendationService : IAiPrepRecommendationService
                 _aiOptions.Provider);
         }
 
-        var prompt = BuildPrompt(dashboardSummary);
+        var doughItem = await _prepItemReadRepository.GetByCodeAsync(PrepCatalogCodes.DoughItem, cancellationToken);
+        var latestManagerRecommendation = doughItem is null
+            ? null
+            : await _managerPrepRecommendationRepository.GetLatestByPrepItemOnOrBeforeDateAsync(
+                doughItem.Id,
+                targetDate,
+                cancellationToken);
+
+        var prompt = BuildPrompt(dashboardSummary, latestManagerRecommendation);
         var recommendationText = await _aiTextGenerationProvider.GenerateTextAsync(prompt, cancellationToken);
 
         return new AiPrepRecommendationResponse
@@ -58,7 +73,9 @@ public sealed class AiPrepRecommendationService : IAiPrepRecommendationService
         };
     }
 
-    private static string BuildPrompt(Contracts.Responses.Prep.PrepDashboardSummaryResponse summary)
+    private static string BuildPrompt(
+        Contracts.Responses.Prep.PrepDashboardSummaryResponse summary,
+        Domain.Entities.ManagerPrepRecommendation? latestManagerRecommendation)
     {
         return string.Join(
             Environment.NewLine,
@@ -75,7 +92,11 @@ public sealed class AiPrepRecommendationService : IAiPrepRecommendationService
                 $"RecommendedLoads: {summary.RecommendedLoads}",
                 $"PendingTasks: {summary.PendingTasks}",
                 $"CompletedTasks: {summary.CompletedTasks}",
-                $"LastRecommendationReason: {summary.LastRecommendationReason ?? "None"}"
+                $"LastRecommendationReason: {summary.LastRecommendationReason ?? "None"}",
+                $"ManagerRecommendationDate: {latestManagerRecommendation?.RecommendationDate.ToString("yyyy-MM-dd") ?? "None"}",
+                $"ManagerRecommendationBalls: {latestManagerRecommendation?.RecommendedBalls ?? 0}",
+                $"ManagerRecommendationText: {latestManagerRecommendation?.RecommendationText ?? "None"}",
+                $"ManagerRecommendationReason: {latestManagerRecommendation?.Reason ?? "None"}"
             ]);
     }
 

@@ -29,6 +29,8 @@
                   hx-post="@Url.Action("CompleteTask", "Prep")"
                   hx-target="#dough-prep-workspace"
                   hx-swap="outerHTML"
+                  data-dough-quantity-form
+                  data-dough-quantity-preview-mode="completed"
                   data-swal-confirm
                   data-confirm-title="Complete dough task?"
                   data-confirm-text="This will mark the dough task as completed for the current date.">
@@ -37,20 +39,22 @@
                 <input type="hidden" name="TargetDate" value="@Model.TaskDate.ToString("yyyy-MM-dd")" />
                 <input type="hidden" name="HistoricalWeeksToUse" value="@Model.HistoricalWeeksToUse" />
                 <div class="task-form-grid">
-                    <input name="QuantityCompleted"
+                    <select name="CompletionType"
+                            class="form-select form-select-sm"
+                            data-dough-quantity-unit
+                            aria-label="Completion type">
+                        <option value="Balls">Dough Balls</option>
+                        <option value="Cases">Cases</option>
+                        <option value="FullLoads">Full Loads</option>
+                    </select>
+                    <input name="QuantityValue"
                            type="number"
-                           min="0"
-                           value="0"
+                           min="1"
+                           value="@(Math.Max(Model.QuantityRecommended - Model.QuantityCompleted, 1))"
                            class="form-control form-control-sm"
-                           placeholder="Balls done (recommended: @(Math.Max(Model.QuantityRecommended - Model.QuantityCompleted, 0)))"
-                           aria-label="Dough balls completed" />
-                    <input name="FullLoadsCompleted"
-                           type="number"
-                           min="0"
-                           value="0"
-                           class="form-control form-control-sm"
-                           placeholder="Full loads"
-                           aria-label="Full loads completed" />
+                           data-dough-quantity-value
+                           placeholder="Quantity done"
+                           aria-label="Completed quantity" />
                     <input name="Notes"
                            type="text"
                            maxlength="500"
@@ -63,7 +67,7 @@
                 </div>
                 <div class="inline-hint task-form-help">
                     <i class="fa-solid fa-circle-info"></i>
-                    Use either dough balls completed or full loads completed. One full load equals 168 balls.
+                    <span data-dough-quantity-preview>@Model.CompletionPreviewText</span>
                 </div>
             </form>
         }
