@@ -60,6 +60,15 @@
                         <i class="fa-regular fa-circle-question me-2"></i>
                         Help
                     </a>
+
+                    <a class="btn btn-outline-secondary"
+                       asp-action="DoughWeek"
+                       asp-controller="Prep"
+                       asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
+                       asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse">
+                        <i class="fa-regular fa-calendar-days me-2"></i>
+                        Weekly Dough Calendar
+                    </a>
                 </div>
             </div>
         </form>

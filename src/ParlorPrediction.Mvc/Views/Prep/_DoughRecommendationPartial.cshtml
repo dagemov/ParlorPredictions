@@ -55,6 +55,11 @@
                 <small>Latest dough count captured on or before @Model.RecommendationDate.ToString("MMM d")</small>
             </article>
             <article class="metric-card">
+                <span class="metric-card__label">Dough Already Done</span>
+                <strong>@Model.CompletedBalls</strong>
+                <small>Dough balls already completed through prep tasks for this day</small>
+            </article>
+            <article class="metric-card">
                 <span class="metric-card__label">Dough Still Needed</span>
                 <strong>@Model.MissingBalls</strong>
                 <small>@Model.RecommendedCases cases / @Model.RecommendedLoads full batch@(Model.RecommendedLoads == 1 ? string.Empty : "es")</small>

@@ -25,6 +25,7 @@ public sealed class PrepController : Controller
     private readonly IDoughProductionPlanningService _doughProductionPlanningService;
     private readonly IDoughPrepRecommendationReadService _doughPrepRecommendationReadService;
     private readonly IDoughPrepRecommendationService _doughPrepRecommendationService;
+    private readonly IPrepWeeklyDoughCalendarService _prepWeeklyDoughCalendarService;
     private readonly IPrepTaskReadService _prepTaskReadService;
     private readonly IPrepTaskService _prepTaskService;
 
@@ -33,6 +34,7 @@ public sealed class PrepController : Controller
         IDoughProductionPlanningService doughProductionPlanningService,
         IDoughPrepRecommendationReadService doughPrepRecommendationReadService,
         IDoughPrepRecommendationService doughPrepRecommendationService,
+        IPrepWeeklyDoughCalendarService prepWeeklyDoughCalendarService,
         IPrepTaskReadService prepTaskReadService,
         IPrepTaskService prepTaskService)
     {
@@ -40,6 +42,7 @@ public sealed class PrepController : Controller
         _doughProductionPlanningService = doughProductionPlanningService;
         _doughPrepRecommendationReadService = doughPrepRecommendationReadService;
         _doughPrepRecommendationService = doughPrepRecommendationService;
+        _prepWeeklyDoughCalendarService = prepWeeklyDoughCalendarService;
         _prepTaskReadService = prepTaskReadService;
         _prepTaskService = prepTaskService;
     }
@@ -70,6 +73,45 @@ public sealed class PrepController : Controller
             cancellationToken);
 
         return View(pageModel);
+    }
+
+    [HttpGet("dough/week")]
+    public async Task<IActionResult> DoughWeek(
+        DateOnly? targetDate,
+        int historicalWeeksToUse = DefaultHistoricalWeeksToUse,
+        CancellationToken cancellationToken = default)
+    {
+        var selectedDate = targetDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var calendar = await _prepWeeklyDoughCalendarService.GetWeekAsync(
+            selectedDate,
+            NormalizeHistoricalWeeks(historicalWeeksToUse),
+            cancellationToken);
+
+        return View(new WeeklyDoughCalendarViewModel
+        {
+            SelectedDate = selectedDate,
+            HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse),
+            WeekStartDate = calendar.WeekStartDate,
+            WeekEndDate = calendar.WeekEndDate,
+            WeekTotalNeededBalls = calendar.WeekTotalNeededBalls,
+            WeekCompletedBalls = calendar.WeekCompletedBalls,
+            WeekMissingBalls = calendar.WeekMissingBalls,
+            UpcomingEventBalls = calendar.UpcomingEventBalls,
+            Days = calendar.Days
+                .Select(day => new WeeklyDoughCalendarDayViewModel
+                {
+                    Date = day.Date,
+                    RestaurantDoughBalls = day.RestaurantDoughBalls,
+                    EventDoughBalls = day.EventDoughBalls,
+                    TotalNeededBalls = day.TotalNeededBalls,
+                    AvailableBalls = day.AvailableBalls,
+                    CompletedBalls = day.CompletedBalls,
+                    StillMissingBalls = day.StillMissingBalls,
+                    Status = day.Status,
+                    IsToday = day.Date == DateOnly.FromDateTime(DateTime.Today)
+                })
+                .ToArray()
+        });
     }
 
     [Authorize(Roles = $"{nameof(ApplicationRole.Admin)},{nameof(ApplicationRole.Manager)}")]
@@ -319,6 +361,12 @@ public sealed class PrepController : Controller
         if (recommendation is not null)
         {
             recommendation.HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse);
+            recommendation.CompletedBalls = taskResponses
+                .Where(task => string.Equals(task.Status, nameof(PrepTaskStatus.Completed), StringComparison.OrdinalIgnoreCase))
+                .Sum(task => task.QuantityCompleted);
+            recommendation.MissingBalls = Math.Max(
+                recommendation.RequiredBalls - recommendation.AvailableBalls - recommendation.CompletedBalls,
+                0);
             recommendation.CanSaveRecommendation = CanManageRecommendations() && !recommendation.IsPersisted;
 
             var taskAlreadyExists = recommendation.RecommendationId.HasValue &&
@@ -406,6 +454,7 @@ public sealed class PrepController : Controller
             HistoricalAverageBalls = calculation.HistoricalAverageBalls,
             EventEstimatedBalls = calculation.EventEstimatedBalls,
             AvailableBalls = calculation.AvailableBalls,
+            CompletedBalls = calculation.CompletedBalls,
             MissingBalls = calculation.MissingBalls,
             RecommendedCases = calculation.RecommendedCases,
             RecommendedLoads = calculation.RecommendedLoads,

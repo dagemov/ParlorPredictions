@@ -562,6 +562,10 @@ a {
   font-size: 0.8rem;
 }
 
+.weekly-calendar-table__today td {
+  background: rgba(31, 111, 235, 0.05) !important;
+}
+
 .inline-hint {
   display: inline-flex;
   align-items: center;

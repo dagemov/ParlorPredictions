@@ -10,6 +10,10 @@
         <p class="page-copy">See what dough is available, what still needs to be mixed, and what the kitchen team should work on next.</p>
     </div>
     <div class="hero-actions">
+        <a class="btn btn-primary" asp-action="DoughWeek" asp-controller="Prep" asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")" asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse">
+            <i class="fa-regular fa-calendar-days me-2"></i>
+            View Weekly Dough Calendar
+        </a>
         <a class="btn btn-outline-secondary" asp-action="Help" asp-controller="Prep">
             <i class="fa-regular fa-circle-question me-2"></i>
             How Dough Prep Works
