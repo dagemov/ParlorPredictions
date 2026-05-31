@@ -24,8 +24,8 @@ public sealed class WeeklyDoughCalendarDayViewModel
         Status switch
         {
             "Covered" => "status-pill--success",
+            "In Progress" => "status-pill--info",
             "Needs Dough" => "status-pill--warning",
-            "Event Ahead" => "status-pill--info",
             _ => "status-pill--neutral"
         };
 }

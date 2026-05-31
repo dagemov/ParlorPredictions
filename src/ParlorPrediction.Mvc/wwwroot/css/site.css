@@ -620,6 +620,12 @@ a {
   min-width: 120px;
 }
 
+.task-form-help {
+  justify-content: flex-end;
+  margin-top: 0.35rem;
+  width: 100%;
+}
+
 .task-timestamp {
   margin-top: 0.35rem;
   font-size: 0.8rem;

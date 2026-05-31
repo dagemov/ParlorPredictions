@@ -1,3 +1,5 @@
+using ParlorPrediction.Domain.Rules;
+
 namespace ParlorPrediction.Mvc.Models.Prep;
 
 public sealed class WeeklyDoughCalendarViewModel
@@ -10,6 +12,8 @@ public sealed class WeeklyDoughCalendarViewModel
 
     public DateOnly WeekEndDate { get; set; }
 
+    public int WeekAvailableBalls { get; set; }
+
     public int WeekTotalNeededBalls { get; set; }
 
     public int WeekCompletedBalls { get; set; }
@@ -19,4 +23,19 @@ public sealed class WeeklyDoughCalendarViewModel
     public int UpcomingEventBalls { get; set; }
 
     public IReadOnlyList<WeeklyDoughCalendarDayViewModel> Days { get; set; } = Array.Empty<WeeklyDoughCalendarDayViewModel>();
+
+    public int WeekTotalNeededLoads => ToLoads(WeekTotalNeededBalls);
+
+    public int WeekCompletedLoads => ToLoads(WeekCompletedBalls);
+
+    public int WeekMissingLoads => ToLoads(WeekMissingBalls);
+
+    public int WeekAvailableLoads => ToLoads(WeekAvailableBalls);
+
+    private static int ToLoads(int balls)
+    {
+        return balls <= 0
+            ? 0
+            : (int)Math.Ceiling(balls / (double)DoughRules.StandardBatchBalls);
+    }
 }

@@ -1,6 +1,7 @@
 using ParlorPrediction.Application.Interfaces.Dough;
 using ParlorPrediction.Application.Interfaces.Prep;
 using ParlorPrediction.Contracts.Requests.Dough;
+using ParlorPrediction.Contracts.Responses.Dough;
 using ParlorPrediction.Contracts.Responses.Prep;
 using ParlorPrediction.Domain.Enums;
 
@@ -34,6 +35,7 @@ public sealed class PrepWeeklyDoughCalendarService : IPrepWeeklyDoughCalendarSer
 
         var weekStartDate = GetOperationalWeekStart(referenceDate);
         var days = new List<WeeklyDoughCalendarDayResponse>(OperationalDays);
+        DoughPrepCalculationResult? selectedDayCalculation = null;
 
         for (var offset = 0; offset < OperationalDays; offset++)
         {
@@ -46,6 +48,11 @@ public sealed class PrepWeeklyDoughCalendarService : IPrepWeeklyDoughCalendarSer
                 },
                 cancellationToken);
 
+            if (day == referenceDate)
+            {
+                selectedDayCalculation = calculation;
+            }
+
             days.Add(new WeeklyDoughCalendarDayResponse
             {
                 Date = day,
@@ -55,17 +62,33 @@ public sealed class PrepWeeklyDoughCalendarService : IPrepWeeklyDoughCalendarSer
                 AvailableBalls = calculation.AvailableBalls,
                 CompletedBalls = calculation.CompletedBalls,
                 StillMissingBalls = calculation.MissingBalls,
-                Status = DetermineStatus(calculation.EventEstimatedBalls, calculation.RequiredBalls, calculation.MissingBalls)
+                Status = DetermineStatus(calculation.RequiredBalls, calculation.AvailableBalls, calculation.CompletedBalls, calculation.MissingBalls)
             });
         }
+
+        selectedDayCalculation ??= await _doughPrepCalculationService.CalculateAsync(
+            new CalculateDoughPrepRequest
+            {
+                TargetDate = referenceDate,
+                HistoricalWeeksToUse = historicalWeeksToUse
+            },
+            cancellationToken);
+
+        var weekTotalNeededBalls = days.Sum(day => day.TotalNeededBalls);
+        var weekCompletedBalls = days.Sum(day => day.CompletedBalls);
+        var weekAvailableBalls = Math.Max(selectedDayCalculation.AvailableBalls, 0);
+        var weekMissingBalls = Math.Max(
+            weekTotalNeededBalls - weekCompletedBalls - weekAvailableBalls,
+            0);
 
         return new WeeklyDoughCalendarResponse
         {
             WeekStartDate = weekStartDate,
             WeekEndDate = weekStartDate.AddDays(OperationalDays - 1),
-            WeekTotalNeededBalls = days.Sum(day => day.TotalNeededBalls),
-            WeekCompletedBalls = days.Sum(day => day.CompletedBalls),
-            WeekMissingBalls = days.Sum(day => day.StillMissingBalls),
+            WeekAvailableBalls = weekAvailableBalls,
+            WeekTotalNeededBalls = weekTotalNeededBalls,
+            WeekCompletedBalls = weekCompletedBalls,
+            WeekMissingBalls = weekMissingBalls,
             UpcomingEventBalls = days.Sum(day => day.EventDoughBalls),
             Days = days
         };
@@ -77,7 +100,7 @@ public sealed class PrepWeeklyDoughCalendarService : IPrepWeeklyDoughCalendarSer
         return referenceDate.AddDays(-diff);
     }
 
-    private static string DetermineStatus(int eventDoughBalls, int totalNeededBalls, int stillMissingBalls)
+    private static string DetermineStatus(int totalNeededBalls, int availableBalls, int completedBalls, int stillMissingBalls)
     {
         if (totalNeededBalls <= 0)
         {
@@ -89,6 +112,8 @@ public sealed class PrepWeeklyDoughCalendarService : IPrepWeeklyDoughCalendarSer
             return "Covered";
         }
 
-        return eventDoughBalls > 0 ? "Event Ahead" : "Needs Dough";
+        return completedBalls > 0 || availableBalls > 0
+            ? "In Progress"
+            : "Needs Dough";
     }
 }

@@ -93,6 +93,7 @@ public sealed class PrepController : Controller
             HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse),
             WeekStartDate = calendar.WeekStartDate,
             WeekEndDate = calendar.WeekEndDate,
+            WeekAvailableBalls = calendar.WeekAvailableBalls,
             WeekTotalNeededBalls = calendar.WeekTotalNeededBalls,
             WeekCompletedBalls = calendar.WeekCompletedBalls,
             WeekMissingBalls = calendar.WeekMissingBalls,
@@ -262,7 +263,7 @@ public sealed class PrepController : Controller
             return await RenderErrorPageAsync(
                 selectedDate,
                 NormalizeHistoricalWeeks(model.HistoricalWeeksToUse),
-                "Quantity completed must be greater than zero.",
+                "Enter either dough balls completed or full loads completed.",
                 cancellationToken);
         }
 
@@ -292,12 +293,21 @@ public sealed class PrepController : Controller
 
         try
         {
+            if (!TryResolveCompletedBalls(model, out var completedBalls, out var validationMessage))
+            {
+                return await RenderErrorPageAsync(
+                    selectedDate,
+                    NormalizeHistoricalWeeks(model.HistoricalWeeksToUse),
+                    validationMessage,
+                    cancellationToken);
+            }
+
             var response = await _prepTaskService.CompleteAsync(
                 new CompletePrepTaskRequest
                 {
                     PrepTaskId = model.PrepTaskId,
                     CompletedByUserId = currentUserId,
-                    QuantityCompleted = model.QuantityCompleted,
+                    QuantityCompleted = completedBalls,
                     Notes = model.Notes
                 },
                 cancellationToken);
@@ -337,6 +347,11 @@ public sealed class PrepController : Controller
                 ProductionDate = targetDate,
                 DaysAhead = DefaultPlanningDaysAhead
             },
+            cancellationToken);
+
+        var weeklyCalendar = await _prepWeeklyDoughCalendarService.GetWeekAsync(
+            targetDate,
+            NormalizeHistoricalWeeks(historicalWeeksToUse),
             cancellationToken);
 
         var taskResponses = await _prepTaskReadService.GetDoughTasksByDateAsync(targetDate, cancellationToken);
@@ -385,6 +400,7 @@ public sealed class PrepController : Controller
             HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse),
             Recommendation = recommendation,
             ProductionPlanning = MapProductionPlanning(productionPlanning),
+            WeeklyGoal = MapWeeklyGoal(weeklyCalendar),
             Tasks = taskViewModels,
             CanManageRecommendations = CanManageRecommendations()
         };
@@ -569,6 +585,19 @@ public sealed class PrepController : Controller
         };
     }
 
+    private static WeeklyGoalProgressViewModel MapWeeklyGoal(WeeklyDoughCalendarResponse weeklyCalendar)
+    {
+        return new WeeklyGoalProgressViewModel
+        {
+            WeekStartDate = weeklyCalendar.WeekStartDate,
+            WeekEndDate = weeklyCalendar.WeekEndDate,
+            CurrentAvailableBalls = weeklyCalendar.WeekAvailableBalls,
+            DoughNeededBalls = weeklyCalendar.WeekTotalNeededBalls,
+            DoughFinishedBalls = weeklyCalendar.WeekCompletedBalls,
+            DoughStillMissingBalls = weeklyCalendar.WeekMissingBalls
+        };
+    }
+
     private bool CanManageRecommendations()
     {
         return User.IsInRole(nameof(ApplicationRole.Admin)) || User.IsInRole(nameof(ApplicationRole.Manager));
@@ -607,6 +636,40 @@ public sealed class PrepController : Controller
     private static int NormalizeHistoricalWeeks(int historicalWeeksToUse)
     {
         return historicalWeeksToUse < 1 ? DefaultHistoricalWeeksToUse : historicalWeeksToUse;
+    }
+
+    private static bool TryResolveCompletedBalls(
+        CompletePrepTaskFormModel model,
+        out int completedBalls,
+        out string validationMessage)
+    {
+        var ballsCompleted = Math.Max(model.QuantityCompleted, 0);
+        var loadsCompleted = Math.Max(model.FullLoadsCompleted, 0);
+
+        if (ballsCompleted > 0 && loadsCompleted > 0)
+        {
+            completedBalls = 0;
+            validationMessage = "Use either dough balls completed or full loads completed, not both at the same time.";
+            return false;
+        }
+
+        if (loadsCompleted > 0)
+        {
+            completedBalls = loadsCompleted * DoughRules.StandardBatchBalls;
+            validationMessage = string.Empty;
+            return true;
+        }
+
+        if (ballsCompleted > 0)
+        {
+            completedBalls = ballsCompleted;
+            validationMessage = string.Empty;
+            return true;
+        }
+
+        completedBalls = 0;
+        validationMessage = "Enter dough balls completed or full loads completed before finishing the task.";
+        return false;
     }
 
     private static IReadOnlyList<string> BuildRecommendationActionPlan(

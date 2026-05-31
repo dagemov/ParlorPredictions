@@ -39,10 +39,18 @@
                 <div class="task-form-grid">
                     <input name="QuantityCompleted"
                            type="number"
-                           min="1"
-                           value="@(Math.Max(Model.QuantityRecommended - Model.QuantityCompleted, 1))"
+                           min="0"
+                           value="0"
                            class="form-control form-control-sm"
+                           placeholder="Balls done (recommended: @(Math.Max(Model.QuantityRecommended - Model.QuantityCompleted, 0)))"
                            aria-label="Dough balls completed" />
+                    <input name="FullLoadsCompleted"
+                           type="number"
+                           min="0"
+                           value="0"
+                           class="form-control form-control-sm"
+                           placeholder="Full loads"
+                           aria-label="Full loads completed" />
                     <input name="Notes"
                            type="text"
                            maxlength="500"
@@ -52,6 +60,10 @@
                         <i class="fa-solid fa-check me-1"></i>
                         Mark Done
                     </button>
+                </div>
+                <div class="inline-hint task-form-help">
+                    <i class="fa-solid fa-circle-info"></i>
+                    Use either dough balls completed or full loads completed. One full load equals 168 balls.
                 </div>
             </form>
         }

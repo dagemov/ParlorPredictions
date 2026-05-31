@@ -12,5 +12,7 @@ public sealed class DoughPrepPageViewModel
 
     public DoughProductionPlanningViewModel? ProductionPlanning { get; set; }
 
+    public WeeklyGoalProgressViewModel? WeeklyGoal { get; set; }
+
     public IReadOnlyList<DoughTaskViewModel> Tasks { get; set; } = Array.Empty<DoughTaskViewModel>();
 }
