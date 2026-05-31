@@ -10,7 +10,7 @@
         }
         else
         {
-            <p>Production date: @Model.ProductionDate.ToString("dddd, MMM d"). Upcoming needs cover the next @Model.DaysAhead day(s).</p>
+            <p>Work date: @Model.ProductionDate.ToString("dddd, MMM d"). This looks ahead @Model.DaysAhead days so the kitchen can mix dough before it is needed.</p>
         }
     </div>
 
@@ -25,48 +25,48 @@
     {
         <div class="d-flex flex-wrap gap-2 mb-3">
             <span class="status-pill @(Model.HasProductionWorkToday ? "status-pill--warning" : "status-pill--success")">
-                @(Model.HasProductionWorkToday ? "Production Work Today" : "No New Mixing Needed")
+                @(Model.HasProductionWorkToday ? "Kitchen Work Needed Today" : "No New Mixing Needed Today")
             </span>
             <span class="status-pill @(Model.RecommendedBallsToBallToday > 0 ? "status-pill--info" : "status-pill--neutral")">
-                @(Model.RecommendedBallsToBallToday > 0 ? "Ball Existing Dough" : "No Extra Balling")
+                @(Model.RecommendedBallsToBallToday > 0 ? "Ball Existing Dough" : "No Extra Balling Today")
             </span>
         </div>
 
         <div class="metric-grid">
             <article class="metric-card">
-                <span class="metric-card__label">Future Need</span>
+                <span class="metric-card__label">Dough Needed Over The Next Week</span>
                 <strong>@Model.TotalFutureRequiredBalls</strong>
-                <small>Total balls across the planning horizon</small>
+                <small>Total dough expected across the planning window</small>
             </article>
             <article class="metric-card">
-                <span class="metric-card__label">Ready Balls</span>
+                <span class="metric-card__label">Current Dough Available</span>
                 <strong>@Model.ReadyBalls</strong>
-                <small>Latest available dough snapshot</small>
+                <small>Dough already ready to use</small>
             </article>
             <article class="metric-card">
-                <span class="metric-card__label">Fermenting</span>
+                <span class="metric-card__label">Still Fermenting</span>
                 <strong>@Model.FermentingBalls</strong>
-                <small>Produced dough still aging</small>
+                <small>Dough already mixed and still aging</small>
             </article>
             <article class="metric-card">
-                <span class="metric-card__label">Unballed</span>
+                <span class="metric-card__label">Mixed But Not Balled</span>
                 <strong>@Model.UnballedBalls</strong>
-                <small>Dough mixed but not yet portioned</small>
+                <small>Dough that can be portioned today</small>
             </article>
             <article class="metric-card">
-                <span class="metric-card__label">Make Today</span>
+                <span class="metric-card__label">Dough To Mix Today</span>
                 <strong>@Model.MissingBallsForProductionWindow</strong>
-                <small>@Model.RecommendedCasesToMakeToday cases / @Model.RecommendedLoadsToMakeToday loads</small>
+                <small>@Model.RecommendedCasesToMakeToday cases / @Model.RecommendedLoadsToMakeToday full batch@(Model.RecommendedLoadsToMakeToday == 1 ? string.Empty : "es")</small>
             </article>
             <article class="metric-card">
-                <span class="metric-card__label">Ball Today</span>
+                <span class="metric-card__label">Balls To Prepare Today</span>
                 <strong>@Model.RecommendedBallsToBallToday</strong>
-                <small>Existing dough to portion now</small>
+                <small>Existing dough that should be balled now</small>
             </article>
         </div>
 
         <div class="recommendation-note">
-            <h3>Why this production plan?</h3>
+            <h3>Why this daily plan matters</h3>
             <p>@Model.Reason</p>
         </div>
 
@@ -77,11 +77,11 @@
                     <thead>
                         <tr>
                             <th scope="col">Need Date</th>
-                            <th scope="col">Baseline</th>
-                            <th scope="col">Event</th>
-                            <th scope="col">Total</th>
-                            <th scope="col">Production Window</th>
-                            <th scope="col">Make Date</th>
+                            <th scope="col">Usual Dough</th>
+                            <th scope="col">Event Dough</th>
+                            <th scope="col">Total Needed</th>
+                            <th scope="col">Best Prep Window</th>
+                            <th scope="col">Best Day To Mix</th>
                             <th scope="col">Notes</th>
                         </tr>
                     </thead>
@@ -106,19 +106,19 @@
                                     {
                                         <span class="inline-hint">
                                             <i class="fa-solid fa-sun"></i>
-                                            Summer short fermentation
+                                            Summer event timing
                                         </span>
                                     }
                                     else if (need.IsRecommendedForSelectedProductionDate)
                                     {
                                         <span class="inline-hint">
                                             <i class="fa-solid fa-circle-check"></i>
-                                            Make on this work date
+                                            Mix on this work date
                                         </span>
                                     }
                                     else
                                     {
-                                        <span>—</span>
+                                        <span>-</span>
                                     }
                                 </td>
                             </tr>

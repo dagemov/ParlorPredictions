@@ -9,6 +9,7 @@ using ParlorPrediction.Contracts.Requests.Prep;
 using ParlorPrediction.Contracts.Responses.Dough;
 using ParlorPrediction.Contracts.Responses.Prep;
 using ParlorPrediction.Domain.Enums;
+using ParlorPrediction.Domain.Rules;
 using ParlorPrediction.Mvc.Models.Prep;
 
 namespace ParlorPrediction.Mvc.Controllers;
@@ -45,6 +46,12 @@ public sealed class PrepController : Controller
 
     [HttpGet("")]
     public IActionResult Index()
+    {
+        return View();
+    }
+
+    [HttpGet("help")]
+    public IActionResult Help()
     {
         return View();
     }
@@ -384,6 +391,14 @@ public sealed class PrepController : Controller
         DoughPrepCalculationResult calculation,
         int historicalWeeksToUse)
     {
+        var actionPlanSteps = BuildRecommendationActionPlan(
+            calculation.MissingBalls,
+            calculation.RecommendedCases,
+            calculation.RecommendedLoads,
+            calculation.ShouldBallDough,
+            calculation.UsesShortFermentationException,
+            calculation.EventEstimatedBalls);
+
         return new DoughRecommendationViewModel
         {
             RecommendationDate = calculation.TargetDate,
@@ -399,7 +414,8 @@ public sealed class PrepController : Controller
             UsesShortFermentationException = calculation.UsesShortFermentationException,
             Reason = calculation.Reason,
             HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse),
-            IsPersisted = false
+            IsPersisted = false,
+            ActionPlanSteps = actionPlanSteps
         };
     }
 
@@ -407,6 +423,14 @@ public sealed class PrepController : Controller
         DoughRecommendationDetailResponse recommendation,
         int historicalWeeksToUse)
     {
+        var actionPlanSteps = BuildRecommendationActionPlan(
+            recommendation.MissingBalls,
+            recommendation.RecommendedCases,
+            recommendation.RecommendedLoads,
+            recommendation.ShouldBallDough,
+            recommendation.UsesShortFermentationException,
+            recommendation.EventEstimatedBalls);
+
         return new DoughRecommendationViewModel
         {
             RecommendationId = recommendation.RecommendationId,
@@ -424,7 +448,8 @@ public sealed class PrepController : Controller
             Reason = recommendation.Reason,
             HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse),
             IsPersisted = true,
-            SavedAtUtc = recommendation.CreatedAtUtc
+            SavedAtUtc = recommendation.CreatedAtUtc,
+            ActionPlanSteps = actionPlanSteps
         };
     }
 
@@ -432,6 +457,14 @@ public sealed class PrepController : Controller
         GenerateDoughPrepRecommendationResponse recommendation,
         int historicalWeeksToUse)
     {
+        var actionPlanSteps = BuildRecommendationActionPlan(
+            recommendation.MissingBalls,
+            recommendation.RecommendedCases,
+            recommendation.RecommendedLoads,
+            recommendation.ShouldBallDough,
+            recommendation.UsesShortFermentationException,
+            recommendation.EventEstimatedBalls);
+
         return new DoughRecommendationViewModel
         {
             RecommendationId = recommendation.RecommendationId,
@@ -449,7 +482,8 @@ public sealed class PrepController : Controller
             Reason = recommendation.Reason,
             HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse),
             IsPersisted = true,
-            SavedAtUtc = DateTime.UtcNow
+            SavedAtUtc = DateTime.UtcNow,
+            ActionPlanSteps = actionPlanSteps
         };
     }
 
@@ -524,5 +558,51 @@ public sealed class PrepController : Controller
     private static int NormalizeHistoricalWeeks(int historicalWeeksToUse)
     {
         return historicalWeeksToUse < 1 ? DefaultHistoricalWeeksToUse : historicalWeeksToUse;
+    }
+
+    private static IReadOnlyList<string> BuildRecommendationActionPlan(
+        int missingBalls,
+        int recommendedCases,
+        int recommendedLoads,
+        bool shouldBallDough,
+        bool usesShortFermentationException,
+        int eventEstimatedBalls)
+    {
+        var steps = new List<string>();
+
+        if (missingBalls <= 0)
+        {
+            steps.Add("No new dough batch is needed for this day. Use the dough already available and keep an eye on the next prep date.");
+        }
+        else if (recommendedLoads > 0)
+        {
+            var producedBalls = recommendedLoads * DoughRules.StandardBatchBalls;
+            steps.Add(
+                $"Make {recommendedLoads} full dough batch{(recommendedLoads == 1 ? string.Empty : "es")} today. That gives the kitchen about {producedBalls} dough balls and covers the current shortage of {missingBalls}.");
+
+            if (recommendedLoads == 1 && missingBalls < DoughRules.StandardBatchBalls)
+            {
+                steps.Add("One full batch will leave extra dough that can roll into the next prep day if fermentation timing still works.");
+            }
+            else
+            {
+                steps.Add($"Plan for about {recommendedCases} case{(recommendedCases == 1 ? string.Empty : "s")} of dough from that production run.");
+            }
+        }
+
+        if (shouldBallDough)
+        {
+            steps.Add("Ball any dough that has already finished fermenting so the team can use it without delay.");
+        }
+
+        if (eventEstimatedBalls > 0)
+        {
+            steps.Add(
+                usesShortFermentationException
+                    ? "Part of this dough supports an upcoming summer event, so the shorter 1 to 2 day fermentation window may be used if the manager confirms it."
+                    : "Part of this dough supports an upcoming event, so make sure that dough is mixed ahead of the event date.");
+        }
+
+        return steps;
     }
 }

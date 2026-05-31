@@ -223,35 +223,35 @@ public sealed class DoughProductionPlanningService : IDoughProductionPlanningSer
         if (needsForTodayWindow.Count == 0)
         {
             reasonBuilder.Append(
-                $"No upcoming need dates in the next {request.DaysAhead} day(s) are scheduled to be produced on {request.ProductionDate:MMM d, yyyy}.");
+                $"There are no upcoming service days in the next {request.DaysAhead} days that need fresh dough mixed on {request.ProductionDate:MMM d, yyyy}.");
         }
         else
         {
             reasonBuilder.Append(
-                $"Today's production window covers {FormatNeedDates(needsForTodayWindow)}.");
+                $"Today's mixing work helps cover {FormatNeedDates(needsForTodayWindow)}.");
         }
 
-        reasonBuilder.Append($" Ready dough contributes {readyBalls} balls.");
-        reasonBuilder.Append($" Dough already fermenting for this window contributes {fermentingBallsReadyInWindow} balls.");
-        reasonBuilder.Append($" Existing unballed dough contributes {readyUnballedBalls} balls that can be portioned today.");
+        reasonBuilder.Append($" You already have {readyBalls} dough balls ready to use.");
+        reasonBuilder.Append($" Another {fermentingBallsReadyInWindow} dough balls are still fermenting and should be ready in time for this window.");
+        reasonBuilder.Append($" There are also {readyUnballedBalls} dough balls already mixed that can be balled today.");
 
         if (missingBallsForProductionWindow > 0)
         {
             reasonBuilder.Append(
-                $" After existing coverage, the team still needs {missingBallsForProductionWindow} balls, so the system recommends making {recommendedCasesToMakeToday} case(s) across {recommendedLoadsToMakeToday} load(s).");
+                $" After that coverage, the kitchen is still short by {missingBallsForProductionWindow} dough balls, so today's plan is to make about {recommendedCasesToMakeToday} case{(recommendedCasesToMakeToday == 1 ? string.Empty : "s")} across {recommendedLoadsToMakeToday} full batch{(recommendedLoadsToMakeToday == 1 ? string.Empty : "es")}.");
         }
         else
         {
-            reasonBuilder.Append(" Existing inventory and in-flight dough already cover the current production window, so no new mixing is recommended today.");
+            reasonBuilder.Append(" Existing dough and dough already in progress cover this production window, so no new mixing is needed today.");
         }
 
         if (recommendedBallsToBallToday > 0)
         {
-            reasonBuilder.Append($" Ball {recommendedBallsToBallToday} already-produced dough ball(s) today.");
+            reasonBuilder.Append($" Ball about {recommendedBallsToBallToday} dough balls from existing batches today so the line is ready when service starts.");
         }
         else
         {
-            reasonBuilder.Append(" No additional balling is required today from existing batches.");
+            reasonBuilder.Append(" No extra balling work is needed from existing batches today.");
         }
 
         return reasonBuilder.ToString();
@@ -262,6 +262,6 @@ public sealed class DoughProductionPlanningService : IDoughProductionPlanningSer
         return string.Join(
             ", ",
             needsForTodayWindow.Select(need =>
-                $"{need.NeedDate:ddd MMM d} ({need.TotalRequiredBalls} balls, make by {need.RecommendedMakeDate:MMM d})"));
+                $"{need.NeedDate:ddd MMM d} ({need.TotalRequiredBalls} balls, best made on {need.RecommendedMakeDate:MMM d})"));
     }
 }

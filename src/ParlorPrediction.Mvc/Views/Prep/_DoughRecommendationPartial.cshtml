@@ -2,19 +2,19 @@
 
 <section class="content-card content-card--padded">
     <div class="section-heading">
-        <span class="eyebrow">Recommendation</span>
-        <h2>Dough snapshot</h2>
+        <span class="eyebrow">Demand Snapshot</span>
+        <h2>Expected dough for the day</h2>
         @if (Model is null)
         {
-            <p>No dough recommendation is loaded for this date yet.</p>
+            <p>No dough guidance is loaded for this date yet.</p>
         }
         else if (Model.IsPersisted)
         {
-            <p>This saved snapshot can be audited later and used to create a dough prep task.</p>
+            <p>This saved dough snapshot can be reviewed later and turned into a prep task when the manager is ready.</p>
         }
         else
         {
-            <p>This recommendation was calculated in memory. Save it first if you want a persisted snapshot.</p>
+            <p>This dough guidance is only in memory right now. Save it if you want to keep a record for the team.</p>
         }
     </div>
 
@@ -22,52 +22,62 @@
     {
         <div class="empty-state">
             <i class="fa-regular fa-lightbulb"></i>
-            <span>Managers can calculate a recommendation from the toolbar above.</span>
+            <span>Managers can calculate dough guidance from the controls above.</span>
         </div>
     }
     else
     {
         <div class="d-flex flex-wrap gap-2 mb-3">
             <span class="status-pill @(Model.IsPersisted ? "status-pill--success" : "status-pill--info")">
-                @(Model.IsPersisted ? "Saved Snapshot" : "Draft Calculation")
+                @(Model.IsPersisted ? "Saved For The Team" : "Just Calculated")
             </span>
             <span class="status-pill @(Model.ShouldMakeDough ? "status-pill--warning" : "status-pill--neutral")">
-                @(Model.ShouldMakeDough ? "Make Dough" : "No Production Needed")
+                @(Model.ShouldMakeDough ? "Mix Dough Today" : "No New Mixing Needed")
             </span>
             <span class="status-pill @(Model.ShouldBallDough ? "status-pill--warning" : "status-pill--neutral")">
-                @(Model.ShouldBallDough ? "Ball Dough" : "No Immediate Boleado")
+                @(Model.ShouldBallDough ? "Ball Ready Dough" : "No Extra Balling Right Now")
             </span>
             @if (Model.UsesShortFermentationException)
             {
-                <span class="status-pill status-pill--info">Short Fermentation Considered</span>
+                <span class="status-pill status-pill--info">Summer Event Timing In Play</span>
             }
         </div>
 
         <div class="metric-grid">
             <article class="metric-card">
-                <span class="metric-card__label">Required Balls</span>
+                <span class="metric-card__label">Expected Dough For The Day</span>
                 <strong>@Model.RequiredBalls</strong>
-                <small>@Model.HistoricalAverageBalls historical + @Model.EventEstimatedBalls event</small>
+                <small>@Model.HistoricalAverageBalls usual + @Model.EventEstimatedBalls extra for events</small>
             </article>
             <article class="metric-card">
-                <span class="metric-card__label">Available Balls</span>
+                <span class="metric-card__label">Current Dough Available</span>
                 <strong>@Model.AvailableBalls</strong>
-                <small>Latest inventory snapshot on or before @Model.RecommendationDate.ToString("MMM d")</small>
+                <small>Latest dough count captured on or before @Model.RecommendationDate.ToString("MMM d")</small>
             </article>
             <article class="metric-card">
-                <span class="metric-card__label">Missing Balls</span>
+                <span class="metric-card__label">Dough Still Needed</span>
                 <strong>@Model.MissingBalls</strong>
-                <small>@Model.RecommendedCases cases / @Model.RecommendedLoads loads</small>
+                <small>@Model.RecommendedCases cases / @Model.RecommendedLoads full batch@(Model.RecommendedLoads == 1 ? string.Empty : "es")</small>
             </article>
         </div>
 
         <div class="recommendation-note">
-            <h3>Why this recommendation?</h3>
+            <h3>Why the system is saying this</h3>
             <p>@Model.Reason</p>
             @if (Model.SavedAtUtc.HasValue)
             {
                 <small>Saved @Model.SavedAtUtc.Value.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</small>
             }
+        </div>
+
+        <div class="recommendation-note mt-3">
+            <h3>Recommended Action Plan</h3>
+            <ul class="info-list mb-0">
+                @foreach (var step in Model.ActionPlanSteps)
+                {
+                    <li>@step</li>
+                }
+            </ul>
         </div>
 
         <div class="d-flex flex-wrap gap-2 mt-4">
@@ -84,7 +94,7 @@
                     <input type="hidden" name="historicalWeeksToUse" value="@Model.HistoricalWeeksToUse" />
                     <button type="submit" class="btn btn-primary">
                         <i class="fa-regular fa-floppy-disk me-2"></i>
-                        Save Recommendation
+                        Save This Dough Guidance
                     </button>
                 </form>
             }
@@ -103,7 +113,7 @@
                     <input type="hidden" name="historicalWeeksToUse" value="@Model.HistoricalWeeksToUse" />
                     <button type="submit" class="btn btn-dark">
                         <i class="fa-solid fa-list-check me-2"></i>
-                        Create Dough Task
+                        Turn Into Dough Task
                     </button>
                 </form>
             }
@@ -113,7 +123,7 @@
         {
             <p class="inline-hint mt-3 mb-0">
                 <i class="fa-solid fa-circle-info me-2"></i>
-                A dough task already exists for this recommendation.
+                A dough task already exists for this saved guidance.
             </p>
         }
     }

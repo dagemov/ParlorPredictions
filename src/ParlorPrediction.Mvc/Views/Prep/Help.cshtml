@@ -1,0 +1,55 @@
+@{
+    ViewData["Title"] = "How Dough Prep Works";
+}
+
+<section class="page-hero page-hero--compact">
+    <div>
+        <span class="eyebrow">Prep Help</span>
+        <h1>How Dough Prep Works</h1>
+        <p class="page-copy">This page explains the dough math, the fermentation timing, and how the kitchen should use the system day to day.</p>
+    </div>
+    <div class="hero-actions">
+        <a class="btn btn-primary" asp-action="Dough" asp-controller="Prep">
+            <i class="fa-solid fa-bread-slice me-2"></i>
+            Back To Dough Prep
+        </a>
+    </div>
+</section>
+
+<section class="feature-grid">
+    <article class="content-card content-card--padded">
+        <div class="section-heading">
+            <span class="eyebrow">Batch Math</span>
+            <h2>The numbers the kitchen uses</h2>
+        </div>
+        <ul class="info-list">
+            <li>Each case holds 12 dough balls.</li>
+            <li>One full batch makes 14 cases.</li>
+            <li>One full batch makes 168 dough balls.</li>
+        </ul>
+    </article>
+
+    <article class="content-card content-card--padded">
+        <div class="section-heading">
+            <span class="eyebrow">Fermentation</span>
+            <h2>When dough should be mixed</h2>
+        </div>
+        <ul class="info-list">
+            <li>Normal dough fermentation takes 2 to 4 days.</li>
+            <li>Summer event dough may be planned 1 to 2 days ahead when the event allows it.</li>
+            <li>The system recommends timing, but the manager still confirms the final call.</li>
+        </ul>
+    </article>
+
+    <article class="content-card content-card--padded">
+        <div class="section-heading">
+            <span class="eyebrow">Workflow</span>
+            <h2>How the page is meant to be used</h2>
+        </div>
+        <ul class="info-list">
+            <li>The demand snapshot shows the expected dough for a selected day.</li>
+            <li>The production card shows what should be mixed today for upcoming service days.</li>
+            <li>Tasks show what the team has already completed and what is still open.</li>
+        </ul>
+    </article>
+</section>

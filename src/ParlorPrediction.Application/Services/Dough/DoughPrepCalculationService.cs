@@ -153,35 +153,49 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
         if (demandPlans.Count > 0)
         {
             reasonBuilder.Append(
-                $"Using {demandPlans.Count} active dough demand plan(s) for {request.TargetDate.DayOfWeek}, the baseline is {historicalAverageBalls} dough balls.");
+                $"For {request.TargetDate.DayOfWeek}, the restaurant usually needs about {historicalAverageBalls} dough balls based on {demandPlans.Count} active planning entr{(demandPlans.Count == 1 ? "y" : "ies")}.");
         }
         else if (historicalSales.Count == 0)
         {
             reasonBuilder.Append(
-                $"No historical {request.TargetDate.DayOfWeek} sales were found in the last {request.HistoricalWeeksToUse} weeks, so the historical baseline is 0 dough balls.");
+                $"There is no recent sales history for {request.TargetDate.DayOfWeek} in the last {request.HistoricalWeeksToUse} weeks, so the usual dough needed for that day is starting from 0.");
         }
         else
         {
             reasonBuilder.Append(
-                $"Based on the last {request.HistoricalWeeksToUse} weeks of {request.TargetDate.DayOfWeek} sales, the system expects {historicalAverageBalls} dough balls.");
+                $"Looking at the last {request.HistoricalWeeksToUse} {request.TargetDate.DayOfWeek} service day{(request.HistoricalWeeksToUse == 1 ? string.Empty : "s")}, the restaurant usually needs about {historicalAverageBalls} dough balls.");
         }
 
-        reasonBuilder.Append($" Events add {eventEstimatedBalls} dough balls across {events.Count} event(s).");
-        reasonBuilder.Append($" Current available dough is {availableBalls} balls, leaving a shortage of {missingBalls} balls.");
+        if (eventEstimatedBalls > 0)
+        {
+            reasonBuilder.Append(
+                $" Scheduled event demand adds another {eventEstimatedBalls} dough balls across {events.Count} event{(events.Count == 1 ? string.Empty : "s")}.");
+        }
+        else
+        {
+            reasonBuilder.Append(" There is no extra event dough planned for this day.");
+        }
+
+        reasonBuilder.Append($" You currently have {availableBalls} dough balls available, so you are short by {missingBalls}.");
 
         if (recommendedCases > 0)
         {
             reasonBuilder.Append(
-                $" Recommended production is {recommendedCases} case(s) across {recommendedLoads} load(s).");
+                $" That means the kitchen should plan for about {recommendedCases} case{(recommendedCases == 1 ? string.Empty : "s")} of dough, which rounds to {recommendedLoads} full batch{(recommendedLoads == 1 ? string.Empty : "es")}.");
+
+            if (recommendedLoads == 1 && missingBalls < DoughRules.StandardBatchBalls)
+            {
+                reasonBuilder.Append(" One full batch will cover today's shortage and leave extra dough moving into the next prep day.");
+            }
         }
         else
         {
-            reasonBuilder.Append(" Current inventory covers expected demand, so no additional dough production is recommended.");
+            reasonBuilder.Append(" Current dough available already covers the day, so no new mixing is needed right now.");
         }
 
         if (usesShortFermentationException)
         {
-            reasonBuilder.Append(" A short-fermentation exception may be considered because at least one summer event allows it.");
+            reasonBuilder.Append(" A shorter 1 to 2 day fermentation window may be considered because at least one summer event allows it.");
         }
 
         return reasonBuilder.ToString();
