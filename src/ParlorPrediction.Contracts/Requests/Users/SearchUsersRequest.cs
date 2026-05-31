@@ -7,4 +7,6 @@ public sealed class SearchUsersRequest
     public string? Role { get; init; }
 
     public bool ActiveOnly { get; init; } = true;
+
+    public bool PendingOnly { get; init; }
 }

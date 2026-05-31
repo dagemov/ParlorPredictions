@@ -62,6 +62,7 @@ public sealed class UserManagementService : IUserManagementService
             request.Term,
             requestedRole,
             request.ActiveOnly,
+            request.PendingOnly,
             allowedRoles,
             cancellationToken);
 
@@ -386,6 +387,13 @@ public sealed class UserManagementService : IUserManagementService
         }
 
         user.IsActive = isActive;
+        if (isActive && user.Role == ApplicationRole.Pending)
+        {
+            return ApiResponse<ManagedUserDetailResponse>.Failure(
+                "Assign an operational role before activating this account.",
+                HttpStatusCode.BadRequest);
+        }
+
         user.UpdatedAtUtc = DateTime.UtcNow;
 
         var result = await _userRepository.UpdateAsync(user);

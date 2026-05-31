@@ -10,6 +10,8 @@ public sealed class AdminUserListPageViewModel
 
     public bool ActiveOnly { get; init; } = true;
 
+    public bool PendingOnly { get; init; }
+
     public IReadOnlyList<SelectListItem> RoleOptions { get; init; } = Array.Empty<SelectListItem>();
 
     public IReadOnlyList<AdminUserListItemViewModel> Users { get; init; } = Array.Empty<AdminUserListItemViewModel>();

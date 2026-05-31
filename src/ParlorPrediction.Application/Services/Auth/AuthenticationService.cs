@@ -7,6 +7,7 @@ using ParlorPrediction.Contracts.Common;
 using ParlorPrediction.Contracts.Requests.Auth;
 using ParlorPrediction.Contracts.Responses.Auth;
 using ParlorPrediction.Domain.Entities;
+using ParlorPrediction.Domain.Enums;
 
 namespace ParlorPrediction.Application.Services.Auth;
 
@@ -34,6 +35,20 @@ public sealed class AuthenticationService : IAuthenticationService
         if (user is null)
         {
             return ApiResponse<TokenResponse>.Failure("Email or password are incorrect.", HttpStatusCode.BadRequest);
+        }
+
+        if (!user.EmailConfirmed)
+        {
+            return ApiResponse<TokenResponse>.Failure(
+                "Confirm your email before signing in.",
+                HttpStatusCode.MethodNotAllowed);
+        }
+
+        if (!user.IsActive && user.Role == ApplicationRole.Pending)
+        {
+            return ApiResponse<TokenResponse>.Failure(
+                "Your email was confirmed. An admin is pending to assign your role before you can access the system.",
+                HttpStatusCode.Forbidden);
         }
 
         if (!user.IsActive)

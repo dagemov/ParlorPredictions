@@ -36,7 +36,6 @@ public sealed class UserRegistrationRequest
     [MaxLength(20)]
     public string? PhoneNumber { get; set; }
 
-    [Required]
     public string Role { get; set; } = null!;
 
     public string? ProfileImageUrl { get; set; }

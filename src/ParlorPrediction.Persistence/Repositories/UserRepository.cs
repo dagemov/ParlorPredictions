@@ -59,6 +59,7 @@ public sealed class UserRepository : IUserRepository
         string? term,
         ApplicationRole? role,
         bool activeOnly,
+        bool pendingOnly,
         IReadOnlyCollection<ApplicationRole> allowedRoles,
         CancellationToken cancellationToken = default)
     {
@@ -77,6 +78,14 @@ public sealed class UserRepository : IUserRepository
         if (activeOnly)
         {
             query = query.Where(user => user.IsActive);
+        }
+
+        if (pendingOnly)
+        {
+            query = query.Where(user =>
+                user.Role == ApplicationRole.Pending &&
+                user.EmailConfirmed &&
+                !user.IsActive);
         }
 
         var normalizedTerm = term?.Trim();
