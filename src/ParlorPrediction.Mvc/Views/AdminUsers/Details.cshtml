@@ -75,6 +75,14 @@
             <p><strong>Name:</strong> @Model.FirstName @Model.LastName</p>
             <p><strong>Phone:</strong> @(string.IsNullOrWhiteSpace(Model.PhoneNumber) ? "No phone on file yet." : Model.PhoneNumber)</p>
         </div>
+
+        @if (Model.IsPendingApproval)
+        {
+            <div class="recommendation-note">
+                <h3>Pending approval</h3>
+                <p>This teammate already confirmed their email. Assign an operational role and then activate the account before they can open Prep or Dashboard.</p>
+            </div>
+        }
     </article>
 
     <aside class="content-card content-card--padded stack-lg">

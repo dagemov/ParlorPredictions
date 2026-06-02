@@ -31,15 +31,22 @@ public sealed class AdminUsersController : Controller
         string? term,
         string? role,
         bool activeOnly = true,
+        bool pendingOnly = false,
         CancellationToken cancellationToken = default)
     {
         var actingRole = GetActingRole();
+        if (pendingOnly)
+        {
+            activeOnly = false;
+        }
+
         var users = await _userManagementService.SearchAsync(
             new SearchUsersRequest
             {
                 Term = term,
                 Role = role,
-                ActiveOnly = activeOnly
+                ActiveOnly = activeOnly,
+                PendingOnly = pendingOnly
             },
             actingRole,
             cancellationToken);
@@ -49,7 +56,8 @@ public sealed class AdminUsersController : Controller
             Term = term,
             Role = role,
             ActiveOnly = activeOnly,
-            RoleOptions = BuildRoleOptions(actingRole, role, includeAllOption: true),
+            PendingOnly = pendingOnly,
+            RoleOptions = BuildManageableRoleOptions(actingRole, role, includeAllOption: true),
             Users = users.Select(MapListItem).ToArray(),
             StatusType = ReadStatusType(),
             StatusMessage = ReadStatusMessage()
@@ -248,6 +256,7 @@ public sealed class AdminUsersController : Controller
         string? term,
         string? role,
         bool activeOnly = true,
+        bool pendingOnly = false,
         CancellationToken cancellationToken = default)
     {
         var actingRole = GetActingRole();
@@ -271,7 +280,7 @@ public sealed class AdminUsersController : Controller
                 response.IsSuccessful ? "User updated" : "User update failed",
                 response.Message);
 
-            return await Index(term, role, activeOnly, cancellationToken);
+            return await Index(term, role, activeOnly, pendingOnly, cancellationToken);
         }
 
         SetStatusMessage(response.IsSuccessful ? "success" : "danger", response.Message);
@@ -325,7 +334,7 @@ public sealed class AdminUsersController : Controller
 
     private AdminUserCreateViewModel BuildCreateViewModel(AdminUserCreateViewModel model, ApplicationRole actingRole)
     {
-        model.RoleOptions = BuildRoleOptions(actingRole, model.Role, includeAllOption: false);
+        model.RoleOptions = BuildAssignableRoleOptions(actingRole, model.Role, includeAllOption: false);
         return model;
     }
 
@@ -344,7 +353,7 @@ public sealed class AdminUsersController : Controller
             EmailConfirmed = user.EmailConfirmed,
             ProfileImageUrl = user.ProfileImageUrl,
             Role = string.IsNullOrWhiteSpace(selectedRole) ? user.Role : selectedRole,
-            RoleOptions = BuildRoleOptions(actingRole, string.IsNullOrWhiteSpace(selectedRole) ? user.Role : selectedRole, includeAllOption: false)
+            RoleOptions = BuildAssignableRoleOptions(actingRole, string.IsNullOrWhiteSpace(selectedRole) ? user.Role : selectedRole, includeAllOption: false)
         };
     }
 
@@ -390,7 +399,7 @@ public sealed class AdminUsersController : Controller
         };
     }
 
-    private IReadOnlyList<SelectListItem> BuildRoleOptions(
+    private IReadOnlyList<SelectListItem> BuildManageableRoleOptions(
         ApplicationRole actingRole,
         string? selectedRole,
         bool includeAllOption)
@@ -403,6 +412,27 @@ public sealed class AdminUsersController : Controller
 
         items.AddRange(
             UserManagementRules.GetManageableRoles(actingRole)
+                .Select(role => new SelectListItem(
+                    role.GetCanonicalName(),
+                    role.GetCanonicalName(),
+                    string.Equals(role.GetCanonicalName(), selectedRole, StringComparison.OrdinalIgnoreCase))));
+
+        return items;
+    }
+
+    private IReadOnlyList<SelectListItem> BuildAssignableRoleOptions(
+        ApplicationRole actingRole,
+        string? selectedRole,
+        bool includeAllOption)
+    {
+        var items = new List<SelectListItem>();
+        if (includeAllOption)
+        {
+            items.Add(new SelectListItem("All roles", string.Empty, string.IsNullOrWhiteSpace(selectedRole)));
+        }
+
+        items.AddRange(
+            UserManagementRules.GetAssignableRoles(actingRole)
                 .Select(role => new SelectListItem(
                     role.GetCanonicalName(),
                     role.GetCanonicalName(),

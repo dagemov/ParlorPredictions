@@ -12,6 +12,9 @@ namespace ParlorPrediction.Application.Services.Auth;
 
 public sealed class AccountService : IAccountService
 {
+    private const string PublicRegistrationMessage =
+        "Check your email to confirm your account. After you confirm it, an admin still needs to approve your access.";
+
     private readonly IUserRepository _userRepository;
     private readonly IEmailConfirmationService _emailConfirmationService;
     private readonly IUnitOfWork _unitOfWork;
@@ -34,19 +37,21 @@ public sealed class AccountService : IAccountService
         var existingUser = await _userRepository.FindByEmailAsync(request.Email, cancellationToken);
         if (existingUser is not null)
         {
-            return ApiResponse<UserResponse>.Failure(
-                "An account with that email already exists.",
-                HttpStatusCode.Conflict);
+            if (!existingUser.EmailConfirmed)
+            {
+                await _emailConfirmationService.SendConfirmationEmailAsync(existingUser, fallbackBaseUrl, cancellationToken);
+            }
+
+            return ApiResponse<UserResponse>.Success(
+                null,
+                PublicRegistrationMessage,
+                HttpStatusCode.Accepted);
         }
 
-        if (!ApplicationRoleExtensions.TryParse(request.Role, out var parsedRole))
-        {
-            return ApiResponse<UserResponse>.Failure(
-                "Choose a valid Parlor role before creating the account.",
-                HttpStatusCode.BadRequest);
-        }
-
+        var parsedRole = ApplicationRole.Pending;
         var user = request.ToUser(parsedRole);
+        user.IsActive = false;
+        user.EmailConfirmed = false;
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
         try
@@ -97,8 +102,8 @@ public sealed class AccountService : IAccountService
         var response = user.ToUserResponse();
 
         return mailResponse.IsSuccessful
-            ? ApiResponse<UserResponse>.Success(response, "Account created. Check email to confirm it before signing in.", HttpStatusCode.Created)
-            : ApiResponse<UserResponse>.Success(response, "Account created, but confirmation email could not be sent yet.", HttpStatusCode.Created);
+            ? ApiResponse<UserResponse>.Success(response, PublicRegistrationMessage, HttpStatusCode.Created)
+            : ApiResponse<UserResponse>.Success(response, "Your registration was saved, but the confirmation email could not be sent yet.", HttpStatusCode.Created);
     }
 
     public async Task<ApiResponse<UserResponse>> UpdateAsync(

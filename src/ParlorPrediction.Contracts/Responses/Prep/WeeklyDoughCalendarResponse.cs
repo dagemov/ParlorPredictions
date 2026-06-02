@@ -6,6 +6,8 @@ public sealed class WeeklyDoughCalendarResponse
 
     public DateOnly WeekEndDate { get; set; }
 
+    public int WeekAvailableBalls { get; set; }
+
     public int WeekTotalNeededBalls { get; set; }
 
     public int WeekCompletedBalls { get; set; }

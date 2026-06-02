@@ -1,6 +1,8 @@
 @model LoginViewModel
 @{
     ViewData["Title"] = "Sign In";
+    var statusType = TempData["SessionStatusType"] as string;
+    var statusMessage = TempData["SessionStatusMessage"] as string;
 }
 
 <section class="auth-shell">
@@ -10,6 +12,13 @@
             <h1>Sign in to continue</h1>
             <p>Use your Parlor account to open Prep, review dough recommendations, and track task completion.</p>
         </div>
+
+        @if (!string.IsNullOrWhiteSpace(statusMessage))
+        {
+            <div class="alert alert-@statusType" role="alert">
+                @statusMessage
+            </div>
+        }
 
         <form asp-action="Login" asp-controller="Session" method="post" class="auth-form">
             @Html.AntiForgeryToken()
@@ -32,6 +41,11 @@
                 Sign In
             </button>
         </form>
+
+        <p class="auth-footer-copy">
+            Don't have an account?
+            <a asp-action="Register" asp-controller="Session">Register here.</a>
+        </p>
     </div>
 </section>
 

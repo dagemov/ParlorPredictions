@@ -29,6 +29,11 @@
                     <tbody>
                         @foreach (var user in Model.Users)
                         {
+                            var isPendingApproval =
+                                user.EmailConfirmed &&
+                                !user.IsActive &&
+                                string.Equals(user.Role, nameof(ParlorPrediction.Domain.Enums.ApplicationRole.Pending), StringComparison.OrdinalIgnoreCase);
+
                             <tr>
                                 <td>
                                     <div class="user-cell">
@@ -56,9 +61,9 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <span class="status-pill @(user.IsActive ? "status-pill--success" : "status-pill--neutral")">
-                                        <i class="fa-solid @(user.IsActive ? "fa-circle-check" : "fa-circle-pause")"></i>
-                                        @(user.IsActive ? "Active" : "Inactive")
+                                    <span class="status-pill @(user.IsActive ? "status-pill--success" : (isPendingApproval ? "status-pill--warning" : "status-pill--neutral"))">
+                                        <i class="fa-solid @(user.IsActive ? "fa-circle-check" : (isPendingApproval ? "fa-user-clock" : "fa-circle-pause"))"></i>
+                                        @(user.IsActive ? "Active" : (isPendingApproval ? "Pending approval" : "Inactive"))
                                     </span>
                                 </td>
                                 <td>

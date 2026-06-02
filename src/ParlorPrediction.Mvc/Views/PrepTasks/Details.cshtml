@@ -1,0 +1,74 @@
+@model PrepTaskDetailsViewModel
+@{
+    ViewData["Title"] = "Dough Task Details";
+}
+
+<section class="page-hero page-hero--compact">
+    <div>
+        <span class="eyebrow">Dough Task Details</span>
+        <h1>@Model.Task.PrepItemName for @Model.Task.TaskDate.ToString("dddd, MMM d")</h1>
+        <p class="page-copy">Use this page to confirm who owns the task, what it covers, and whether the team already finished the dough work.</p>
+    </div>
+
+    <div class="hero-actions">
+        <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="PrepTasks" asp-route-taskDate="@Model.Task.TaskDate.ToString("yyyy-MM-dd")">
+            <i class="fa-solid fa-arrow-left me-2"></i>
+            Back To Task Board
+        </a>
+        @if (Model.CanManageTasks)
+        {
+            <a class="btn btn-primary" asp-action="Edit" asp-controller="PrepTasks" asp-route-id="@Model.Task.PrepTaskId">
+                <i class="fa-regular fa-pen-to-square me-2"></i>
+                Edit Task
+            </a>
+        }
+    </div>
+</section>
+
+<section class="content-card content-card--padded">
+    <div class="metric-grid">
+        <article class="metric-card">
+            <span class="metric-card__label">Needed</span>
+            <strong>@Model.Task.QuantityRecommended</strong>
+            <small>Dough balls planned for this task.</small>
+        </article>
+        <article class="metric-card">
+            <span class="metric-card__label">Finished</span>
+            <strong>@Model.Task.QuantityCompleted</strong>
+            <small>Dough balls already counted as completed.</small>
+        </article>
+        <article class="metric-card">
+            <span class="metric-card__label">Assigned Role</span>
+            <strong>@Model.Task.AssignedRole</strong>
+            <small>The team role expected to finish this task.</small>
+        </article>
+        <article class="metric-card">
+            <span class="metric-card__label">Status</span>
+            <strong>@Model.Task.Status</strong>
+            <small>@(Model.Task.IsManualTask ? "Manual task" : "Created from saved dough guidance")</small>
+        </article>
+    </div>
+
+    <div class="detail-grid mt-4">
+        <div>
+            <h3 class="h6">Prep item</h3>
+            <p>@Model.Task.PrepItemName (@Model.Task.PrepStationName)</p>
+        </div>
+        <div>
+            <h3 class="h6">Completed by</h3>
+            <p>@(Model.Task.CompletedByUserName ?? "Not finished yet")</p>
+        </div>
+        <div>
+            <h3 class="h6">Completed at</h3>
+            <p>@(Model.Task.CompletedAtUtc?.ToLocalTime().ToString("MMM d, yyyy h:mm tt") ?? "Not finished yet")</p>
+        </div>
+        <div>
+            <h3 class="h6">Task source</h3>
+            <p>@(Model.Task.IsManualTask ? "Manual dough task" : "Saved dough recommendation")</p>
+        </div>
+        <div class="detail-grid__wide">
+            <h3 class="h6">Kitchen note</h3>
+            <p>@(string.IsNullOrWhiteSpace(Model.Task.Notes) ? "No note saved." : Model.Task.Notes)</p>
+        </div>
+    </div>
+</section>

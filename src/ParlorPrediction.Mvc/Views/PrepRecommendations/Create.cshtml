@@ -1,0 +1,160 @@
+@model ManagerPrepRecommendationPageViewModel
+@{
+    ViewData["Title"] = "Manager Dough Recommendations";
+    var statusType = TempData["PrepRecommendationStatusType"] as string;
+    var statusMessage = TempData["PrepRecommendationStatusMessage"] as string;
+}
+
+<section class="page-hero page-hero--compact">
+    <div>
+        <span class="eyebrow">Manager Recommendations</span>
+        <h1>Save the real kitchen call.</h1>
+        <p class="page-copy">Use this page to record what the manager actually wants the team to do, even when that choice goes beyond the automated dough guidance.</p>
+    </div>
+
+    <div class="hero-actions">
+        <a class="btn btn-outline-secondary" asp-action="Dough" asp-controller="Prep" asp-route-targetDate="@Model.Form.RecommendationDate.ToString("yyyy-MM-dd")">
+            <i class="fa-solid fa-bread-slice me-2"></i>
+            Back To Dough Prep
+        </a>
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(statusMessage))
+{
+    <div class="alert alert-@statusType" role="alert">
+        @statusMessage
+    </div>
+}
+
+<div class="prep-grid prep-grid-wide">
+    <section class="content-card content-card--padded">
+        <div class="section-heading">
+            <span class="eyebrow">Create Recommendation</span>
+            <h2>Manager guidance for dough</h2>
+            <p>Write the decision in plain kitchen language, then save the dough quantity so later AI guidance can compare itself with the human recommendation.</p>
+        </div>
+
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+        <form asp-action="Create"
+              asp-controller="PrepRecommendations"
+              method="post"
+              class="stack-lg"
+              data-dough-quantity-form
+              data-dough-quantity-preview-mode="recommended">
+            @Html.AntiForgeryToken()
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="Form.RecommendationDate" class="form-label"></label>
+                    <input asp-for="Form.RecommendationDate" type="date" class="form-control" />
+                    <span asp-validation-for="Form.RecommendationDate" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Form.PrepItemId" class="form-label">Prep Item</label>
+                    <select asp-for="Form.PrepItemId" asp-items="Model.PrepItemOptions" class="form-select"></select>
+                    <span asp-validation-for="Form.PrepItemId" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Form.QuantityUnit" class="form-label">Quantity Type</label>
+                    <select asp-for="Form.QuantityUnit" class="form-select" data-dough-quantity-unit>
+                        <option value="Balls">Dough Balls</option>
+                        <option value="Cases">Cases</option>
+                        <option value="FullLoads">Full Loads</option>
+                    </select>
+                    <span asp-validation-for="Form.QuantityUnit" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Form.QuantityValue" class="form-label">Quantity</label>
+                    <input asp-for="Form.QuantityValue" type="number" min="0" class="form-control" data-dough-quantity-value />
+                    <span asp-validation-for="Form.QuantityValue" class="text-danger"></span>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Form.RecommendationText" class="form-label">Recommendation Text</label>
+                    <textarea asp-for="Form.RecommendationText" rows="4" class="form-control" placeholder="Example: Make one full batch today. Use the older dough first and ball the batch from Sunday."></textarea>
+                    <span asp-validation-for="Form.RecommendationText" class="text-danger"></span>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Form.Reason" class="form-label"></label>
+                    <textarea asp-for="Form.Reason" rows="3" class="form-control" placeholder="Explain why this recommendation makes sense for the kitchen."></textarea>
+                    <span asp-validation-for="Form.Reason" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="recommendation-note">
+                <h3>Quantity Preview</h3>
+                <p data-dough-quantity-preview>@Model.Form.QuantityPreviewText</p>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-regular fa-floppy-disk me-2"></i>
+                    Save Manager Recommendation
+                </button>
+                <a class="btn btn-outline-secondary" asp-action="Dough" asp-controller="Prep" asp-route-targetDate="@Model.Form.RecommendationDate.ToString("yyyy-MM-dd")">Cancel</a>
+            </div>
+        </form>
+    </section>
+
+    <section class="content-card content-card--padded">
+        <div class="section-heading">
+            <span class="eyebrow">Recent Notes</span>
+            <h2>Latest manager recommendations</h2>
+            <p>This running list becomes a human reference point for future AI guidance.</p>
+        </div>
+
+        @if (Model.RecentRecommendations.Count == 0)
+        {
+            <div class="empty-state">
+                <i class="fa-regular fa-note-sticky"></i>
+                <span>No manager recommendations have been saved yet.</span>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table prep-table align-middle">
+                    <thead>
+                        <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Item</th>
+                            <th scope="col">Recommended</th>
+                            <th scope="col">Manager Note</th>
+                            <th scope="col">Saved By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var recommendation in Model.RecentRecommendations)
+                        {
+                            <tr>
+                                <td>@recommendation.RecommendationDate.ToString("MMM d, yyyy")</td>
+                                <td>@recommendation.PrepItemName</td>
+                                <td>
+                                    <strong>@recommendation.RecommendedBalls balls</strong>
+                                    <div class="inline-hint">@recommendation.RecommendedCases cases / @recommendation.RecommendedLoads full load@(recommendation.RecommendedLoads == 1 ? string.Empty : "s")</div>
+                                </td>
+                                <td>
+                                    <div class="task-main">
+                                        <strong>@recommendation.RecommendationText</strong>
+                                        <span>@recommendation.Reason</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="task-main">
+                                        <strong>@recommendation.CreatedByUserName</strong>
+                                        <span>@recommendation.CreatedAtUtc.ToLocalTime().ToString("MMM d, h:mm tt")</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

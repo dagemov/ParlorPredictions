@@ -13,8 +13,11 @@ public sealed class CompletePrepTaskFormModel
     [Range(1, int.MaxValue)]
     public int HistoricalWeeksToUse { get; set; } = 8;
 
+    [Required]
+    public string CompletionType { get; set; } = "Balls";
+
     [Range(1, int.MaxValue)]
-    public int QuantityCompleted { get; set; }
+    public int QuantityValue { get; set; }
 
     [StringLength(500)]
     public string? Notes { get; set; }

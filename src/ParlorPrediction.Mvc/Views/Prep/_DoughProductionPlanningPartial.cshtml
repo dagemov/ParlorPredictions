@@ -1,20 +1,50 @@
-@model DoughProductionPlanningViewModel?
+@model DoughPrepPageViewModel
 
 <section class="content-card content-card--padded">
     <div class="section-heading">
         <span class="eyebrow">Daily Operations</span>
         <h2>Today's Production Recommendation</h2>
-        @if (Model is null)
+        @if (Model.ProductionPlanning is null)
         {
             <p>No production planning summary is available right now.</p>
         }
         else
         {
-            <p>Work date: @Model.ProductionDate.ToString("dddd, MMM d"). This looks ahead @Model.DaysAhead days so the kitchen can mix dough before it is needed.</p>
+            <p>Work date: @Model.ProductionPlanning.ProductionDate.ToString("dddd, MMM d"). This looks ahead @Model.ProductionPlanning.DaysAhead days so the kitchen can mix dough before it is needed.</p>
         }
     </div>
 
-    @if (Model is null)
+    @if (Model.WeeklyGoal is not null)
+    {
+        <div class="recommendation-note mb-4">
+            <h3>Week Goal</h3>
+            <p>
+                For @Model.WeeklyGoal.WeekStartDate.ToString("MMM d") through @Model.WeeklyGoal.WeekEndDate.ToString("MMM d"), the team can already count on
+                @Model.WeeklyGoal.CurrentAvailableBalls dough balls / @Model.WeeklyGoal.CurrentAvailableLoads full load@(Model.WeeklyGoal.CurrentAvailableLoads == 1 ? string.Empty : "s")
+                that are already on hand.
+            </p>
+        </div>
+
+        <div class="metric-grid">
+            <article class="metric-card">
+                <span class="metric-card__label">Dough Needed This Week</span>
+                <strong>@Model.WeeklyGoal.DoughNeededBalls</strong>
+                <small>@Model.WeeklyGoal.DoughNeededLoads full load@(Model.WeeklyGoal.DoughNeededLoads == 1 ? string.Empty : "s") of usual dough and event dough</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Dough Finished</span>
+                <strong>@Model.WeeklyGoal.DoughFinishedBalls</strong>
+                <small>@Model.WeeklyGoal.DoughFinishedLoads full load@(Model.WeeklyGoal.DoughFinishedLoads == 1 ? string.Empty : "s") already completed by the team</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Dough Still Missing</span>
+                <strong>@Model.WeeklyGoal.DoughStillMissingBalls</strong>
+                <small>@Model.WeeklyGoal.DoughStillMissingLoads full load@(Model.WeeklyGoal.DoughStillMissingLoads == 1 ? string.Empty : "s") still need attention this week</small>
+            </article>
+        </div>
+    }
+
+    @if (Model.ProductionPlanning is null)
     {
         <div class="empty-state">
             <i class="fa-regular fa-calendar"></i>
@@ -24,53 +54,53 @@
     else
     {
         <div class="d-flex flex-wrap gap-2 mb-3">
-            <span class="status-pill @(Model.HasProductionWorkToday ? "status-pill--warning" : "status-pill--success")">
-                @(Model.HasProductionWorkToday ? "Kitchen Work Needed Today" : "No New Mixing Needed Today")
+            <span class="status-pill @(Model.ProductionPlanning.HasProductionWorkToday ? "status-pill--warning" : "status-pill--success")">
+                @(Model.ProductionPlanning.HasProductionWorkToday ? "Kitchen Work Needed Today" : "No New Mixing Needed Today")
             </span>
-            <span class="status-pill @(Model.RecommendedBallsToBallToday > 0 ? "status-pill--info" : "status-pill--neutral")">
-                @(Model.RecommendedBallsToBallToday > 0 ? "Ball Existing Dough" : "No Extra Balling Today")
+            <span class="status-pill @(Model.ProductionPlanning.RecommendedBallsToBallToday > 0 ? "status-pill--info" : "status-pill--neutral")">
+                @(Model.ProductionPlanning.RecommendedBallsToBallToday > 0 ? "Ball Existing Dough" : "No Extra Balling Today")
             </span>
         </div>
 
         <div class="metric-grid">
             <article class="metric-card">
                 <span class="metric-card__label">Dough Needed Over The Next Week</span>
-                <strong>@Model.TotalFutureRequiredBalls</strong>
+                <strong>@Model.ProductionPlanning.TotalFutureRequiredBalls</strong>
                 <small>Total dough expected across the planning window</small>
             </article>
             <article class="metric-card">
                 <span class="metric-card__label">Current Dough Available</span>
-                <strong>@Model.ReadyBalls</strong>
+                <strong>@Model.ProductionPlanning.ReadyBalls</strong>
                 <small>Dough already ready to use</small>
             </article>
             <article class="metric-card">
                 <span class="metric-card__label">Still Fermenting</span>
-                <strong>@Model.FermentingBalls</strong>
+                <strong>@Model.ProductionPlanning.FermentingBalls</strong>
                 <small>Dough already mixed and still aging</small>
             </article>
             <article class="metric-card">
                 <span class="metric-card__label">Mixed But Not Balled</span>
-                <strong>@Model.UnballedBalls</strong>
+                <strong>@Model.ProductionPlanning.UnballedBalls</strong>
                 <small>Dough that can be portioned today</small>
             </article>
             <article class="metric-card">
                 <span class="metric-card__label">Dough To Mix Today</span>
-                <strong>@Model.MissingBallsForProductionWindow</strong>
-                <small>@Model.RecommendedCasesToMakeToday cases / @Model.RecommendedLoadsToMakeToday full batch@(Model.RecommendedLoadsToMakeToday == 1 ? string.Empty : "es")</small>
+                <strong>@Model.ProductionPlanning.MissingBallsForProductionWindow</strong>
+                <small>@Model.ProductionPlanning.RecommendedCasesToMakeToday cases / @Model.ProductionPlanning.RecommendedLoadsToMakeToday full batch@(Model.ProductionPlanning.RecommendedLoadsToMakeToday == 1 ? string.Empty : "es")</small>
             </article>
             <article class="metric-card">
                 <span class="metric-card__label">Balls To Prepare Today</span>
-                <strong>@Model.RecommendedBallsToBallToday</strong>
+                <strong>@Model.ProductionPlanning.RecommendedBallsToBallToday</strong>
                 <small>Existing dough that should be balled now</small>
             </article>
         </div>
 
         <div class="recommendation-note">
             <h3>Why this daily plan matters</h3>
-            <p>@Model.Reason</p>
+            <p>@Model.ProductionPlanning.Reason</p>
         </div>
 
-        @if (Model.HasUpcomingNeeds)
+        @if (Model.ProductionPlanning.HasUpcomingNeeds)
         {
             <div class="table-responsive mt-4">
                 <table class="table prep-table align-middle">
@@ -86,7 +116,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var need in Model.UpcomingNeeds)
+                        @foreach (var need in Model.ProductionPlanning.UpcomingNeeds)
                         {
                             <tr>
                                 <td>

@@ -113,6 +113,60 @@ public sealed class PrepTaskService : IPrepTaskService
         };
     }
 
+    public async Task<SavePrepTaskResponse> CreateManualAsync(
+        SavePrepTaskRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var prepItem = await GetValidatedPrepItemAsync(request.PrepItemId, request.PrepStationId, cancellationToken);
+        var assignedRole = ParseAssignableRole(request.AssignedRole);
+
+        var task = PrepTask.Create(
+            request.TaskDate,
+            prepItem.Id,
+            prepItem.PrepStationId,
+            assignedRole,
+            request.QuantityRecommended,
+            notes: request.Notes);
+
+        await _prepTaskRepository.AddAsync(task, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return MapSaveResponse(task, prepItem.Name, prepItem.PrepStation.Name, "Prep task created successfully.");
+    }
+
+    public async Task<SavePrepTaskResponse> UpdateManualAsync(
+        Guid prepTaskId,
+        SavePrepTaskRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (prepTaskId == Guid.Empty)
+        {
+            throw new ArgumentException("Prep task id is required.", nameof(prepTaskId));
+        }
+
+        var task = await _prepTaskRepository.GetByIdAsync(prepTaskId, cancellationToken)
+            ?? throw new KeyNotFoundException("The prep task could not be found.");
+
+        var prepItem = await GetValidatedPrepItemAsync(request.PrepItemId, request.PrepStationId, cancellationToken);
+        var assignedRole = ParseAssignableRole(request.AssignedRole);
+
+        task.UpdateTask(
+            request.TaskDate,
+            prepItem.Id,
+            prepItem.PrepStationId,
+            assignedRole,
+            request.QuantityRecommended,
+            request.Notes);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return MapSaveResponse(task, prepItem.Name, prepItem.PrepStation.Name, "Prep task updated successfully.");
+    }
+
     public async Task<CompletePrepTaskResponse> CompleteAsync(
         CompletePrepTaskRequest request,
         CancellationToken cancellationToken = default)
@@ -161,6 +215,22 @@ public sealed class PrepTaskService : IPrepTaskService
         };
     }
 
+    public async Task DeleteAsync(
+        Guid prepTaskId,
+        CancellationToken cancellationToken = default)
+    {
+        if (prepTaskId == Guid.Empty)
+        {
+            throw new ArgumentException("Prep task id is required.", nameof(prepTaskId));
+        }
+
+        var task = await _prepTaskRepository.GetByIdAsync(prepTaskId, cancellationToken)
+            ?? throw new KeyNotFoundException("The prep task could not be found.");
+
+        _prepTaskRepository.Remove(task);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
     private static CreatePrepTaskFromRecommendationResponse MapCreateResponse(
         PrepTask task,
         bool taskCreated,
@@ -174,6 +244,66 @@ public sealed class PrepTaskService : IPrepTaskService
             TaskDate = task.TaskDate,
             PrepItemName = task.PrepItem.Name,
             PrepStationName = task.PrepStation.Name,
+            AssignedRole = task.AssignedRole.GetCanonicalName(),
+            QuantityRecommended = task.QuantityRecommended,
+            Status = task.Status.ToString(),
+            Message = message
+        };
+    }
+
+    private async Task<PrepItem> GetValidatedPrepItemAsync(
+        Guid prepItemId,
+        Guid prepStationId,
+        CancellationToken cancellationToken)
+    {
+        if (prepItemId == Guid.Empty)
+        {
+            throw new ArgumentException("Prep item is required.", nameof(prepItemId));
+        }
+
+        if (prepStationId == Guid.Empty)
+        {
+            throw new ArgumentException("Prep station is required.", nameof(prepStationId));
+        }
+
+        var prepItem = await _prepItemReadRepository.GetByIdAsync(prepItemId, cancellationToken)
+            ?? throw new KeyNotFoundException("The prep item could not be found.");
+
+        if (!prepItem.IsActive)
+        {
+            throw new InvalidOperationException("The selected prep item is inactive.");
+        }
+
+        if (prepItem.PrepStationId != prepStationId)
+        {
+            throw new InvalidOperationException("The selected prep item does not belong to the selected station.");
+        }
+
+        return prepItem;
+    }
+
+    private static ApplicationRole ParseAssignableRole(string assignedRole)
+    {
+        if (!ApplicationRoleExtensions.TryParse(assignedRole, out var parsedRole) || parsedRole == ApplicationRole.Pending)
+        {
+            throw new ArgumentException("Assigned role is not valid for prep tasks.", nameof(assignedRole));
+        }
+
+        return parsedRole;
+    }
+
+    private static SavePrepTaskResponse MapSaveResponse(
+        PrepTask task,
+        string prepItemName,
+        string prepStationName,
+        string message)
+    {
+        return new SavePrepTaskResponse
+        {
+            PrepTaskId = task.Id,
+            TaskDate = task.TaskDate,
+            PrepItemName = prepItemName,
+            PrepStationName = prepStationName,
             AssignedRole = task.AssignedRole.GetCanonicalName(),
             QuantityRecommended = task.QuantityRecommended,
             Status = task.Status.ToString(),

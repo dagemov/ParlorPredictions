@@ -78,7 +78,9 @@ public static class PersistenceLayerServiceCollectionExtensions
         services.AddScoped<IDoughInventoryReadRepository, DoughInventoryReadRepository>();
         services.AddScoped<IDoughPrepRecommendationReadRepository, DoughPrepRecommendationReadRepository>();
         services.AddScoped<IDoughPrepRecommendationRepository, DoughPrepRecommendationRepository>();
+        services.AddScoped<IManagerPrepRecommendationRepository, ManagerPrepRecommendationRepository>();
         services.AddScoped<IPrepItemReadRepository, PrepItemReadRepository>();
+        services.AddScoped<IPrepStationReadRepository, PrepStationReadRepository>();
         services.AddScoped<IPrepTaskRepository, PrepTaskRepository>();
         services.AddScoped<IRestaurantEventReadRepository, RestaurantEventRepository>();
         services.AddScoped<IRestaurantEventRepository, RestaurantEventRepository>();

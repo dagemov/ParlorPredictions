@@ -10,6 +10,7 @@ using ParlorPrediction.Contracts.Responses.Dough;
 using ParlorPrediction.Contracts.Responses.Prep;
 using ParlorPrediction.Domain.Enums;
 using ParlorPrediction.Domain.Rules;
+using ParlorPrediction.Mvc.Helpers;
 using ParlorPrediction.Mvc.Models.Prep;
 
 namespace ParlorPrediction.Mvc.Controllers;
@@ -93,6 +94,7 @@ public sealed class PrepController : Controller
             HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse),
             WeekStartDate = calendar.WeekStartDate,
             WeekEndDate = calendar.WeekEndDate,
+            WeekAvailableBalls = calendar.WeekAvailableBalls,
             WeekTotalNeededBalls = calendar.WeekTotalNeededBalls,
             WeekCompletedBalls = calendar.WeekCompletedBalls,
             WeekMissingBalls = calendar.WeekMissingBalls,
@@ -247,7 +249,7 @@ public sealed class PrepController : Controller
         }
     }
 
-    [HttpPost("tasks/complete")]
+    [HttpPost("dough/tasks/complete")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CompleteTask(
         CompletePrepTaskFormModel model,
@@ -262,7 +264,7 @@ public sealed class PrepController : Controller
             return await RenderErrorPageAsync(
                 selectedDate,
                 NormalizeHistoricalWeeks(model.HistoricalWeeksToUse),
-                "Quantity completed must be greater than zero.",
+                "Choose dough balls, cases, or full loads and enter the quantity completed.",
                 cancellationToken);
         }
 
@@ -292,12 +294,21 @@ public sealed class PrepController : Controller
 
         try
         {
+            if (!TryResolveCompletedBalls(model, out var completedBalls, out var validationMessage))
+            {
+                return await RenderErrorPageAsync(
+                    selectedDate,
+                    NormalizeHistoricalWeeks(model.HistoricalWeeksToUse),
+                    validationMessage,
+                    cancellationToken);
+            }
+
             var response = await _prepTaskService.CompleteAsync(
                 new CompletePrepTaskRequest
                 {
                     PrepTaskId = model.PrepTaskId,
                     CompletedByUserId = currentUserId,
-                    QuantityCompleted = model.QuantityCompleted,
+                    QuantityCompleted = completedBalls,
                     Notes = model.Notes
                 },
                 cancellationToken);
@@ -337,6 +348,11 @@ public sealed class PrepController : Controller
                 ProductionDate = targetDate,
                 DaysAhead = DefaultPlanningDaysAhead
             },
+            cancellationToken);
+
+        var weeklyCalendar = await _prepWeeklyDoughCalendarService.GetWeekAsync(
+            targetDate,
+            NormalizeHistoricalWeeks(historicalWeeksToUse),
             cancellationToken);
 
         var taskResponses = await _prepTaskReadService.GetDoughTasksByDateAsync(targetDate, cancellationToken);
@@ -385,6 +401,7 @@ public sealed class PrepController : Controller
             HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse),
             Recommendation = recommendation,
             ProductionPlanning = MapProductionPlanning(productionPlanning),
+            WeeklyGoal = MapWeeklyGoal(weeklyCalendar),
             Tasks = taskViewModels,
             CanManageRecommendations = CanManageRecommendations()
         };
@@ -424,13 +441,22 @@ public sealed class PrepController : Controller
             PrepTaskId = task.PrepTaskId,
             DoughPrepRecommendationId = task.DoughPrepRecommendationId,
             TaskDate = task.TaskDate,
+            PrepItemId = task.PrepItemId,
             PrepItemName = task.PrepItemName,
+            PrepItemCode = task.PrepItemCode,
+            PrepStationId = task.PrepStationId,
             PrepStationName = task.PrepStationName,
+            PrepStationCode = task.PrepStationCode,
             AssignedRole = task.AssignedRole,
             QuantityRecommended = task.QuantityRecommended,
             QuantityCompleted = task.QuantityCompleted,
             Status = task.Status,
+            Notes = task.Notes,
+            CompletedByUserId = task.CompletedByUserId,
+            CompletedByUserName = task.CompletedByUserName,
             CompletedAtUtc = task.CompletedAtUtc,
+            CreatedAtUtc = task.CreatedAtUtc,
+            IsManualTask = task.IsManualTask,
             CanComplete = CanCompleteTask(task)
         };
     }
@@ -569,6 +595,19 @@ public sealed class PrepController : Controller
         };
     }
 
+    private static WeeklyGoalProgressViewModel MapWeeklyGoal(WeeklyDoughCalendarResponse weeklyCalendar)
+    {
+        return new WeeklyGoalProgressViewModel
+        {
+            WeekStartDate = weeklyCalendar.WeekStartDate,
+            WeekEndDate = weeklyCalendar.WeekEndDate,
+            CurrentAvailableBalls = weeklyCalendar.WeekAvailableBalls,
+            DoughNeededBalls = weeklyCalendar.WeekTotalNeededBalls,
+            DoughFinishedBalls = weeklyCalendar.WeekCompletedBalls,
+            DoughStillMissingBalls = weeklyCalendar.WeekMissingBalls
+        };
+    }
+
     private bool CanManageRecommendations()
     {
         return User.IsInRole(nameof(ApplicationRole.Admin)) || User.IsInRole(nameof(ApplicationRole.Manager));
@@ -607,6 +646,18 @@ public sealed class PrepController : Controller
     private static int NormalizeHistoricalWeeks(int historicalWeeksToUse)
     {
         return historicalWeeksToUse < 1 ? DefaultHistoricalWeeksToUse : historicalWeeksToUse;
+    }
+
+    private static bool TryResolveCompletedBalls(
+        CompletePrepTaskFormModel model,
+        out int completedBalls,
+        out string validationMessage)
+    {
+        return DoughQuantityInputConverter.TryConvertToBalls(
+            model.CompletionType,
+            model.QuantityValue,
+            out completedBalls,
+            out validationMessage);
     }
 
     private static IReadOnlyList<string> BuildRecommendationActionPlan(

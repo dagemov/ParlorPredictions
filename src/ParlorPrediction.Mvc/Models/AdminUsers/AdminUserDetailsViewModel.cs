@@ -33,4 +33,9 @@ public sealed class AdminUserDetailsViewModel
     public string? StatusMessage { get; init; }
 
     public bool CanResendConfirmation => !EmailConfirmed;
+
+    public bool IsPendingApproval =>
+        EmailConfirmed &&
+        !IsActive &&
+        string.Equals(Role, nameof(ParlorPrediction.Domain.Enums.ApplicationRole.Pending), StringComparison.OrdinalIgnoreCase);
 }

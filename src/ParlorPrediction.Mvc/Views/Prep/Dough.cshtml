@@ -14,6 +14,20 @@
             <i class="fa-regular fa-calendar-days me-2"></i>
             View Weekly Dough Calendar
         </a>
+        <a class="btn btn-outline-secondary"
+           asp-action="Index"
+           asp-controller="PrepTasks"
+           asp-route-taskDate="@Model.TargetDate.ToString("yyyy-MM-dd")">
+            <i class="fa-solid fa-list-check me-2"></i>
+            Open Task Board
+        </a>
+        @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+        {
+            <a class="btn btn-outline-secondary" asp-action="Create" asp-controller="PrepRecommendations">
+                <i class="fa-regular fa-note-sticky me-2"></i>
+                Add Manager Note
+            </a>
+        }
         <a class="btn btn-outline-secondary" asp-action="Help" asp-controller="Prep">
             <i class="fa-regular fa-circle-question me-2"></i>
             How Dough Prep Works

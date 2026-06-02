@@ -511,6 +511,64 @@ namespace ParlorPrediction.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.ManagerPrepRecommendation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<Guid>("PrepItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateOnly>("RecommendationDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("RecommendationText")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("RecommendedBalls")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RecommendedCases")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RecommendedLoads")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("PrepItemId");
+
+                    b.HasIndex("RecommendationDate");
+
+                    b.ToTable("ManagerPrepRecommendations", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ManagerPrepRecommendations_RecommendedBalls_NonNegative", "[RecommendedBalls] >= 0");
+
+                            t.HasCheckConstraint("CK_ManagerPrepRecommendations_RecommendedCases_NonNegative", "[RecommendedCases] >= 0");
+
+                            t.HasCheckConstraint("CK_ManagerPrepRecommendations_RecommendedLoads_NonNegative", "[RecommendedLoads] >= 0");
+                        });
+                });
+
             modelBuilder.Entity("ParlorPrediction.Domain.Entities.PrepItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1039,6 +1097,25 @@ namespace ParlorPrediction.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.ManagerPrepRecommendation", b =>
+                {
+                    b.HasOne("ParlorPrediction.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ParlorPrediction.Domain.Entities.PrepItem", "PrepItem")
+                        .WithMany()
+                        .HasForeignKey("PrepItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("PrepItem");
                 });
 
             modelBuilder.Entity("ParlorPrediction.Domain.Entities.PrepItem", b =>

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -60,6 +61,12 @@ public sealed class AuthBootstrapper
             }
 
             if (!await EnsureDevelopmentUsersAsync(cancellationToken))
+            {
+                await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                return;
+            }
+
+            if (!await CleanupDevelopmentSmokeUsersAsync(cancellationToken))
             {
                 await _unitOfWork.RollbackTransactionAsync(cancellationToken);
                 return;
@@ -227,8 +234,8 @@ public sealed class AuthBootstrapper
                 Email = options.Email,
                 PhoneNumber = options.PhoneNumber,
                 Role = parsedRole,
-                IsActive = true,
-                EmailConfirmed = true,
+                IsActive = options.IsActive,
+                EmailConfirmed = options.EmailConfirmed,
                 CreatedAtUtc = DateTime.UtcNow,
                 UpdatedAtUtc = DateTime.UtcNow
             };
@@ -254,15 +261,15 @@ public sealed class AuthBootstrapper
             requiresUpdate |= UpdateIfChanged(user, static value => value.UserName, (entity, value) => entity.UserName = value, options.UserName);
             requiresUpdate |= UpdateIfChanged(user, static value => value.PhoneNumber, (entity, value) => entity.PhoneNumber = value, options.PhoneNumber);
 
-            if (!user.EmailConfirmed)
+            if (user.EmailConfirmed != options.EmailConfirmed)
             {
-                user.EmailConfirmed = true;
+                user.EmailConfirmed = options.EmailConfirmed;
                 requiresUpdate = true;
             }
 
-            if (!user.IsActive)
+            if (user.IsActive != options.IsActive)
             {
-                user.IsActive = true;
+                user.IsActive = options.IsActive;
                 requiresUpdate = true;
             }
 
@@ -351,6 +358,66 @@ public sealed class AuthBootstrapper
             desiredRoleName);
 
         return true;
+    }
+
+    private async Task<bool> CleanupDevelopmentSmokeUsersAsync(CancellationToken cancellationToken)
+    {
+        if (!_hostEnvironment.IsDevelopment())
+        {
+            return true;
+        }
+
+        var allowedEmails = _developmentSeedUsersOptions.Users
+            .Select(static user => NormalizeEmail(user.Email))
+            .Where(static email => !string.IsNullOrWhiteSpace(email))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var bootstrapEmail = NormalizeEmail(_bootstrapAdminOptions.Email);
+        if (!string.IsNullOrWhiteSpace(bootstrapEmail))
+        {
+            allowedEmails.Add(bootstrapEmail);
+        }
+
+        var usersToDelete = await _userManager.Users
+            .Where(user => user.Email != null)
+            .ToListAsync(cancellationToken);
+
+        foreach (var user in usersToDelete)
+        {
+            var normalizedEmail = NormalizeEmail(user.Email);
+            if (string.IsNullOrWhiteSpace(normalizedEmail) ||
+                allowedEmails.Contains(normalizedEmail) ||
+                !ShouldDeleteDevelopmentUser(normalizedEmail))
+            {
+                continue;
+            }
+
+            var deleteResult = await _userManager.DeleteAsync(user);
+            if (!deleteResult.Succeeded)
+            {
+                _logger.LogWarning(
+                    "Development smoke user {Email} could not be deleted: {Errors}",
+                    normalizedEmail,
+                    string.Join("; ", deleteResult.Errors.Select(static error => error.Description)));
+                return false;
+            }
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        return true;
+    }
+
+    private static string NormalizeEmail(string? email)
+    {
+        return email?.Trim().ToLowerInvariant() ?? string.Empty;
+    }
+
+    private static bool ShouldDeleteDevelopmentUser(string normalizedEmail)
+    {
+        return normalizedEmail.EndsWith("@example.com", StringComparison.OrdinalIgnoreCase) ||
+            normalizedEmail.Contains("smoke", StringComparison.OrdinalIgnoreCase) ||
+            normalizedEmail.EndsWith("@parlor.local", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool UpdateIfChanged(

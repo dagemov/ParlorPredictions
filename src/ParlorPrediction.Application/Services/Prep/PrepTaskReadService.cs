@@ -1,4 +1,5 @@
 using ParlorPrediction.Application.Interfaces.Prep;
+using ParlorPrediction.Contracts.Requests.Prep;
 using ParlorPrediction.Contracts.Responses.Prep;
 using ParlorPrediction.Domain.Entities;
 using ParlorPrediction.Domain.Enums;
@@ -33,6 +34,27 @@ public sealed class PrepTaskReadService : IPrepTaskReadService
         return task is null ? null : Map(task);
     }
 
+    public async Task<IReadOnlyList<DoughTaskListItemResponse>> SearchAsync(
+        SearchPrepTasksRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var hasStatus = Enum.TryParse<PrepTaskStatus>(request.Status, true, out var parsedStatus);
+        var hasAssignedRole = ApplicationRoleExtensions.TryParse(request.AssignedRole, out var parsedRole);
+
+        var tasks = await _prepTaskRepository.SearchDoughTasksAsync(
+            request.TaskDate,
+            hasStatus ? parsedStatus : null,
+            hasAssignedRole ? parsedRole : null,
+            request.PrepItemId,
+            cancellationToken);
+
+        return tasks
+            .Select(Map)
+            .ToArray();
+    }
+
     private static DoughTaskListItemResponse Map(PrepTask task)
     {
         return new DoughTaskListItemResponse
@@ -40,13 +62,22 @@ public sealed class PrepTaskReadService : IPrepTaskReadService
             PrepTaskId = task.Id,
             DoughPrepRecommendationId = task.DoughPrepRecommendationId,
             TaskDate = task.TaskDate,
+            PrepItemId = task.PrepItemId,
             PrepItemName = task.PrepItem.Name,
+            PrepItemCode = task.PrepItem.Code,
+            PrepStationId = task.PrepStationId,
             PrepStationName = task.PrepStation.Name,
+            PrepStationCode = task.PrepStation.Code,
             AssignedRole = task.AssignedRole.GetCanonicalName(),
             QuantityRecommended = task.QuantityRecommended,
             QuantityCompleted = task.QuantityCompleted,
             Status = task.Status.ToString(),
-            CompletedAtUtc = task.CompletedAtUtc
+            Notes = task.Notes,
+            CompletedByUserId = task.CompletedByUserId,
+            CompletedByUserName = task.CompletedByUser?.FullName,
+            CompletedAtUtc = task.CompletedAtUtc,
+            CreatedAtUtc = task.CreatedAtUtc,
+            IsManualTask = !task.DoughPrepRecommendationId.HasValue
         };
     }
 }

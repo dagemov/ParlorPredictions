@@ -68,31 +68,36 @@
 
 <section class="content-card content-card--padded mt-4">
     <div class="section-heading">
-        <span class="eyebrow">Weekly Summary</span>
+        <span class="eyebrow">Week Goal</span>
         <h2>Dough progress for the week</h2>
-        <p>This summary helps the kitchen see the week's dough picture before jumping into any single day.</p>
+        <p>This gives the kitchen one clear weekly picture: how much dough is needed, how much is already finished, what is still missing, and how much dough is already on hand.</p>
     </div>
 
     <div class="metric-grid">
         <article class="metric-card">
-            <span class="metric-card__label">Week Total Dough Needed</span>
+            <span class="metric-card__label">Dough Needed This Week</span>
             <strong>@Model.WeekTotalNeededBalls</strong>
-            <small>Usual dough plus event dough from Tuesday through Sunday.</small>
+            <small>@Model.WeekTotalNeededLoads full load@(Model.WeekTotalNeededLoads == 1 ? string.Empty : "s") of usual dough and event dough from Tuesday through Sunday.</small>
         </article>
         <article class="metric-card">
-            <span class="metric-card__label">Week Completed Dough</span>
+            <span class="metric-card__label">Dough Finished</span>
             <strong>@Model.WeekCompletedBalls</strong>
-            <small>Dough balls already completed through dough tasks.</small>
+            <small>@Model.WeekCompletedLoads full load@(Model.WeekCompletedLoads == 1 ? string.Empty : "s") already finished through dough tasks.</small>
         </article>
         <article class="metric-card">
-            <span class="metric-card__label">Week Missing Dough</span>
+            <span class="metric-card__label">Dough Still Missing</span>
             <strong>@Model.WeekMissingBalls</strong>
-            <small>Dough still not covered after available and completed dough.</small>
+            <small>@Model.WeekMissingLoads full load@(Model.WeekMissingLoads == 1 ? string.Empty : "s") still need attention after available and finished dough.</small>
+        </article>
+        <article class="metric-card">
+            <span class="metric-card__label">Current Dough Available</span>
+            <strong>@Model.WeekAvailableBalls</strong>
+            <small>@Model.WeekAvailableLoads full load@(Model.WeekAvailableLoads == 1 ? string.Empty : "s") already on hand for the current week.</small>
         </article>
         <article class="metric-card">
             <span class="metric-card__label">Upcoming Event Dough</span>
             <strong>@Model.UpcomingEventBalls</strong>
-            <small>Extra dough tied to events during this week.</small>
+            <small>@(Math.Ceiling(Model.UpcomingEventBalls / 168d)) full load@(Math.Ceiling(Model.UpcomingEventBalls / 168d) == 1 ? string.Empty : "s") tied to events during this week.</small>
         </article>
     </div>
 </section>
@@ -112,9 +117,8 @@
                     <th scope="col">Usual Dough</th>
                     <th scope="col">Event Dough</th>
                     <th scope="col">Total Needed</th>
-                    <th scope="col">Current Dough Available</th>
-                    <th scope="col">Dough Already Done</th>
-                    <th scope="col">Dough Still Missing</th>
+                    <th scope="col">Dough Finished</th>
+                    <th scope="col">Still Missing</th>
                     <th scope="col">Status</th>
                 </tr>
             </thead>
@@ -131,7 +135,6 @@
                         <td>@day.RestaurantDoughBalls</td>
                         <td>@day.EventDoughBalls</td>
                         <td><strong>@day.TotalNeededBalls</strong></td>
-                        <td>@day.AvailableBalls</td>
                         <td>@day.CompletedBalls</td>
                         <td><strong>@day.StillMissingBalls</strong></td>
                         <td>

@@ -21,11 +21,20 @@ public sealed class DeterministicAiTextGenerationProvider : IAiTextGenerationPro
         var pendingTasks = GetInt(values, "PendingTasks");
         var completedTasks = GetInt(values, "CompletedTasks");
         var reason = GetString(values, "LastRecommendationReason");
+        var managerRecommendationDate = GetString(values, "ManagerRecommendationDate");
+        var managerRecommendationBalls = GetInt(values, "ManagerRecommendationBalls");
+        var managerRecommendationText = GetString(values, "ManagerRecommendationText");
+        var managerRecommendationReason = GetString(values, "ManagerRecommendationReason");
+        var managerSentence =
+            string.IsNullOrWhiteSpace(managerRecommendationText) ||
+            string.Equals(managerRecommendationText, "None", StringComparison.OrdinalIgnoreCase)
+                ? string.Empty
+                : $" A recent manager note for this prep window points to about {managerRecommendationBalls} dough balls: {managerRecommendationText} {managerRecommendationReason}".TrimEnd();
 
         if (!hasRecommendation)
         {
             return Task.FromResult(
-                $"No saved dough recommendation exists for {targetDate:MMMM d, yyyy}. The manager should generate or save a Dough Prep recommendation first so shortage, cases, and task status can be reviewed from one snapshot before taking action.");
+                $"No saved dough recommendation exists for {targetDate:MMMM d, yyyy}. The manager should generate or save a Dough Prep recommendation first so shortage, cases, and task status can be reviewed from one snapshot before taking action.{managerSentence}".Trim());
         }
 
         var shortageSentence = missingBalls > 0
@@ -54,7 +63,13 @@ public sealed class DeterministicAiTextGenerationProvider : IAiTextGenerationPro
             ? string.Empty
             : $" Operational basis: {reason}";
 
-        return Task.FromResult($"{shortageSentence} {productionSentence} {taskSentence}{reasonSentence}".Trim());
+        managerSentence =
+            string.IsNullOrWhiteSpace(managerRecommendationText) ||
+            string.Equals(managerRecommendationText, "None", StringComparison.OrdinalIgnoreCase)
+                ? string.Empty
+                : $" The latest manager note for this prep window was saved on {managerRecommendationDate} and points to about {managerRecommendationBalls} dough balls: {managerRecommendationText} {managerRecommendationReason}".TrimEnd();
+
+        return Task.FromResult($"{shortageSentence} {productionSentence} {taskSentence}{reasonSentence}{managerSentence}".Trim());
     }
 
     private static Dictionary<string, string> ParsePrompt(string prompt)

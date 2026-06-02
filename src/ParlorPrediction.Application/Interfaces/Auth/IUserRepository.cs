@@ -18,6 +18,7 @@ public interface IUserRepository
         string? term,
         ApplicationRole? role,
         bool activeOnly,
+        bool pendingOnly,
         IReadOnlyCollection<ApplicationRole> allowedRoles,
         CancellationToken cancellationToken = default);
 

@@ -166,6 +166,28 @@ public sealed class PrepTask
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
+    public void UpdateTask(
+        DateOnly taskDate,
+        Guid prepItemId,
+        Guid prepStationId,
+        ApplicationRole assignedRole,
+        int quantityRecommended,
+        string? notes = null)
+    {
+        if (Status == PrepTaskStatus.Completed)
+        {
+            throw new InvalidOperationException("Completed prep tasks cannot be edited.");
+        }
+
+        SetTaskDate(taskDate);
+        SetPrepItem(prepItemId);
+        SetPrepStation(prepStationId);
+        AssignedRole = assignedRole;
+        QuantityRecommended = EnsureNonNegative(quantityRecommended, nameof(quantityRecommended));
+        Notes = NormalizeOptional(notes);
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
     public void UpdateNotes(string? notes)
     {
         Notes = NormalizeOptional(notes);

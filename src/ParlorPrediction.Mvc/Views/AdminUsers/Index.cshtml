@@ -51,6 +51,7 @@
           hx-target="#admin-users-list"
           hx-swap="outerHTML"
           hx-push-url="true">
+        <input type="hidden" name="pendingOnly" value="@Model.PendingOnly.ToString().ToLowerInvariant()" />
         <div class="col-md-5">
             <label class="form-label" for="term">Search</label>
             <input id="term"
@@ -88,12 +89,26 @@
                     <i class="fa-solid fa-filter me-2"></i>
                     Search
                 </button>
+                <a class="btn @(Model.PendingOnly ? "btn-primary" : "btn-outline-secondary")"
+                   asp-action="Index"
+                   asp-controller="AdminUsers"
+                   asp-route-pendingOnly="true">
+                    Pending Users
+                </a>
                 <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="AdminUsers">
                     Clear
                 </a>
             </div>
         </div>
     </form>
+
+    @if (Model.PendingOnly)
+    {
+        <div class="recommendation-note">
+            <h3>Pending user approval</h3>
+            <p>These users confirmed their email but still need an Admin or Manager to assign an operational role and activate access.</p>
+        </div>
+    }
 </section>
 
 <partial name="_UserListPartial" model="Model" />

@@ -6,6 +6,7 @@ public static class ApplicationRoleExtensions
     {
         return role switch
         {
+            ApplicationRole.Pending => nameof(ApplicationRole.Pending),
             ApplicationRole.Admin => nameof(ApplicationRole.Admin),
             ApplicationRole.Manager => nameof(ApplicationRole.Manager),
             ApplicationRole.PizzaMaker => nameof(ApplicationRole.PizzaMaker),
@@ -20,6 +21,7 @@ public static class ApplicationRoleExtensions
 
         return normalized.ToLowerInvariant() switch
         {
+            "pending" => nameof(ApplicationRole.Pending),
             "admin" => nameof(ApplicationRole.Admin),
             "manager" => nameof(ApplicationRole.Manager),
             "pizzamaker" or "pizza-maker" or "pizza_maker" or "pizza maker" => nameof(ApplicationRole.PizzaMaker),
@@ -37,6 +39,7 @@ public static class ApplicationRoleExtensions
     {
         return
         [
+            nameof(ApplicationRole.Pending),
             nameof(ApplicationRole.Admin),
             nameof(ApplicationRole.Manager),
             nameof(ApplicationRole.PizzaMaker),

@@ -9,7 +9,20 @@ public interface IPrepTaskService
         CreatePrepTaskFromRecommendationRequest request,
         CancellationToken cancellationToken = default);
 
+    Task<SavePrepTaskResponse> CreateManualAsync(
+        SavePrepTaskRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<SavePrepTaskResponse> UpdateManualAsync(
+        Guid prepTaskId,
+        SavePrepTaskRequest request,
+        CancellationToken cancellationToken = default);
+
     Task<CompletePrepTaskResponse> CompleteAsync(
         CompletePrepTaskRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task DeleteAsync(
+        Guid prepTaskId,
         CancellationToken cancellationToken = default);
 }

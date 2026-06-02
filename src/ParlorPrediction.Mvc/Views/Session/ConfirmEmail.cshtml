@@ -1,0 +1,22 @@
+@model ParlorPrediction.Mvc.Models.Session.ConfirmEmailStatusViewModel
+@{
+    ViewData["Title"] = "Confirm Email";
+}
+
+<section class="auth-shell">
+    <div class="auth-card">
+        <div class="section-heading">
+            <span class="eyebrow">Parlor Prep Access</span>
+            <h1>@Model.Title</h1>
+            <p>@Model.Message</p>
+        </div>
+
+        <div class="d-grid gap-2">
+            <a class="btn btn-primary btn-lg" asp-action="Login" asp-controller="Session">
+                <i class="fa-solid fa-arrow-right-to-bracket me-2"></i>
+                Return to Sign In
+            </a>
+            <a class="btn btn-link" asp-action="Register" asp-controller="Session">Register another account</a>
+        </div>
+    </div>
+</section>
