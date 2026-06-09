@@ -1,19 +1,12 @@
 @model DoughKitchenSheetPageViewModel
 @{
     ViewData["Title"] = "Kitchen Sheet";
+    ViewData["DoughNav"] = "dough";
     var printedAt = DateTime.Now;
     var canReviewOlderDough = User.IsInRole("Admin") || User.IsInRole("Manager");
     var recommendation = Model.Recommendation;
     var productionPlanning = Model.ProductionPlanning;
     var upcomingNeeds = productionPlanning?.UpcomingNeeds ?? Array.Empty<DoughNeedByDateViewModel>();
-}
-
-@section Styles {
-    <link rel="stylesheet" href="~/css/dough-quality.css" asp-append-version="true" />
-}
-
-@section Scripts {
-    <script src="~/js/dough-quality.js" asp-append-version="true"></script>
 }
 
 <div class="dq-page dq-page--kitchen-sheet">
@@ -173,7 +166,7 @@
         <section class="content-card content-card--padded dq-sheet-priority">
             <div>
                 <span class="dq-guidance-banner__eyebrow">Use this first</span>
-                <h2>@Model.MustUseNextDayBalls balls are marked Must Use Next Day.</h2>
+                <h2>@Model.MustUseNextDayBalls balls must be used first.</h2>
                 <p>Use this first. Once this dough is spent, move to the rest of the plan.</p>
             </div>
         </section>
@@ -377,11 +370,11 @@
                             </div>
                             <div class="dq-stat-box">
                                 <span class="dq-stat-box__label">Need</span>
-                                <span class="dq-stat-box__value">@task.QuantityRecommended balls</span>
+                                <span class="dq-stat-box__value">@task.RecommendedQuantityText</span>
                             </div>
                             <div class="dq-stat-box">
                                 <span class="dq-stat-box__label">Done</span>
-                                <span class="dq-stat-box__value">@task.QuantityCompleted balls</span>
+                                <span class="dq-stat-box__value">@task.CompletedQuantityText</span>
                             </div>
                         </div>
 

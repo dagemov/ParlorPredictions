@@ -8,21 +8,63 @@ public sealed class WeeklyGoalProgressViewModel
 
     public DateOnly WeekEndDate { get; set; }
 
-    public int CurrentAvailableBalls { get; set; }
+    public bool HasClosingCarryover { get; set; }
+
+    public DateOnly? CarryoverSourceWeekStartDate { get; set; }
+
+    public DateOnly? CarryoverSourceWeekEndDate { get; set; }
+
+    public int CarryoverReadyBalls { get; set; }
+
+    public int CarryoverAttentionBalls { get; set; }
+
+    public int CarryoverAvailableBalls { get; set; }
+
+    public int CarryoverMixedButNotBalledLoads { get; set; }
+
+    public int CarryoverMixedButNotBalledPotentialBalls { get; set; }
+
+    public int PreviousWeekProducedBalls { get; set; }
+
+    public int PreviousWeekLostBalls { get; set; }
+
+    public string? CarryoverClosingNotes { get; set; }
 
     public int DoughNeededBalls { get; set; }
 
-    public int DoughFinishedBalls { get; set; }
+    public int ReadyNowBalls { get; set; }
 
-    public int DoughStillMissingBalls { get; set; }
+    public int StillFermentingBalls { get; set; }
+
+    public int MixedButNotBalledBalls { get; set; }
+
+    public int FinishedThisWeekBalls { get; set; }
+
+    public int PreviousWeekFinishedBalls { get; set; }
+
+    public int DoughStillMissingThisWeekBalls { get; set; }
 
     public int DoughNeededLoads => ToLoads(DoughNeededBalls);
 
-    public int DoughFinishedLoads => ToLoads(DoughFinishedBalls);
+    public int ReadyNowLoads => ToLoads(ReadyNowBalls);
 
-    public int DoughStillMissingLoads => ToLoads(DoughStillMissingBalls);
+    public int StillFermentingLoads => ToLoads(StillFermentingBalls);
 
-    public int CurrentAvailableLoads => ToLoads(CurrentAvailableBalls);
+    public int MixedButNotBalledLoads => ToLoads(MixedButNotBalledBalls);
+
+    public int FinishedThisWeekLoads => ToLoads(FinishedThisWeekBalls);
+
+    public int PreviousWeekFinishedLoads => ToLoads(PreviousWeekFinishedBalls);
+
+    public int DoughStillMissingThisWeekLoads => ToLoads(DoughStillMissingThisWeekBalls);
+
+    public int CarryoverAvailableLoads => ToLoads(CarryoverAvailableBalls);
+
+    public int CarryoverMixedButNotBalledPotentialLoads => ToLoads(CarryoverMixedButNotBalledPotentialBalls);
+
+    public int PreviousWeekProducedLoads => ToLoads(PreviousWeekProducedBalls);
+
+    public int PreviousWeekLostLoads => ToLoads(PreviousWeekLostBalls);
 
     private static int ToLoads(int balls)
     {

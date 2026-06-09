@@ -1,0 +1,136 @@
+@model WeeklyDoughClosingFormPageViewModel
+@{
+    ViewData["Title"] = Model.Title;
+    ViewData["DoughNav"] = "closing";
+    var statusType = TempData["WeeklyClosingStatusType"] as string;
+    var statusMessage = TempData["WeeklyClosingStatusMessage"] as string;
+}
+
+<section class="page-hero page-hero--compact">
+    <div>
+        <span class="eyebrow">Dough Recorrido</span>
+        <h1>@Model.Title</h1>
+        <p class="page-copy">@Model.Intro</p>
+    </div>
+
+    <div class="hero-actions">
+        <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="WeeklyClosing">
+            <i class="fa-solid fa-arrow-left me-2"></i>
+            Back To Weekly Closing
+        </a>
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(statusMessage))
+{
+    <div class="alert @(string.Equals(statusType, "success", StringComparison.OrdinalIgnoreCase) ? "alert-success" : "alert-danger") mt-4" role="alert">
+        @statusMessage
+    </div>
+}
+
+<section class="content-card content-card--padded mt-4">
+    <div class="section-heading">
+        <span class="eyebrow">Closing Form</span>
+        <h2>Record the real week-end dough picture</h2>
+        <p>Use real kitchen numbers only. Ready and attention balls carry into next week as available. Mixed loads carry into next week as potential balls only.</p>
+    </div>
+
+    <form asp-action="@(Model.Form.IsEdit ? "Edit" : "Create")"
+          asp-controller="WeeklyClosing"
+          asp-route-id="@(Model.Form.WeeklyDoughClosingId)"
+          method="post"
+          class="row g-4">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="col-md-4">
+            <label asp-for="Form.WeekStartDate" class="form-label"></label>
+            <input asp-for="Form.WeekStartDate" type="date" class="form-control" />
+            <span asp-validation-for="Form.WeekStartDate" class="text-danger"></span>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Week end</label>
+            <input type="text" class="form-control" value="@(Model.Form.WeekEndDate == default ? string.Empty : Model.Form.WeekEndDate.ToString("yyyy-MM-dd"))" readonly />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Operational note</label>
+            <input type="text" class="form-control" value="Tuesday through Sunday" readonly />
+        </div>
+
+        <div class="col-md-3">
+            <label asp-for="Form.NeededBalls" class="form-label"></label>
+            <input asp-for="Form.NeededBalls" class="form-control" />
+            <span asp-validation-for="Form.NeededBalls" class="text-danger"></span>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Form.ProducedBalls" class="form-label"></label>
+            <input asp-for="Form.ProducedBalls" class="form-control" />
+            <span asp-validation-for="Form.ProducedBalls" class="text-danger"></span>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Form.UsedBalls" class="form-label"></label>
+            <input asp-for="Form.UsedBalls" class="form-control" />
+            <span asp-validation-for="Form.UsedBalls" class="text-danger"></span>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Form.LostBalls" class="form-label"></label>
+            <input asp-for="Form.LostBalls" class="form-control" />
+            <span asp-validation-for="Form.LostBalls" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label asp-for="Form.LeftoverReadyBalls" class="form-label"></label>
+            <input asp-for="Form.LeftoverReadyBalls" class="form-control" />
+            <span asp-validation-for="Form.LeftoverReadyBalls" class="text-danger"></span>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Form.LeftoverAttentionBalls" class="form-label"></label>
+            <input asp-for="Form.LeftoverAttentionBalls" class="form-control" />
+            <span asp-validation-for="Form.LeftoverAttentionBalls" class="text-danger"></span>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Form.LeftoverMixedLoads" class="form-label"></label>
+            <input asp-for="Form.LeftoverMixedLoads" class="form-control" />
+            <span asp-validation-for="Form.LeftoverMixedLoads" class="text-danger"></span>
+        </div>
+
+        <div class="col-12">
+            <label asp-for="Form.Notes" class="form-label"></label>
+            <textarea asp-for="Form.Notes" class="form-control" rows="4" placeholder="Optional note about carryover, special dough, or kitchen context."></textarea>
+            <span asp-validation-for="Form.Notes" class="text-danger"></span>
+        </div>
+
+        @if (Model.Form.IsEdit)
+        {
+            <div class="col-12">
+                <label asp-for="Form.CorrectionNote" class="form-label"></label>
+                <textarea asp-for="Form.CorrectionNote" class="form-control" rows="3" placeholder="Explain what changed and why this closing was corrected."></textarea>
+                <span asp-validation-for="Form.CorrectionNote" class="text-danger"></span>
+            </div>
+        }
+
+        <div class="col-12">
+            <div class="recommendation-note">
+                <h3>What carries into the next week</h3>
+                <p>
+                    `Leftover Ready Balls` + `Leftover Attention Balls` become carryover available.
+                    `Leftover Mixed Loads` stay separate as Mixed But Not Balled and do not count as available until Ball Dough is completed.
+                </p>
+            </div>
+        </div>
+
+        <div class="col-12 d-flex flex-wrap gap-3">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk me-2"></i>
+                @(Model.Form.IsEdit ? "Save Correction" : "Save Weekly Closing")
+            </button>
+            <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="WeeklyClosing">
+                Cancel
+            </a>
+        </div>
+    </form>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -19,4 +19,14 @@ public static partial class DoughQualityDisplayText
             .Replace("Fifo", "FIFO", StringComparison.OrdinalIgnoreCase)
             .Trim();
     }
+
+    public static string FormatKitchenPriority(string? value)
+    {
+        if (string.Equals(value?.Trim(), "MustUseNextDay", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Use First";
+        }
+
+        return Format(value);
+    }
 }

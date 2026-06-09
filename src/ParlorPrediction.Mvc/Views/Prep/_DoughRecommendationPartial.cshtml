@@ -1,195 +1,192 @@
 @model DoughRecommendationViewModel?
+@{
+    var page = ViewData["DoughPrepPage"] as DoughPrepPageViewModel;
+    var qualitySummary = page?.QualitySummary ?? new ParlorPrediction.Mvc.Models.DoughQuality.DoughQualitySummaryViewModel();
+    var attentionItems = page?.AttentionItems ?? Array.Empty<DoughKitchenAttentionItemViewModel>();
+    var mustUseItems = attentionItems.Where(item => item.IsMustUsePriority).ToArray();
+    var totalMustUseBalls = mustUseItems.Sum(item => item.QuantityBalls);
+}
 
-<section class="content-card content-card--padded dq-recommendation-card">
-    <div class="section-heading">
-        <span class="eyebrow">Daily Dough Snapshot</span>
-        <h2>Dough guidance for the selected day</h2>
-        @if (Model is null)
-        {
-            <p class="dq-section-copy">No dough guidance is loaded for this date yet.</p>
-        }
-        else if (Model.IsPersisted)
-        {
-            <p class="dq-section-copy">This saved dough snapshot is ready for the kitchen team to review, print later, or turn into a prep task when the manager is ready.</p>
-        }
-        else
-        {
-            <p class="dq-section-copy">This dough guidance is only in memory right now. Save it if you want to keep a record for the team.</p>
-        }
-    </div>
-
-    @if (Model is null)
+<section class="space-y-6">
+    @if (mustUseItems.Length > 0)
     {
-        <div class="empty-state">
-            <i class="fa-regular fa-lightbulb"></i>
-            <span>Managers can calculate dough guidance from the controls above.</span>
-        </div>
-    }
-    else
-    {
-        <div class="dq-pill-row">
-            <span class="status-pill @(Model.IsPersisted ? "status-pill--success" : "status-pill--info")">
-                @(Model.IsPersisted ? "Saved For The Team" : "Just Calculated")
-            </span>
-            <span class="status-pill @(Model.ShouldMakeDough ? "status-pill--warning" : "status-pill--neutral")">
-                @(Model.ShouldMakeDough ? "Mix Dough Today" : "No New Mixing Needed")
-            </span>
-            <span class="status-pill @(Model.ShouldBallDough ? "status-pill--warning" : "status-pill--neutral")">
-                @(Model.ShouldBallDough ? "Ball Ready Dough" : "No Extra Balling Right Now")
-            </span>
-            @if (Model.UsesShortFermentationException)
-            {
-                <span class="status-pill status-pill--info">Summer Event Timing In Play</span>
-            }
-        </div>
-
-        <div class="dq-summary-grid">
-            <article class="dq-summary-card dq-summary-card--need">
-                <div>
-                    <span class="dq-summary-card__label">Need Today</span>
-                    <p class="dq-summary-card__helper">What service needs today</p>
-                </div>
-                <div class="dq-summary-card__value-row">
-                    <span class="dq-summary-card__value">@Model.RequiredBalls</span>
-                    <span class="dq-summary-card__unit">balls</span>
-                </div>
-                <div class="dq-summary-card__bar">
-                    <span></span>
-                </div>
-            </article>
-            <article class="dq-summary-card dq-summary-card--available">
-                <div>
-                    <span class="dq-summary-card__label">Current Dough Available</span>
-                    <p class="dq-summary-card__helper">Real dough counted on or before @Model.RecommendationDate.ToString("MMM d")</p>
-                </div>
-                <div class="dq-summary-card__value-row">
-                    <span class="dq-summary-card__value">@Model.AvailableBalls</span>
-                    <span class="dq-summary-card__unit">balls</span>
-                </div>
-                <div class="dq-summary-card__bar">
-                    <span></span>
-                </div>
-            </article>
-            <article class="dq-summary-card dq-summary-card--completed">
-                <div>
-                    <span class="dq-summary-card__label">Dough Already Done</span>
-                    <p class="dq-summary-card__helper">Finished through dough tasks for this day</p>
-                </div>
-                <div class="dq-summary-card__value-row">
-                    <span class="dq-summary-card__value">@Model.CompletedBalls</span>
-                    <span class="dq-summary-card__unit">balls</span>
-                </div>
-                <div class="dq-summary-card__bar">
-                    <span></span>
-                </div>
-            </article>
-            <article class="dq-summary-card dq-summary-card--missing">
-                <div>
-                    <span class="dq-summary-card__label">Need To Make</span>
-                    <p class="dq-summary-card__helper">Still missing for today</p>
-                </div>
-                <div class="dq-summary-card__value-row">
-                    <span class="dq-summary-card__value">@Model.MissingBalls</span>
-                    <span class="dq-summary-card__unit">balls</span>
-                </div>
-                <div class="dq-summary-card__bar">
-                    <span></span>
-                </div>
-            </article>
-        </div>
-
-        @if (Model.ShouldBallDough || Model.UsesShortFermentationException)
-        {
-            <div class="dq-guidance-banner">
-                <span class="dq-guidance-banner__eyebrow">Operational attention</span>
-                <h3>
-                    @if (Model.ShouldBallDough)
-                    {
-                        @:Ball ready dough today
-                    }
-                    else
-                    {
-                        @:Short-timing event window in play
-                    }
-                </h3>
-                <p>
-                    @if (Model.ShouldBallDough)
-                    {
-                        @:Some dough is already mixed and should be balled now so the kitchen stays ahead.
-                    }
-                    else
-                    {
-                        @:The guidance includes shorter fermentation timing because of event timing and seasonal heat conditions.
-                    }
+        <div class="bg-secondary-container/20 border-l-8 border-secondary-container p-6 rounded-r-xl flex items-start gap-4">
+            <span class="material-symbols-outlined text-secondary-container text-4xl">warning</span>
+            <div>
+                <h3 class="font-headline-md text-headline-md text-on-secondary-container leading-tight">Use First</h3>
+                <p class="text-on-secondary-container font-body-lg text-body-lg mt-1 opacity-90">
+                    @totalMustUseBalls dough balls are marked Must Use Next Day. Use this first.
                 </p>
+                <p class="text-sm text-on-secondary-container/80 mt-2">@mustUseItems[0].Title</p>
             </div>
-        }
-
-        <div class="dq-manager-banner">
-            <span class="dq-manager-banner__eyebrow">System guidance</span>
-            <h3>Why the system is saying this</h3>
-            <p>@Model.Reason</p>
-            @if (Model.SavedAtUtc.HasValue)
-            {
-                <small>Saved @Model.SavedAtUtc.Value.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</small>
-            }
         </div>
-
-        <div class="recommendation-note mt-3">
-            <h3>Recommended Action Plan</h3>
-            <ul class="info-list mb-0">
-                @foreach (var step in Model.ActionPlanSteps)
-                {
-                    <li>@step</li>
-                }
-            </ul>
-        </div>
-
-        <div class="dq-action-stack">
-            @if (Model.CanSaveRecommendation)
-            {
-                <form asp-action="SaveDoughRecommendation"
-                      asp-controller="Prep"
-                      method="post"
-                      hx-post="@Url.Action("SaveDoughRecommendation", "Prep")"
-                      hx-target="#dough-prep-workspace"
-                      hx-swap="outerHTML">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="targetDate" value="@Model.RecommendationDate.ToString("yyyy-MM-dd")" />
-                    <input type="hidden" name="historicalWeeksToUse" value="@Model.HistoricalWeeksToUse" />
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fa-regular fa-floppy-disk me-2"></i>
-                        Save This Dough Guidance
-                    </button>
-                </form>
-            }
-
-            @if (Model.CanCreateTask && Model.RecommendationId.HasValue)
-            {
-                <form asp-action="CreateDoughTask"
-                      asp-controller="Prep"
-                      method="post"
-                      hx-post="@Url.Action("CreateDoughTask", "Prep")"
-                      hx-target="#dough-prep-workspace"
-                      hx-swap="outerHTML">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="recommendationId" value="@Model.RecommendationId.Value" />
-                    <input type="hidden" name="targetDate" value="@Model.RecommendationDate.ToString("yyyy-MM-dd")" />
-                    <input type="hidden" name="historicalWeeksToUse" value="@Model.HistoricalWeeksToUse" />
-                    <button type="submit" class="btn btn-dark">
-                        <i class="fa-solid fa-list-check me-2"></i>
-                        Turn Into Dough Task
-                    </button>
-                </form>
-            }
-        </div>
-
-        @if (Model.TaskAlreadyExists)
-        {
-            <p class="inline-hint dq-inline-note mt-3 mb-0">
-                <i class="fa-solid fa-circle-info me-2"></i>
-                A dough task already exists for this saved guidance.
-            </p>
-        }
     }
+
+    <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-gutter">
+        <article class="bg-white border border-outline-variant rounded-xl p-6 flex flex-col justify-between min-h-[220px]">
+            <div>
+                <span class="font-label-caps text-label-caps text-on-surface-variant">Need Today</span>
+                <p class="text-xs text-on-surface-variant/70 mt-1">What service needs today</p>
+            </div>
+            <div class="my-4">
+                <span class="font-status-hero text-status-hero text-primary">@(Model?.RequiredBalls ?? 0)</span>
+                <span class="font-headline-md text-headline-md text-primary/50 ml-2">balls</span>
+            </div>
+            <div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+                <div class="h-full bg-primary w-full"></div>
+            </div>
+        </article>
+
+        <article class="bg-white border border-outline-variant rounded-xl p-6 flex flex-col justify-between min-h-[220px]">
+            <div>
+                <span class="font-label-caps text-label-caps text-on-surface-variant">Good Dough</span>
+                <p class="text-xs text-on-surface-variant/70 mt-1">Ready and safe to use</p>
+            </div>
+            <div class="my-4">
+                <span class="font-status-hero text-status-hero text-tertiary-container">@qualitySummary.GoodBalls</span>
+                <span class="font-headline-md text-headline-md text-tertiary-container/50 ml-2">balls</span>
+            </div>
+            <div class="h-2 w-full bg-tertiary-fixed rounded-full overflow-hidden">
+                <div class="h-full bg-on-tertiary-container w-full"></div>
+            </div>
+        </article>
+
+        <article class="bg-white border border-outline-variant rounded-xl p-6 flex flex-col justify-between min-h-[220px] ring-2 ring-error/10">
+            <div>
+                <span class="font-label-caps text-label-caps text-error">Attention Dough</span>
+                <p class="text-xs text-on-surface-variant/70 mt-1">Still counts, but review it.</p>
+            </div>
+            <div class="my-4">
+                <span class="font-status-hero text-status-hero text-error">@qualitySummary.AttentionBalls</span>
+                <span class="font-headline-md text-headline-md text-error/50 ml-2">balls</span>
+            </div>
+            <div class="h-2 w-full bg-error-container rounded-full overflow-hidden">
+                <div class="h-full bg-error w-full"></div>
+            </div>
+        </article>
+
+        <article class="bg-white border border-outline-variant rounded-xl p-6 flex flex-col justify-between min-h-[220px]">
+            <div>
+                <span class="font-label-caps text-label-caps text-on-secondary-container">Need To Make</span>
+                <p class="text-xs text-on-surface-variant/70 mt-1">Still missing for today</p>
+            </div>
+            <div class="my-4">
+                <span class="font-status-hero text-status-hero text-secondary-container">@(Model?.MissingBalls ?? 0)</span>
+                <span class="font-headline-md text-headline-md text-secondary-container/50 ml-2">balls</span>
+            </div>
+            <div class="h-2 w-full bg-secondary-fixed rounded-full overflow-hidden">
+                <div class="h-full bg-secondary-container w-full"></div>
+            </div>
+        </article>
+    </section>
+
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-gutter">
+        <section class="xl:col-span-2 bg-primary-container rounded-2xl p-8 text-white overflow-hidden relative">
+            <div class="relative z-10">
+                <p class="font-label-caps text-label-caps text-white/70 mb-2">System Guidance</p>
+                @if (Model is null)
+                {
+                    <h3 class="font-headline-md text-headline-md mb-3">No dough snapshot loaded yet</h3>
+                    <p class="font-body-lg text-body-lg text-white/90">Load a date or calculate dough guidance to show the kitchen what to mix, what to ball, and what still needs attention.</p>
+                }
+                else
+                {
+                    <div class="flex flex-wrap gap-3 mb-4">
+                        <span class="inline-flex items-center rounded-full bg-white/10 px-4 py-2 font-label-caps text-label-caps">
+                            @(Model.IsPersisted ? "Saved snapshot" : "Fresh calculation")
+                        </span>
+                        <span class="inline-flex items-center rounded-full bg-white/10 px-4 py-2 font-label-caps text-label-caps">
+                            @(Model.ShouldMakeDough ? "Mix dough today" : "No new mixing needed")
+                        </span>
+                        <span class="inline-flex items-center rounded-full bg-white/10 px-4 py-2 font-label-caps text-label-caps">
+                            @(Model.ShouldBallDough ? "Ball ready dough now" : "No extra balling now")
+                        </span>
+                    </div>
+                    <h3 class="font-headline-md text-headline-md mb-3">Manager Recommendation</h3>
+                    <p class="font-body-lg text-body-lg text-white/90">@Model.Reason</p>
+
+                    @if (Model.ActionPlanSteps.Count > 0)
+                    {
+                        <ul class="mt-5 space-y-3 text-white/90">
+                            @foreach (var step in Model.ActionPlanSteps)
+                            {
+                                <li class="flex items-start gap-3">
+                                    <span class="material-symbols-outlined text-white/80">subdirectory_arrow_right</span>
+                                    <span>@step</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                }
+            </div>
+            <div class="absolute top-0 right-0 w-48 h-48 rounded-full bg-white/5 blur-2xl"></div>
+        </section>
+
+        <section class="bg-white border border-outline-variant rounded-2xl p-6 flex flex-col gap-5">
+            <div>
+                <p class="font-label-caps text-label-caps text-on-surface-variant mb-2">Action</p>
+                <h3 class="font-headline-md text-headline-md text-on-surface">Choose the next kitchen move</h3>
+                <p class="text-on-surface-variant mt-2">Keep the action clear: save guidance, turn it into a dough load task, or go back and calculate again.</p>
+            </div>
+
+            @if (Model is null)
+            {
+                <div class="rounded-xl border border-dashed border-outline-variant bg-surface-container-low p-5 text-on-surface-variant">
+                    Managers can calculate dough guidance from the controls above.
+                </div>
+            }
+            else
+            {
+                <div class="space-y-3">
+                    @if (Model.CanSaveRecommendation)
+                    {
+                        <form asp-action="SaveDoughRecommendation"
+                              asp-controller="Prep"
+                              method="post"
+                              hx-post="@Url.Action("SaveDoughRecommendation", "Prep")"
+                              hx-target="#dough-prep-workspace"
+                              hx-swap="outerHTML">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="targetDate" value="@Model.RecommendationDate.ToString("yyyy-MM-dd")" />
+                            <input type="hidden" name="historicalWeeksToUse" value="@Model.HistoricalWeeksToUse" />
+                            <button type="submit" class="w-full h-touch-target-min rounded-xl bg-primary text-on-primary font-headline-md text-headline-md hover:opacity-90 transition-opacity">
+                                Save This Dough Guidance
+                            </button>
+                        </form>
+                    }
+
+                    @if (Model.CanCreateTask && Model.RecommendationId.HasValue)
+                    {
+                        <form asp-action="CreateDoughTask"
+                              asp-controller="Prep"
+                              method="post"
+                              hx-post="@Url.Action("CreateDoughTask", "Prep")"
+                              hx-target="#dough-prep-workspace"
+                              hx-swap="outerHTML">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="recommendationId" value="@Model.RecommendationId.Value" />
+                            <input type="hidden" name="targetDate" value="@Model.RecommendationDate.ToString("yyyy-MM-dd")" />
+                            <input type="hidden" name="historicalWeeksToUse" value="@Model.HistoricalWeeksToUse" />
+                            <button type="submit" class="w-full h-touch-target-min rounded-xl border-2 border-primary text-primary font-headline-md text-headline-md hover:bg-primary-fixed transition-colors">
+                                Turn Into Dough Load Task
+                            </button>
+                        </form>
+                    }
+
+                    @if (Model.TaskAlreadyExists)
+                    {
+                        <div class="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">
+                            A dough task already exists for this saved guidance.
+                        </div>
+                    }
+
+                    <div class="rounded-xl bg-surface-container-low p-4">
+                        <div class="font-label-caps text-label-caps text-on-surface-variant mb-1">Inventory Reality</div>
+                        <div class="text-on-surface">Available in snapshot: @Model.AvailableBalls balls</div>
+                        <div class="text-on-surface">Already counted from completed ball work: @Model.CompletedBalls balls</div>
+                    </div>
+                </div>
+            }
+        </section>
+    </div>
 </section>

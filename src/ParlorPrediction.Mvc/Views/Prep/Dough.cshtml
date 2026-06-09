@@ -1,75 +1,44 @@
 @model DoughPrepPageViewModel
 @{
     ViewData["Title"] = "Dough Prep";
+    ViewData["DoughNav"] = "dough";
 }
 
-@section Styles {
-    <link rel="stylesheet" href="~/css/dough-quality.css" asp-append-version="true" />
-}
-
-<div class="dq-page dq-page--dough-home">
-    <section class="page-hero page-hero--compact dq-hero">
+<section class="space-y-gutter">
+    <section class="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-            <span class="eyebrow">Kitchen Decision Board</span>
-            <h1>Dough for Today</h1>
-            <p class="page-copy dq-hero-copy">Start with one clear daily dough picture: what service needs, what the kitchen already has, what still needs action, and which dough tasks the team should touch next.</p>
+            <p class="text-on-secondary-fixed-variant font-label-caps text-label-caps mb-1">Operational Overview</p>
+            <h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Dough for Today</h1>
+            <p class="text-on-surface-variant font-body-lg mt-2 max-w-4xl">Start with one clear daily dough picture: what service needs, what the kitchen already has, what still needs action, and which dough tasks the team should touch next.</p>
         </div>
-        <div class="hero-actions dq-action-bar">
-            <a class="btn btn-primary" asp-action="DoughWeek" asp-controller="Prep" asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")" asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse">
-                <i class="fa-regular fa-calendar-days me-2"></i>
-                View Weekly Dough Calendar
-            </a>
-            <a class="btn btn-outline-secondary"
-               asp-action="KitchenSheet"
+        <div class="flex flex-wrap gap-3">
+            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+            {
+                <a asp-action="Index"
+                   asp-controller="WeeklyClosing"
+                   asp-route-referenceDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
+                   class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border-2 border-outline-variant text-on-surface font-bold hover:bg-surface-container transition-colors no-underline">
+                    <span class="material-symbols-outlined">assignment</span>
+                    Weekly Closing
+                </a>
+            }
+            <a asp-action="KitchenSheet"
                asp-controller="Prep"
                asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
-               asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse">
-                <i class="fa-solid fa-print me-2"></i>
+               asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse"
+               class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border-2 border-outline-variant text-on-surface font-bold hover:bg-surface-container transition-colors no-underline">
+                <span class="material-symbols-outlined">print</span>
                 Print Kitchen Sheet
             </a>
-            <a class="btn btn-outline-secondary"
-               asp-action="Reball"
-               asp-controller="DoughQuality"
-               asp-route-referenceDate="@Model.TargetDate.ToString("yyyy-MM-dd")">
-                <i class="fa-solid fa-rotate-right me-2"></i>
-                Reball Dough
-            </a>
-            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
-            {
-                <a class="btn btn-outline-secondary"
-                   asp-action="Review"
-                   asp-controller="DoughQuality"
-                   asp-route-referenceDate="@Model.TargetDate.ToString("yyyy-MM-dd")">
-                    <i class="fa-regular fa-flag me-2"></i>
-                    Review Older Dough
-                </a>
-                <a class="btn btn-outline-secondary"
-                   asp-action="Losses"
-                   asp-controller="DoughQuality">
-                    <i class="fa-solid fa-chart-column me-2"></i>
-                    View Dough Losses
-                </a>
-            }
-            <a class="btn btn-outline-secondary"
-               asp-action="Index"
+            <a asp-action="Index"
                asp-controller="PrepTasks"
-               asp-route-taskDate="@Model.TargetDate.ToString("yyyy-MM-dd")">
-                <i class="fa-solid fa-list-check me-2"></i>
+               asp-route-taskDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
+               class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl bg-primary text-on-primary font-bold hover:opacity-90 transition-opacity no-underline">
+                <span class="material-symbols-outlined">checklist</span>
                 Open Task Board
-            </a>
-            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
-            {
-                <a class="btn btn-outline-secondary" asp-action="Create" asp-controller="PrepRecommendations">
-                    <i class="fa-regular fa-note-sticky me-2"></i>
-                    Add Manager Note
-                </a>
-            }
-            <a class="btn btn-outline-secondary" asp-action="Help" asp-controller="Prep">
-                <i class="fa-regular fa-circle-question me-2"></i>
-                How Dough Prep Works
             </a>
         </div>
     </section>
 
     <partial name="_DoughPrepWorkspacePartial" model="Model" />
-</div>
+</section>

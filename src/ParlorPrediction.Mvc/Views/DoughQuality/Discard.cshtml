@@ -1,12 +1,9 @@
 @model DoughQualityDiscardPageViewModel
 @{
     ViewData["Title"] = "Discard Dough";
+    ViewData["DoughNav"] = "reviews";
     var statusType = TempData["DoughQualityStatusType"] as string;
     var statusMessage = TempData["DoughQualityStatusMessage"] as string;
-}
-
-@section Styles {
-    <link rel="stylesheet" href="~/css/dough-quality.css" asp-append-version="true" />
 }
 
 <div class="dq-page dq-page--review">

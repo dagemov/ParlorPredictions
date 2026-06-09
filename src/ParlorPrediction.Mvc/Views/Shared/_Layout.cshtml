@@ -1,3 +1,6 @@
+@{
+    var useDoughExperience = ViewData["UseDoughExperience"] is bool enabled && enabled;
+}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,11 +8,112 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Parlor Prediction</title>
     <script type="importmap"></script>
+    @if (useDoughExperience)
+    {
+        <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
+        <script>
+            tailwind.config = {
+                darkMode: "class",
+                theme: {
+                    extend: {
+                        colors: {
+                            tertiary: "#132600",
+                            "inverse-primary": "#adc7f7",
+                            "tertiary-fixed": "#bbf37c",
+                            "surface-dim": "#ddd9d6",
+                            surface: "#fdf9f6",
+                            secondary: "#904d00",
+                            "on-secondary-fixed-variant": "#6e3900",
+                            "tertiary-container": "#223d00",
+                            "on-tertiary-fixed": "#0f2000",
+                            "primary-container": "#1a365d",
+                            "inverse-surface": "#31302f",
+                            "surface-tint": "#455f88",
+                            "on-surface": "#1c1b1a",
+                            "secondary-container": "#fe932c",
+                            "on-background": "#1c1b1a",
+                            outline: "#74777f",
+                            "on-primary-fixed": "#001b3c",
+                            "on-error-container": "#93000a",
+                            "on-error": "#ffffff",
+                            "on-surface-variant": "#43474e",
+                            "on-secondary-container": "#663500",
+                            "inverse-on-surface": "#f4f0ed",
+                            "tertiary-fixed-dim": "#a0d663",
+                            "surface-container-low": "#f7f3f0",
+                            "error-container": "#ffdad6",
+                            "primary-fixed-dim": "#adc7f7",
+                            "on-tertiary-fixed-variant": "#2e4f00",
+                            primary: "#002045",
+                            background: "#fdf9f6",
+                            "on-secondary-fixed": "#2f1500",
+                            "surface-container": "#f1edea",
+                            "surface-container-highest": "#e5e2df",
+                            "on-primary-container": "#86a0cd",
+                            "on-tertiary": "#ffffff",
+                            "on-primary": "#ffffff",
+                            "surface-bright": "#fdf9f6",
+                            "surface-container-high": "#ebe7e4",
+                            "on-tertiary-container": "#7aad3f",
+                            "surface-variant": "#e5e2df",
+                            "primary-fixed": "#d6e3ff",
+                            "on-primary-fixed-variant": "#2d476f",
+                            "secondary-fixed": "#ffdcc3",
+                            "secondary-fixed-dim": "#ffb77d",
+                            "on-secondary": "#ffffff",
+                            error: "#ba1a1a",
+                            "outline-variant": "#c4c6cf",
+                            "surface-container-lowest": "#ffffff"
+                        },
+                        borderRadius: {
+                            DEFAULT: "0.25rem",
+                            lg: "0.5rem",
+                            xl: "0.75rem",
+                            full: "9999px"
+                        },
+                        spacing: {
+                            "container-padding": "32px",
+                            unit: "8px",
+                            "touch-target-min": "56px",
+                            gutter: "24px"
+                        },
+                        fontFamily: {
+                            "status-lg": ["Inter", "sans-serif"],
+                            "label-caps": ["Inter", "sans-serif"],
+                            "headline-lg": ["Inter", "sans-serif"],
+                            "status-hero": ["Inter", "sans-serif"],
+                            "body-lg": ["Inter", "sans-serif"],
+                            "headline-md": ["Inter", "sans-serif"]
+                        },
+                        fontSize: {
+                            "status-lg": ["48px", { lineHeight: "56px", letterSpacing: "-0.01em", fontWeight: "700" }],
+                            "label-caps": ["14px", { lineHeight: "20px", letterSpacing: "0.05em", fontWeight: "700" }],
+                            "headline-lg": ["32px", { lineHeight: "40px", fontWeight: "600" }],
+                            "status-hero": ["72px", { lineHeight: "80px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                            "body-lg": ["20px", { lineHeight: "28px", fontWeight: "400" }],
+                            "headline-md": ["24px", { lineHeight: "32px", fontWeight: "600" }]
+                        }
+                    }
+                }
+            };
+        </script>
+        <style>
+            .material-symbols-outlined {
+                font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+                vertical-align: middle;
+            }
+        </style>
+    }
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/app-shell.css" asp-append-version="true" />
+    @if (useDoughExperience)
+    {
+        <link rel="stylesheet" href="~/css/dough-quality.css" asp-append-version="true" />
+    }
     <link rel="stylesheet" href="~/ParlorPrediction.Mvc.styles.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
@@ -23,6 +127,7 @@
             (User.IsInRole("Admin") || User.IsInRole("Manager"));
         var canSeeQuality = User.Identity?.IsAuthenticated == true &&
             (User.IsInRole("Admin") || User.IsInRole("Manager"));
+        var canSeeWeeklyClosing = canSeeQuality;
         var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
         var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
         var isSessionPage = string.Equals(currentController, "Session", StringComparison.OrdinalIgnoreCase);
@@ -36,6 +141,8 @@
                     ? "PizzaMaker"
                     : "Guest";
         var displayName = User.Identity?.Name ?? "Parlor User";
+        var brandController = canSeeDashboard ? "Dashboard" : canSeePrep ? "Prep" : "Home";
+        var brandAction = canSeeDashboard ? "Index" : canSeePrep ? "Dough" : "Index";
 
         string NavLinkClass(string controller, string? action = null)
         {
@@ -46,11 +153,16 @@
                 ? "pp-nav-link is-active"
                 : "pp-nav-link";
         }
+
+        var doughQualityNavClass = string.Equals(currentController, "DoughQuality", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(currentAction, "Losses", StringComparison.OrdinalIgnoreCase)
+            ? "pp-nav-link is-active"
+            : "pp-nav-link";
     }
 
     <div class="pp-shell">
         <header class="pp-topbar">
-            <a class="pp-topbar__brand" asp-controller="Home" asp-action="Index">
+            <a class="pp-topbar__brand" asp-controller="@brandController" asp-action="@brandAction">
                 <span class="pp-topbar__mark">PP</span>
                 <span>
                     <strong>Parlor Prediction</strong>
@@ -112,25 +224,14 @@
                 <aside class="pp-sidebar" aria-label="Primary">
                     <div class="pp-sidebar__section">
                         <span class="pp-sidebar__eyebrow">Navigation</span>
-                        <p class="pp-sidebar__copy">Use the same workflow shell across dashboard, users, and dough operations.</p>
+                        <p class="pp-sidebar__copy">Use one workflow shell across dashboard, dough planning, weekly closing, and quality review.</p>
                     </div>
                     <nav class="pp-sidebar__nav">
-                        <a class="@NavLinkClass("Home", "Index")" asp-controller="Home" asp-action="Index">
-                            <i class="fa-solid fa-house"></i>
-                            Home
-                        </a>
                         @if (canSeeDashboard)
                         {
                             <a class="@NavLinkClass("Dashboard", "Index")" asp-controller="Dashboard" asp-action="Index">
                                 <i class="fa-solid fa-chart-line"></i>
                                 Dashboard
-                            </a>
-                        }
-                        @if (canManageUsers)
-                        {
-                            <a class="@NavLinkClass("AdminUsers")" asp-controller="AdminUsers" asp-action="Index">
-                                <i class="fa-solid fa-users"></i>
-                                Users
                             </a>
                         }
                         @if (canSeePrep)
@@ -141,18 +242,35 @@
                             </a>
                             <a class="@NavLinkClass("PrepTasks")" asp-controller="PrepTasks" asp-action="Index">
                                 <i class="fa-solid fa-list-check"></i>
-                                Tasks
+                                Dough Tasks
                             </a>
                         }
                         @if (canSeeQuality)
                         {
-                            <a class="@NavLinkClass("DoughQuality", "Review")" asp-controller="DoughQuality" asp-action="Review">
+                            <a class="@doughQualityNavClass" asp-controller="DoughQuality" asp-action="Review">
                                 <i class="fa-solid fa-magnifying-glass-chart"></i>
-                                Dough Review
+                                Dough Quality
                             </a>
+                        }
+                        @if (canSeeWeeklyClosing)
+                        {
+                            <a class="@NavLinkClass("WeeklyClosing", "Index")" asp-controller="WeeklyClosing" asp-action="Index">
+                                <i class="fa-solid fa-clipboard-check"></i>
+                                Weekly Closing
+                            </a>
+                        }
+                        @if (canSeeQuality)
+                        {
                             <a class="@NavLinkClass("DoughQuality", "Losses")" asp-controller="DoughQuality" asp-action="Losses">
                                 <i class="fa-solid fa-chart-pie"></i>
-                                Loss Analytics
+                                Losses
+                            </a>
+                        }
+                        @if (canManageUsers)
+                        {
+                            <a class="@NavLinkClass("AdminUsers")" asp-controller="AdminUsers" asp-action="Index">
+                                <i class="fa-solid fa-users"></i>
+                                Users
                             </a>
                         }
                     </nav>
@@ -177,6 +295,10 @@
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    @if (useDoughExperience)
+    {
+        <script src="~/js/dough-quality.js" asp-append-version="true"></script>
+    }
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

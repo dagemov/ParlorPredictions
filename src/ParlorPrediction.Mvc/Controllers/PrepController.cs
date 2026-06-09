@@ -150,10 +150,24 @@ public sealed class PrepController : Controller
             HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse),
             WeekStartDate = calendar.WeekStartDate,
             WeekEndDate = calendar.WeekEndDate,
-            WeekAvailableBalls = calendar.WeekAvailableBalls,
+            HasClosingCarryover = calendar.HasClosingCarryover,
+            CarryoverSourceWeekStartDate = calendar.CarryoverSourceWeekStartDate,
+            CarryoverSourceWeekEndDate = calendar.CarryoverSourceWeekEndDate,
+            CarryoverReadyBalls = calendar.CarryoverReadyBalls,
+            CarryoverAttentionBalls = calendar.CarryoverAttentionBalls,
+            CarryoverAvailableBalls = calendar.CarryoverAvailableBalls,
+            CarryoverMixedButNotBalledLoads = calendar.CarryoverMixedButNotBalledLoads,
+            CarryoverMixedButNotBalledPotentialBalls = calendar.CarryoverMixedButNotBalledPotentialBalls,
+            PreviousWeekProducedBalls = calendar.PreviousWeekProducedBalls,
+            PreviousWeekLostBalls = calendar.PreviousWeekLostBalls,
+            CarryoverClosingNotes = calendar.CarryoverClosingNotes,
             WeekTotalNeededBalls = calendar.WeekTotalNeededBalls,
-            WeekCompletedBalls = calendar.WeekCompletedBalls,
-            WeekMissingBalls = calendar.WeekMissingBalls,
+            ReadyNowBalls = calendar.ReadyNowBalls,
+            StillFermentingBalls = calendar.StillFermentingBalls,
+            MixedButNotBalledBalls = calendar.MixedButNotBalledBalls,
+            FinishedThisWeekBalls = calendar.FinishedThisWeekBalls,
+            PreviousWeekFinishedBalls = calendar.PreviousWeekFinishedBalls,
+            StillMissingThisWeekBalls = calendar.StillMissingThisWeekBalls,
             UpcomingEventBalls = calendar.UpcomingEventBalls,
             Days = calendar.Days
                 .Select(day => new WeeklyDoughCalendarDayViewModel
@@ -350,21 +364,13 @@ public sealed class PrepController : Controller
 
         try
         {
-            if (!TryResolveCompletedBalls(model, out var completedBalls, out var validationMessage))
-            {
-                return await RenderErrorPageAsync(
-                    selectedDate,
-                    NormalizeHistoricalWeeks(model.HistoricalWeeksToUse),
-                    validationMessage,
-                    cancellationToken);
-            }
-
             var response = await _prepTaskService.CompleteAsync(
                 new CompletePrepTaskRequest
                 {
                     PrepTaskId = model.PrepTaskId,
                     CompletedByUserId = currentUserId,
-                    QuantityCompleted = completedBalls,
+                    QuantityUnit = model.CompletionType,
+                    QuantityValue = model.QuantityValue,
                     Notes = model.Notes
                 },
                 cancellationToken);
@@ -434,8 +440,10 @@ public sealed class PrepController : Controller
         {
             recommendation.HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse);
             recommendation.CompletedBalls = taskResponses
-                .Where(task => string.Equals(task.Status, nameof(PrepTaskStatus.Completed), StringComparison.OrdinalIgnoreCase))
-                .Sum(task => task.QuantityCompleted);
+                .Where(task =>
+                    string.Equals(task.Status, nameof(PrepTaskStatus.Completed), StringComparison.OrdinalIgnoreCase) &&
+                    task.CountsAsAvailableBallsWhenCompleted)
+                .Sum(task => task.QuantityCompletedBallsEquivalent);
             recommendation.MissingBalls = Math.Max(
                 recommendation.RequiredBalls - recommendation.AvailableBalls - recommendation.CompletedBalls,
                 0);
@@ -451,6 +459,20 @@ public sealed class PrepController : Controller
                 !taskAlreadyExists;
         }
 
+        var qualitySummary = new Models.DoughQuality.DoughQualitySummaryViewModel();
+        IReadOnlyList<DoughKitchenAttentionItemViewModel> attentionItems = Array.Empty<DoughKitchenAttentionItemViewModel>();
+
+        try
+        {
+            qualitySummary = await BuildDoughQualitySummaryAsync(cancellationToken);
+            attentionItems = await BuildKitchenAttentionItemsAsync(targetDate, cancellationToken);
+        }
+        catch (Exception exception) when (IsRecoverableDoughQualityException(exception))
+        {
+            qualitySummary = new Models.DoughQuality.DoughQualitySummaryViewModel();
+            attentionItems = Array.Empty<DoughKitchenAttentionItemViewModel>();
+        }
+
         return new DoughPrepPageViewModel
         {
             TargetDate = targetDate,
@@ -458,6 +480,8 @@ public sealed class PrepController : Controller
             Recommendation = recommendation,
             ProductionPlanning = MapProductionPlanning(productionPlanning),
             WeeklyGoal = MapWeeklyGoal(weeklyCalendar),
+            QualitySummary = qualitySummary,
+            AttentionItems = attentionItems,
             Tasks = taskViewModels,
             CanManageRecommendations = CanManageRecommendations()
         };
@@ -551,7 +575,7 @@ public sealed class PrepController : Controller
             items.Add(new DoughKitchenAttentionItemViewModel
             {
                 Title = $"Use first: dough from {record.SourceDate:ddd, MMM d}",
-                StatusText = "Must Use Next Day",
+                StatusText = Models.DoughQuality.DoughQualityDisplayText.FormatKitchenPriority(record.CurrentStatus.ToString()),
                 QuantityBalls = record.QuantityBalls,
                 Detail = "Use this first.",
                 SecondaryDetail = record.MustUseByDate.HasValue
@@ -643,8 +667,15 @@ public sealed class PrepController : Controller
             PrepStationName = task.PrepStationName,
             PrepStationCode = task.PrepStationCode,
             AssignedRole = task.AssignedRole,
+            TaskType = task.TaskType,
+            QuantityUnit = task.QuantityUnit,
             QuantityRecommended = task.QuantityRecommended,
             QuantityCompleted = task.QuantityCompleted,
+            QuantityRecommendedBallsEquivalent = task.QuantityRecommendedBallsEquivalent,
+            QuantityCompletedBallsEquivalent = task.QuantityCompletedBallsEquivalent,
+            CountsAsAvailableBallsWhenCompleted = task.CountsAsAvailableBallsWhenCompleted,
+            SourcePrepTaskId = task.SourcePrepTaskId,
+            SourceDoughBatchId = task.SourceDoughBatchId,
             Status = task.Status,
             Notes = task.Notes,
             CompletedByUserId = task.CompletedByUserId,
@@ -796,10 +827,24 @@ public sealed class PrepController : Controller
         {
             WeekStartDate = weeklyCalendar.WeekStartDate,
             WeekEndDate = weeklyCalendar.WeekEndDate,
-            CurrentAvailableBalls = weeklyCalendar.WeekAvailableBalls,
+            HasClosingCarryover = weeklyCalendar.HasClosingCarryover,
+            CarryoverSourceWeekStartDate = weeklyCalendar.CarryoverSourceWeekStartDate,
+            CarryoverSourceWeekEndDate = weeklyCalendar.CarryoverSourceWeekEndDate,
+            CarryoverReadyBalls = weeklyCalendar.CarryoverReadyBalls,
+            CarryoverAttentionBalls = weeklyCalendar.CarryoverAttentionBalls,
+            CarryoverAvailableBalls = weeklyCalendar.CarryoverAvailableBalls,
+            CarryoverMixedButNotBalledLoads = weeklyCalendar.CarryoverMixedButNotBalledLoads,
+            CarryoverMixedButNotBalledPotentialBalls = weeklyCalendar.CarryoverMixedButNotBalledPotentialBalls,
+            PreviousWeekProducedBalls = weeklyCalendar.PreviousWeekProducedBalls,
+            PreviousWeekLostBalls = weeklyCalendar.PreviousWeekLostBalls,
+            CarryoverClosingNotes = weeklyCalendar.CarryoverClosingNotes,
             DoughNeededBalls = weeklyCalendar.WeekTotalNeededBalls,
-            DoughFinishedBalls = weeklyCalendar.WeekCompletedBalls,
-            DoughStillMissingBalls = weeklyCalendar.WeekMissingBalls
+            ReadyNowBalls = weeklyCalendar.ReadyNowBalls,
+            StillFermentingBalls = weeklyCalendar.StillFermentingBalls,
+            MixedButNotBalledBalls = weeklyCalendar.MixedButNotBalledBalls,
+            FinishedThisWeekBalls = weeklyCalendar.FinishedThisWeekBalls,
+            PreviousWeekFinishedBalls = weeklyCalendar.PreviousWeekFinishedBalls,
+            DoughStillMissingThisWeekBalls = weeklyCalendar.StillMissingThisWeekBalls
         };
     }
 
@@ -864,18 +909,6 @@ public sealed class PrepController : Controller
         return false;
     }
 
-    private static bool TryResolveCompletedBalls(
-        CompletePrepTaskFormModel model,
-        out int completedBalls,
-        out string validationMessage)
-    {
-        return DoughQuantityInputConverter.TryConvertToBalls(
-            model.CompletionType,
-            model.QuantityValue,
-            out completedBalls,
-            out validationMessage);
-    }
-
     private static IReadOnlyList<string> BuildRecommendationActionPlan(
         int missingBalls,
         int recommendedCases,
@@ -894,21 +927,21 @@ public sealed class PrepController : Controller
         {
             var producedBalls = recommendedLoads * DoughRules.StandardBatchBalls;
             steps.Add(
-                $"Make {recommendedLoads} full dough batch{(recommendedLoads == 1 ? string.Empty : "es")} today. That gives the kitchen about {producedBalls} dough balls and covers the current shortage of {missingBalls}.");
+                $"Make {recommendedLoads} full dough load{(recommendedLoads == 1 ? string.Empty : "s")} today. That creates about {producedBalls} potential dough balls for tomorrow, but it does not count as available dough yet.");
 
             if (recommendedLoads == 1 && missingBalls < DoughRules.StandardBatchBalls)
             {
-                steps.Add("One full batch will leave extra dough that can roll into the next prep day if fermentation timing still works.");
+                steps.Add("One full load may leave extra dough that can roll into the next prep day if fermentation timing still works.");
             }
             else
             {
-                steps.Add($"Plan for about {recommendedCases} case{(recommendedCases == 1 ? string.Empty : "s")} of dough from that production run.");
+                steps.Add($"Plan for about {recommendedCases} case{(recommendedCases == 1 ? string.Empty : "s")} of dough across that production run.");
             }
         }
 
         if (shouldBallDough)
         {
-            steps.Add("Ball any dough that has already finished fermenting so the team can use it without delay.");
+            steps.Add("Ball any dough load that is already ready so those balls can count as available without delay.");
         }
 
         if (eventEstimatedBalls > 0)

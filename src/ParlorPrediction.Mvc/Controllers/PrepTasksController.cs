@@ -83,6 +83,7 @@ public sealed class PrepTasksController : Controller
                 PrepItemId = defaultPrepItem?.Id ?? Guid.Empty,
                 PrepStationId = defaultPrepItem?.PrepStationId ?? Guid.Empty,
                 AssignedRole = nameof(ApplicationRole.PizzaMaker),
+                TaskType = nameof(PrepTaskType.GenericDough),
                 QuantityUnit = nameof(Domain.Enums.DoughQuantityUnit.Balls)
             },
             cancellationToken);
@@ -97,11 +98,6 @@ public sealed class PrepTasksController : Controller
         PrepTaskFormViewModel model,
         CancellationToken cancellationToken = default)
     {
-        if (!TryResolveQuantityBalls(model.QuantityUnit, model.QuantityValue, out var quantityBalls, out var validationMessage))
-        {
-            ModelState.AddModelError(nameof(model.QuantityValue), validationMessage);
-        }
-
         if (!ModelState.IsValid)
         {
             return View("Form", await BuildFormViewModelAsync(model, cancellationToken));
@@ -116,7 +112,9 @@ public sealed class PrepTasksController : Controller
                     PrepItemId = model.PrepItemId,
                     PrepStationId = model.PrepStationId,
                     AssignedRole = model.AssignedRole,
-                    QuantityRecommended = quantityBalls,
+                    TaskType = model.TaskType,
+                    QuantityUnit = model.QuantityUnit,
+                    QuantityValue = model.QuantityValue,
                     Notes = model.Notes
                 },
                 cancellationToken);
@@ -150,7 +148,8 @@ public sealed class PrepTasksController : Controller
                 PrepItemId = task.PrepItemId,
                 PrepStationId = task.PrepStationId,
                 AssignedRole = task.AssignedRole,
-                QuantityUnit = nameof(Domain.Enums.DoughQuantityUnit.Balls),
+                TaskType = task.TaskType,
+                QuantityUnit = task.QuantityUnit,
                 QuantityValue = task.QuantityRecommended,
                 Notes = task.Notes
             },
@@ -170,11 +169,6 @@ public sealed class PrepTasksController : Controller
         model.Id = id;
         model.IsEditMode = true;
 
-        if (!TryResolveQuantityBalls(model.QuantityUnit, model.QuantityValue, out var quantityBalls, out var validationMessage))
-        {
-            ModelState.AddModelError(nameof(model.QuantityValue), validationMessage);
-        }
-
         if (!ModelState.IsValid)
         {
             return View("Form", await BuildFormViewModelAsync(model, cancellationToken));
@@ -190,7 +184,9 @@ public sealed class PrepTasksController : Controller
                     PrepItemId = model.PrepItemId,
                     PrepStationId = model.PrepStationId,
                     AssignedRole = model.AssignedRole,
-                    QuantityRecommended = quantityBalls,
+                    TaskType = model.TaskType,
+                    QuantityUnit = model.QuantityUnit,
+                    QuantityValue = model.QuantityValue,
                     Notes = model.Notes
                 },
                 cancellationToken);
@@ -211,12 +207,6 @@ public sealed class PrepTasksController : Controller
         CompletePrepTaskFormModel model,
         CancellationToken cancellationToken = default)
     {
-        if (!TryResolveQuantityBalls(model.CompletionType, model.QuantityValue, out var quantityBalls, out var validationMessage))
-        {
-            SetStatusMessage("danger", validationMessage);
-            return RedirectToAction(nameof(Index), new { taskDate = model.TargetDate.ToString("yyyy-MM-dd") });
-        }
-
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(currentUserId))
         {
@@ -244,7 +234,8 @@ public sealed class PrepTasksController : Controller
                 {
                     PrepTaskId = model.PrepTaskId,
                     CompletedByUserId = currentUserId,
-                    QuantityCompleted = quantityBalls,
+                    QuantityUnit = model.CompletionType,
+                    QuantityValue = model.QuantityValue,
                     Notes = model.Notes
                 },
                 cancellationToken);
@@ -317,7 +308,8 @@ public sealed class PrepTasksController : Controller
         model.PrepItemOptions = BuildPrepItemOptions(catalogOptions, model.PrepItemId, includeAllOption: false);
         model.PrepStationOptions = BuildPrepStationOptions(catalogOptions, model.PrepStationId);
         model.AssignedRoleOptions = BuildRoleOptions(model.AssignedRole, includeAllOption: false);
-        model.QuantityUnitOptions = BuildQuantityUnitOptions(model.QuantityUnit);
+        model.TaskTypeOptions = BuildTaskTypeOptions(model.TaskType);
+        model.QuantityUnitOptions = BuildQuantityUnitOptions(model.TaskType, model.QuantityUnit);
         return model;
     }
 
@@ -335,8 +327,15 @@ public sealed class PrepTasksController : Controller
             PrepStationName = task.PrepStationName,
             PrepStationCode = task.PrepStationCode,
             AssignedRole = task.AssignedRole,
+            TaskType = task.TaskType,
+            QuantityUnit = task.QuantityUnit,
             QuantityRecommended = task.QuantityRecommended,
             QuantityCompleted = task.QuantityCompleted,
+            QuantityRecommendedBallsEquivalent = task.QuantityRecommendedBallsEquivalent,
+            QuantityCompletedBallsEquivalent = task.QuantityCompletedBallsEquivalent,
+            CountsAsAvailableBallsWhenCompleted = task.CountsAsAvailableBallsWhenCompleted,
+            SourcePrepTaskId = task.SourcePrepTaskId,
+            SourceDoughBatchId = task.SourceDoughBatchId,
             Status = task.Status,
             Notes = task.Notes,
             CompletedByUserId = task.CompletedByUserId,
@@ -444,9 +443,43 @@ public sealed class PrepTasksController : Controller
             .ToArray();
     }
 
-    private static IReadOnlyList<SelectListItem> BuildQuantityUnitOptions(string? selectedQuantityUnit)
+    private static IReadOnlyList<SelectListItem> BuildTaskTypeOptions(string? selectedTaskType)
+    {
+        var normalizedSelectedTaskType = selectedTaskType?.Trim() ?? nameof(PrepTaskType.GenericDough);
+
+        var items = new List<SelectListItem>
+        {
+            new("Generic Dough Task", nameof(PrepTaskType.GenericDough), string.Equals(normalizedSelectedTaskType, nameof(PrepTaskType.GenericDough), StringComparison.OrdinalIgnoreCase)),
+            new("Make Dough Load", nameof(PrepTaskType.MakeDoughLoad), string.Equals(normalizedSelectedTaskType, nameof(PrepTaskType.MakeDoughLoad), StringComparison.OrdinalIgnoreCase))
+        };
+
+        if (string.Equals(normalizedSelectedTaskType, nameof(PrepTaskType.BallDough), StringComparison.OrdinalIgnoreCase))
+        {
+            items.Add(new SelectListItem("Ball Dough", nameof(PrepTaskType.BallDough), true));
+        }
+
+        return items;
+    }
+
+    private static IReadOnlyList<SelectListItem> BuildQuantityUnitOptions(string? taskType, string? selectedQuantityUnit)
     {
         var normalizedSelectedQuantityUnit = selectedQuantityUnit?.Trim() ?? nameof(Domain.Enums.DoughQuantityUnit.Balls);
+
+        if (PrepTaskTypeExtensions.TryParse(taskType, out var parsedTaskType) && parsedTaskType == PrepTaskType.MakeDoughLoad)
+        {
+            return
+            [
+                new SelectListItem("Full Loads", nameof(Domain.Enums.DoughQuantityUnit.FullLoads), true)
+            ];
+        }
+
+        if (PrepTaskTypeExtensions.TryParse(taskType, out parsedTaskType) && parsedTaskType == PrepTaskType.BallDough)
+        {
+            return
+            [
+                new SelectListItem("Dough Balls", nameof(Domain.Enums.DoughQuantityUnit.Balls), true)
+            ];
+        }
 
         return Enum.GetNames<Domain.Enums.DoughQuantityUnit>()
             .Select(unitName => new SelectListItem(
@@ -481,19 +514,6 @@ public sealed class PrepTasksController : Controller
             nameof(ApplicationRole.PizzaMaker),
             nameof(ApplicationRole.Expo)
         ];
-    }
-
-    private static bool TryResolveQuantityBalls(
-        string? quantityUnit,
-        int quantityValue,
-        out int quantityBalls,
-        out string validationMessage)
-    {
-        return DoughQuantityInputConverter.TryConvertToBalls(
-            quantityUnit,
-            quantityValue,
-            out quantityBalls,
-            out validationMessage);
     }
 
     private static bool IsFriendlyTaskException(Exception exception)

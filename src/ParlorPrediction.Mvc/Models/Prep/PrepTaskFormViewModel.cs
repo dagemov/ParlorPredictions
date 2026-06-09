@@ -21,6 +21,9 @@ public sealed class PrepTaskFormViewModel
     public string AssignedRole { get; set; } = string.Empty;
 
     [Required]
+    public string TaskType { get; set; } = "GenericDough";
+
+    [Required]
     public string QuantityUnit { get; set; } = "Balls";
 
     [Range(1, int.MaxValue)]
@@ -37,7 +40,9 @@ public sealed class PrepTaskFormViewModel
 
     public IReadOnlyList<SelectListItem> AssignedRoleOptions { get; set; } = Array.Empty<SelectListItem>();
 
+    public IReadOnlyList<SelectListItem> TaskTypeOptions { get; set; } = Array.Empty<SelectListItem>();
+
     public IReadOnlyList<SelectListItem> QuantityUnitOptions { get; set; } = Array.Empty<SelectListItem>();
 
-    public string QuantityPreviewText => DoughQuantityInputConverter.BuildPlannedPreviewText(QuantityUnit, QuantityValue);
+    public string QuantityPreviewText => DoughQuantityInputConverter.BuildPlannedPreviewTextForTask(TaskType, QuantityUnit, QuantityValue);
 }

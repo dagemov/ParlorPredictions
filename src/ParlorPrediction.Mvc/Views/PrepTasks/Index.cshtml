@@ -1,268 +1,184 @@
 @model PrepTaskListPageViewModel
 @{
     ViewData["Title"] = "Dough Task Board";
+    ViewData["DoughNav"] = "tasks";
     var statusType = TempData["PrepTaskStatusType"] as string;
     var statusMessage = TempData["PrepTaskStatusMessage"] as string;
     var selectedDate = Model.TaskDate?.ToString("yyyy-MM-dd");
+    var urgentTasks = Model.Tasks.Where(task => task.CanComplete && task.NeedsAttentionNow).ToArray();
+    var openTasks = Model.Tasks.Where(task => task.CanComplete && !task.NeedsAttentionNow).ToArray();
+    var completedTasks = Model.Tasks.Where(task => string.Equals(task.Status, "Completed", StringComparison.OrdinalIgnoreCase)).ToArray();
 }
 
-<section class="page-hero page-hero--compact">
-    <div>
-        <span class="eyebrow">Dough Task Board</span>
-        <h1>See what the kitchen still needs to finish.</h1>
-        <p class="page-copy">Use one dough task board to review open work, completed work, and what each team member finished for the day.</p>
-    </div>
-
-    <div class="hero-actions">
-        @if (Model.CanManageTasks)
-        {
-            <a class="btn btn-primary" asp-action="Create" asp-controller="PrepTasks">
-                <i class="fa-solid fa-plus me-2"></i>
-                Add Manual Dough Task
-            </a>
-        }
-        <a class="btn btn-outline-secondary" asp-action="KitchenSheet" asp-controller="Prep" asp-route-targetDate="@selectedDate">
-            <i class="fa-solid fa-print me-2"></i>
-            Print Kitchen Sheet
-        </a>
-        <a class="btn btn-outline-secondary" asp-action="Reball" asp-controller="DoughQuality" asp-route-referenceDate="@selectedDate">
-            <i class="fa-solid fa-rotate-right me-2"></i>
-            Reball Dough
-        </a>
-        @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
-        {
-            <a class="btn btn-outline-secondary" asp-action="Review" asp-controller="DoughQuality" asp-route-referenceDate="@selectedDate">
-                <i class="fa-regular fa-flag me-2"></i>
-                Review Older Dough
-            </a>
-            <a class="btn btn-outline-secondary" asp-action="Losses" asp-controller="DoughQuality">
-                <i class="fa-solid fa-chart-column me-2"></i>
-                View Dough Losses
-            </a>
-        }
-        <a class="btn btn-outline-secondary" asp-action="Dough" asp-controller="Prep" asp-route-targetDate="@selectedDate">
-            <i class="fa-solid fa-bread-slice me-2"></i>
-            Back To Dough Prep
-        </a>
-    </div>
-</section>
-
-@if (!string.IsNullOrWhiteSpace(statusMessage))
-{
-    <div class="alert alert-@statusType" role="alert">
-        @statusMessage
-    </div>
-}
-
-<section class="content-card content-card--padded">
-    <div class="section-heading">
-        <span class="eyebrow">Filters</span>
-        <h2>Find the dough tasks you need</h2>
-        <p>Filter the board by day, status, role, or prep item so the team can focus on the right work fast.</p>
-    </div>
-
-    <form asp-action="Index" asp-controller="PrepTasks" method="get" class="row g-3 align-items-end">
-        <div class="col-md-3">
-            <label class="form-label" asp-for="TaskDate"></label>
-            <input asp-for="TaskDate" type="date" class="form-control" />
-        </div>
-        <div class="col-md-3">
-            <label class="form-label" asp-for="Status">Status</label>
-            <select asp-for="Status" asp-items="Model.StatusOptions" class="form-select"></select>
-        </div>
-        <div class="col-md-3">
-            <label class="form-label" asp-for="AssignedRole">Assigned role</label>
-            <select asp-for="AssignedRole" asp-items="Model.RoleOptions" class="form-select"></select>
-        </div>
-        <div class="col-md-3">
-            <label class="form-label" asp-for="PrepItemId">Prep item</label>
-            <select asp-for="PrepItemId" asp-items="Model.PrepItemOptions" class="form-select"></select>
-        </div>
-        <div class="col-12 d-flex flex-wrap gap-2">
-            <button type="submit" class="btn btn-outline-secondary">
-                <i class="fa-solid fa-filter me-2"></i>
-                Apply Filters
-            </button>
-            <a class="btn btn-link" asp-action="Index" asp-controller="PrepTasks">Clear</a>
-        </div>
-    </form>
-</section>
-
-<section class="content-card content-card--padded mt-4">
-    <div class="section-heading">
-        <span class="eyebrow">Task Progress</span>
-        <h2>Dough tasks in view</h2>
-        <p>These totals help the kitchen see how much work is still open versus already finished in the current filter set.</p>
-    </div>
-
-    <div class="metric-grid">
-        <article class="metric-card">
-            <span class="metric-card__label">Tasks Still Open</span>
-            <strong>@Model.PendingTasksCount</strong>
-            <small>Pending or in progress dough tasks in the current view.</small>
-        </article>
-        <article class="metric-card">
-            <span class="metric-card__label">Tasks Already Done</span>
-            <strong>@Model.CompletedTasksCount</strong>
-            <small>Completed dough tasks in the current view.</small>
-        </article>
-    </div>
-</section>
-
-<section class="content-card content-card--padded mt-4">
-    <div class="section-heading section-heading--split">
+<section class="space-y-gutter">
+    <header class="flex flex-col xl:flex-row xl:items-end justify-between gap-6">
         <div>
-            <span class="eyebrow">Task List</span>
-            <h2>Daily dough work</h2>
-            <p>Each row shows who owns the task, what it covers, and whether the team already finished it.</p>
+            <p class="text-on-secondary-fixed-variant font-label-caps text-label-caps mb-1">Kitchen Decision Board</p>
+            <h1 class="font-headline-lg text-headline-lg text-on-surface">Today's Dough Tasks</h1>
+            <p class="font-body-lg text-on-surface-variant mt-2">Manage the shift's prep flow and keep `load made` separate from `balls available`.</p>
         </div>
-    </div>
+        <div class="flex flex-wrap gap-3">
+            @if (Model.CanManageTasks)
+            {
+                <a asp-action="Create" asp-controller="PrepTasks" class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl bg-primary text-on-primary font-bold hover:opacity-90 transition-opacity no-underline">
+                    <span class="material-symbols-outlined">add</span>
+                    Add New Task
+                </a>
+            }
+            <a asp-action="Dough" asp-controller="Prep" asp-route-targetDate="@selectedDate" class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest no-underline">
+                <span class="material-symbols-outlined">bakery_dining</span>
+                Back To Dough Prep
+            </a>
+        </div>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(statusMessage))
+    {
+        <div class="rounded-xl border @(string.Equals(statusType, "danger", StringComparison.OrdinalIgnoreCase) ? "border-error bg-error-container text-on-error-container" : "border-outline-variant bg-surface-container-low text-on-surface") px-5 py-4">
+            @statusMessage
+        </div>
+    }
+
+    <section class="bg-surface-container-low rounded-2xl border border-outline-variant p-6">
+        <div class="mb-6">
+            <p class="font-label-caps text-label-caps text-on-surface-variant mb-1">Filters</p>
+            <h2 class="font-headline-md text-headline-md text-on-surface">Focus the board</h2>
+        </div>
+
+        <form asp-action="Index" asp-controller="PrepTasks" method="get" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+            <div>
+                <label class="block text-on-surface-variant font-label-caps text-label-caps mb-2" asp-for="TaskDate"></label>
+                <input asp-for="TaskDate" type="date" class="w-full h-touch-target-min rounded-xl border border-outline-variant bg-white px-4" />
+            </div>
+            <div>
+                <label class="block text-on-surface-variant font-label-caps text-label-caps mb-2" asp-for="Status">Status</label>
+                <select asp-for="Status" asp-items="Model.StatusOptions" class="w-full h-touch-target-min rounded-xl border border-outline-variant bg-white px-4"></select>
+            </div>
+            <div>
+                <label class="block text-on-surface-variant font-label-caps text-label-caps mb-2" asp-for="AssignedRole">Assigned role</label>
+                <select asp-for="AssignedRole" asp-items="Model.RoleOptions" class="w-full h-touch-target-min rounded-xl border border-outline-variant bg-white px-4"></select>
+            </div>
+            <div>
+                <label class="block text-on-surface-variant font-label-caps text-label-caps mb-2" asp-for="PrepItemId">Prep item</label>
+                <select asp-for="PrepItemId" asp-items="Model.PrepItemOptions" class="w-full h-touch-target-min rounded-xl border border-outline-variant bg-white px-4"></select>
+            </div>
+            <div class="flex flex-wrap gap-3">
+                <button type="submit" class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest">
+                    <span class="material-symbols-outlined">filter_alt</span>
+                    Apply
+                </button>
+                <a asp-action="Index" asp-controller="PrepTasks" class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border border-transparent text-on-surface-variant hover:bg-surface-container-highest no-underline">
+                    Clear
+                </a>
+            </div>
+        </form>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+        <article class="bg-white border border-outline-variant rounded-xl p-6">
+            <div class="font-label-caps text-label-caps text-error mb-2">Must Do Now</div>
+            <div class="font-status-lg text-status-lg text-error">@urgentTasks.Length</div>
+            <div class="text-on-surface-variant mt-2">Pending ball dough or other work that needs attention now.</div>
+        </article>
+        <article class="bg-white border border-outline-variant rounded-xl p-6">
+            <div class="font-label-caps text-label-caps text-secondary mb-2">Still Open</div>
+            <div class="font-status-lg text-status-lg text-secondary">@openTasks.Length</div>
+            <div class="text-on-surface-variant mt-2">Open dough work that is not completed yet.</div>
+        </article>
+        <article class="bg-white border border-outline-variant rounded-xl p-6">
+            <div class="font-label-caps text-label-caps text-tertiary-container mb-2">Completed</div>
+            <div class="font-status-lg text-status-lg text-tertiary-container">@completedTasks.Length</div>
+            <div class="text-on-surface-variant mt-2">Tasks the team already finished for this view.</div>
+        </article>
+    </section>
 
     @if (Model.Tasks.Count == 0)
     {
-        <div class="empty-state">
-            <i class="fa-regular fa-clipboard"></i>
-            <span>No dough tasks matched the current filters.</span>
+        <div class="rounded-xl border border-dashed border-outline-variant bg-white p-10 text-center text-on-surface-variant">
+            No dough tasks matched the current filters.
         </div>
     }
     else
     {
-        <div class="table-responsive">
-            <table class="table prep-table align-middle">
-                <thead>
-                    <tr>
-                        <th scope="col">Task</th>
-                        <th scope="col">Assigned Role</th>
-                        <th scope="col">Needed</th>
-                        <th scope="col">Finished</th>
-                        <th scope="col">Completed By</th>
-                        <th scope="col">Status</th>
-                        <th scope="col" class="text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var task in Model.Tasks)
+        <section class="grid grid-cols-1 xl:grid-cols-3 gap-gutter">
+            <div class="space-y-4">
+                <div class="flex items-center gap-3 px-1">
+                    <div class="w-3 h-3 rounded-full bg-error"></div>
+                    <h2 class="font-label-caps text-label-caps text-error tracking-widest uppercase">Must Do Now</h2>
+                </div>
+                @if (urgentTasks.Length == 0)
+                {
+                    <div class="rounded-xl border border-outline-variant bg-white p-6 text-on-surface-variant">Nothing urgent is waiting right now.</div>
+                }
+                else
+                {
+                    @foreach (var task in urgentTasks)
                     {
-                        <tr>
-                            <td>
-                                <div class="task-main">
-                                    <strong>@task.PrepItemName</strong>
-                                    <span>@task.TaskDate.ToString("ddd, MMM d") at @task.PrepStationName</span>
-                                </div>
-                                @if (!string.IsNullOrWhiteSpace(task.Notes))
-                                {
-                                    <div class="inline-hint mt-1">@task.Notes</div>
-                                }
-                            </td>
-                            <td>@task.AssignedRole</td>
-                            <td>@task.QuantityRecommended balls</td>
-                            <td>@task.QuantityCompleted balls</td>
-                            <td>
-                                @if (!string.IsNullOrWhiteSpace(task.CompletedByUserName))
-                                {
-                                    <div class="task-main">
-                                        <strong>@task.CompletedByUserName</strong>
-                                        @if (task.CompletedAtUtc.HasValue)
-                                        {
-                                            <span>@task.CompletedAtUtc.Value.ToLocalTime().ToString("MMM d, h:mm tt")</span>
-                                        }
-                                    </div>
-                                }
-                                else
-                                {
-                                    <span class="inline-hint">Not finished yet</span>
-                                }
-                            </td>
-                            <td>
-                                <span class="status-pill @(task.Status == "Completed" ? "status-pill--success" : task.Status == "Pending" ? "status-pill--warning" : "status-pill--neutral")">
-                                    @task.Status
-                                </span>
-                                <div class="inline-hint mt-1">@(task.IsManualTask ? "Manual task" : "From saved dough guidance")</div>
-                            </td>
-                            <td class="text-end">
-                                <div class="table-action-stack">
-                                    <a class="btn btn-sm btn-outline-secondary" asp-action="Details" asp-controller="PrepTasks" asp-route-id="@task.PrepTaskId">
-                                        <i class="fa-regular fa-eye me-1"></i>
-                                        Details
-                                    </a>
-                                    @if (task.CanManage)
-                                    {
-                                        <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-controller="PrepTasks" asp-route-id="@task.PrepTaskId">
-                                            <i class="fa-regular fa-pen-to-square me-1"></i>
-                                            Edit
-                                        </a>
-                                        <form asp-action="Delete"
-                                              asp-controller="PrepTasks"
-                                              asp-route-id="@task.PrepTaskId"
-                                              method="post"
-                                              data-swal-confirm
-                                              data-confirm-title="Delete dough task?"
-                                              data-confirm-text="This will remove the dough task from the board.">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="taskDate" value="@(Model.TaskDate?.ToString("yyyy-MM-dd"))" />
-                                            <input type="hidden" name="status" value="@Model.Status" />
-                                            <input type="hidden" name="assignedRole" value="@Model.AssignedRole" />
-                                            <input type="hidden" name="prepItemId" value="@Model.PrepItemId" />
-                                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                <i class="fa-regular fa-trash-can me-1"></i>
-                                                Delete
-                                            </button>
-                                        </form>
-                                    }
-                                </div>
-
-                                @if (task.CanComplete)
-                                {
-                                    <form asp-action="Complete"
-                                          asp-controller="PrepTasks"
-                                          method="post"
-                                          class="task-complete-form task-complete-form--board mt-2"
-                                          data-dough-quantity-form
-                                          data-dough-quantity-preview-mode="completed"
-                                          data-swal-confirm
-                                          data-confirm-title="Complete dough task?"
-                                          data-confirm-text="This will count the finished dough against the task.">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="PrepTaskId" value="@task.PrepTaskId" />
-                                        <input type="hidden" name="TargetDate" value="@((Model.TaskDate ?? task.TaskDate).ToString("yyyy-MM-dd"))" />
-                                        <div class="task-form-grid">
-                                            <select name="CompletionType"
-                                                    class="form-select form-select-sm"
-                                                    data-dough-quantity-unit
-                                                    aria-label="Completion type">
-                                                <option value="Balls">Dough Balls</option>
-                                                <option value="Cases">Cases</option>
-                                                <option value="FullLoads">Full Loads</option>
-                                            </select>
-                                            <input name="QuantityValue"
-                                                   type="number"
-                                                   min="1"
-                                                   value="@(Math.Max(task.QuantityRecommended - task.QuantityCompleted, 1))"
-                                                   class="form-control form-control-sm"
-                                                   data-dough-quantity-value
-                                                   placeholder="Quantity done"
-                                                   aria-label="Completed quantity" />
-                                            <input name="Notes"
-                                                   type="text"
-                                                   maxlength="500"
-                                                   class="form-control form-control-sm"
-                                                   placeholder="Optional kitchen note" />
-                                            <button type="submit" class="btn btn-sm btn-outline-primary">
-                                                <i class="fa-solid fa-check me-1"></i>
-                                                Complete
-                                            </button>
-                                        </div>
-                                        <div class="inline-hint task-form-help">
-                                            <i class="fa-solid fa-circle-info"></i>
-                                            <span data-dough-quantity-preview>Choose dough balls, cases, or full loads to preview the finished amount.</span>
-                                        </div>
-                                    </form>
-                                }
-                            </td>
-                        </tr>
+                        <partial name="_TaskBoardCard" model="task" />
                     }
-                </tbody>
-            </table>
-        </div>
+                }
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex items-center gap-3 px-1">
+                    <div class="w-3 h-3 rounded-full bg-secondary"></div>
+                    <h2 class="font-label-caps text-label-caps text-secondary tracking-widest uppercase">Open Work</h2>
+                </div>
+                @if (openTasks.Length == 0)
+                {
+                    <div class="rounded-xl border border-outline-variant bg-white p-6 text-on-surface-variant">No additional open dough tasks are waiting.</div>
+                }
+                else
+                {
+                    @foreach (var task in openTasks)
+                    {
+                        <partial name="_TaskBoardCard" model="task" />
+                    }
+                }
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex items-center gap-3 px-1">
+                    <div class="w-3 h-3 rounded-full bg-tertiary-fixed-dim"></div>
+                    <h2 class="font-label-caps text-label-caps text-on-tertiary-fixed-variant tracking-widest uppercase">Completed</h2>
+                </div>
+                @if (completedTasks.Length == 0)
+                {
+                    <div class="rounded-xl border border-outline-variant bg-white p-6 text-on-surface-variant">Nothing has been completed yet.</div>
+                }
+                else
+                {
+                    @foreach (var task in completedTasks)
+                    {
+                        <article class="bg-white border border-outline-variant p-6 rounded-xl shadow-sm flex flex-col gap-4">
+                            <div class="flex justify-between items-start gap-4">
+                                <div>
+                                    <div class="font-label-caps text-label-caps text-primary">@task.TaskTypeDisplayText</div>
+                                    <h3 class="font-headline-md text-headline-md text-on-surface mt-1">@task.TaskTitle</h3>
+                                    <p class="font-body-lg text-on-surface-variant mt-2">@task.StatusDetailText</p>
+                                </div>
+                                <span class="inline-flex items-center rounded-full px-4 py-2 text-sm font-bold uppercase bg-tertiary-fixed text-on-tertiary-fixed-variant">@task.Status</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="rounded-xl bg-surface-container-low p-4">
+                                    <div class="font-label-caps text-label-caps text-on-surface-variant mb-1">Needed</div>
+                                    <div class="font-bold text-on-surface">@task.RecommendedQuantityText</div>
+                                </div>
+                                <div class="rounded-xl bg-surface-container-low p-4">
+                                    <div class="font-label-caps text-label-caps text-on-surface-variant mb-1">Finished</div>
+                                    <div class="font-bold text-on-surface">@task.CompletedQuantityText</div>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-3">
+                                <a asp-action="Details" asp-controller="PrepTasks" asp-route-id="@task.PrepTaskId" class="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest no-underline">
+                                    <span class="material-symbols-outlined">visibility</span>
+                                    Details
+                                </a>
+                            </div>
+                        </article>
+                    }
+                }
+            </div>
+        </section>
     }
 </section>

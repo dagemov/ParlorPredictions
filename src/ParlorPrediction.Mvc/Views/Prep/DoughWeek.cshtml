@@ -1,6 +1,7 @@
 @model WeeklyDoughCalendarViewModel
 @{
     ViewData["Title"] = "Weekly Dough Calendar";
+    ViewData["DoughNav"] = "dough";
     var previousWeekDate = Model.WeekStartDate.AddDays(-7);
     var nextWeekDate = Model.WeekStartDate.AddDays(7);
 }
@@ -13,6 +14,13 @@
     </div>
 
     <div class="hero-actions">
+        @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+        {
+            <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="WeeklyClosing" asp-route-referenceDate="@Model.SelectedDate.ToString("yyyy-MM-dd")">
+                <i class="fa-solid fa-clipboard-check me-2"></i>
+                Weekly Closing
+            </a>
+        }
         <a class="btn btn-primary" asp-action="Dough" asp-controller="Prep" asp-route-targetDate="@Model.SelectedDate.ToString("yyyy-MM-dd")" asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse">
             <i class="fa-solid fa-bread-slice me-2"></i>
             Back To Dough Prep
@@ -70,29 +78,85 @@
     <div class="section-heading">
         <span class="eyebrow">Week Goal</span>
         <h2>Dough progress for the week</h2>
-        <p>This gives the kitchen one clear weekly picture: how much dough is needed, how much is already finished, what is still missing, and how much dough is already on hand.</p>
+        <p>This keeps current week coverage separate from previous week activity: what is ready now, what is still in process, what finished inside this week, and what belongs only to the days before this week.</p>
     </div>
 
+    @if (Model.HasClosingCarryover)
+    {
+        <div class="recommendation-note mb-4">
+            <h3>Weekly Closing Carryover</h3>
+            <p>
+                The prior closing for @Model.CarryoverSourceWeekStartDate?.ToString("MMM d")
+                through @Model.CarryoverSourceWeekEndDate?.ToString("MMM d")
+                recorded @Model.CarryoverAvailableBalls balls still usable and
+                @Model.CarryoverMixedButNotBalledLoads mixed load@(Model.CarryoverMixedButNotBalledLoads == 1 ? string.Empty : "s")
+                still waiting for balling. That mixed dough is shown separately and does not count as available balls yet.
+            </p>
+            @if (!string.IsNullOrWhiteSpace(Model.CarryoverClosingNotes))
+            {
+                <p class="mt-2"><strong>Closing note:</strong> @Model.CarryoverClosingNotes</p>
+            }
+        </div>
+    }
+
     <div class="metric-grid">
+        @if (Model.HasClosingCarryover)
+        {
+            <article class="metric-card">
+                <span class="metric-card__label">Carryover Available</span>
+                <strong>@Model.CarryoverAvailableBalls</strong>
+                <small>@Model.CarryoverAvailableLoads full load@(Model.CarryoverAvailableLoads == 1 ? string.Empty : "s") carried into this week as available.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Carryover Mixed But Not Balled</span>
+                <strong>@Model.CarryoverMixedButNotBalledPotentialBalls</strong>
+                <small>@Model.CarryoverMixedButNotBalledLoads full load@(Model.CarryoverMixedButNotBalledLoads == 1 ? string.Empty : "s") from the prior week. Potential balls only.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Previous Week Produced</span>
+                <strong>@Model.PreviousWeekProducedBalls</strong>
+                <small>@Model.PreviousWeekProducedLoads full load@(Model.PreviousWeekProducedLoads == 1 ? string.Empty : "s") were produced in the last closed week.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Previous Week Lost</span>
+                <strong>@Model.PreviousWeekLostBalls</strong>
+                <small>@Model.PreviousWeekLostLoads full load@(Model.PreviousWeekLostLoads == 1 ? string.Empty : "s") were lost and do not count now.</small>
+            </article>
+        }
         <article class="metric-card">
             <span class="metric-card__label">Dough Needed This Week</span>
             <strong>@Model.WeekTotalNeededBalls</strong>
             <small>@Model.WeekTotalNeededLoads full load@(Model.WeekTotalNeededLoads == 1 ? string.Empty : "s") of usual dough and event dough from Tuesday through Sunday.</small>
         </article>
         <article class="metric-card">
-            <span class="metric-card__label">Dough Finished</span>
-            <strong>@Model.WeekCompletedBalls</strong>
-            <small>@Model.WeekCompletedLoads full load@(Model.WeekCompletedLoads == 1 ? string.Empty : "s") already finished through dough tasks.</small>
+            <span class="metric-card__label">Ready Now</span>
+            <strong>@Model.ReadyNowBalls</strong>
+            <small>@Model.ReadyNowLoads full load@(Model.ReadyNowLoads == 1 ? string.Empty : "s") still available right now for this week.</small>
         </article>
         <article class="metric-card">
-            <span class="metric-card__label">Dough Still Missing</span>
-            <strong>@Model.WeekMissingBalls</strong>
-            <small>@Model.WeekMissingLoads full load@(Model.WeekMissingLoads == 1 ? string.Empty : "s") still need attention after available and finished dough.</small>
+            <span class="metric-card__label">Still Fermenting</span>
+            <strong>@Model.StillFermentingBalls</strong>
+            <small>@Model.StillFermentingLoads full load@(Model.StillFermentingLoads == 1 ? string.Empty : "s") are already mixed but not ready yet.</small>
         </article>
         <article class="metric-card">
-            <span class="metric-card__label">Current Dough Available</span>
-            <strong>@Model.WeekAvailableBalls</strong>
-            <small>@Model.WeekAvailableLoads full load@(Model.WeekAvailableLoads == 1 ? string.Empty : "s") already on hand for the current week.</small>
+            <span class="metric-card__label">Mixed But Not Balled</span>
+            <strong>@Model.MixedButNotBalledBalls</strong>
+            <small>@Model.MixedButNotBalledLoads full load@(Model.MixedButNotBalledLoads == 1 ? string.Empty : "s") are ready to be balled now, but do not count as available yet.</small>
+        </article>
+        <article class="metric-card">
+            <span class="metric-card__label">Finished This Week</span>
+            <strong>@Model.FinishedThisWeekBalls</strong>
+            <small>@Model.FinishedThisWeekLoads full load@(Model.FinishedThisWeekLoads == 1 ? string.Empty : "s") completed inside this week so far. If still on hand, they are already reflected in Ready Now.</small>
+        </article>
+        <article class="metric-card">
+            <span class="metric-card__label">Dough Still Missing This Week</span>
+            <strong>@Model.StillMissingThisWeekBalls</strong>
+            <small>@Model.StillMissingThisWeekLoads full load@(Model.StillMissingThisWeekLoads == 1 ? string.Empty : "s") still need attention after Ready Now and in-process dough are counted.</small>
+        </article>
+        <article class="metric-card">
+            <span class="metric-card__label">Previous Week Used / Finished</span>
+            <strong>@Model.PreviousWeekFinishedBalls</strong>
+            <small>@Model.PreviousWeekFinishedLoads full load@(Model.PreviousWeekFinishedLoads == 1 ? string.Empty : "s") from the days before this week. This number is not counted as available for this week.</small>
         </article>
         <article class="metric-card">
             <span class="metric-card__label">Upcoming Event Dough</span>
@@ -106,7 +170,7 @@
     <div class="section-heading">
         <span class="eyebrow">Tuesday To Sunday</span>
         <h2>Weekly dough calendar</h2>
-        <p>Each row shows the usual dough needed, event dough, what is already done, and what still needs attention.</p>
+        <p>Each row shows the usual dough needed, event dough, what has already been completed for that day, and what still needs attention.</p>
     </div>
 
     <div class="table-responsive">
@@ -117,7 +181,7 @@
                     <th scope="col">Usual Dough</th>
                     <th scope="col">Event Dough</th>
                     <th scope="col">Total Needed</th>
-                    <th scope="col">Dough Finished</th>
+                    <th scope="col">Finished For Day</th>
                     <th scope="col">Still Missing</th>
                     <th scope="col">Status</th>
                 </tr>

@@ -1,3 +1,5 @@
+using ParlorPrediction.Mvc.Models.DoughQuality;
+
 namespace ParlorPrediction.Mvc.Models.Prep;
 
 public sealed class DoughPrepPageViewModel
@@ -13,6 +15,10 @@ public sealed class DoughPrepPageViewModel
     public DoughProductionPlanningViewModel? ProductionPlanning { get; set; }
 
     public WeeklyGoalProgressViewModel? WeeklyGoal { get; set; }
+
+    public DoughQualitySummaryViewModel QualitySummary { get; set; } = new();
+
+    public IReadOnlyList<DoughKitchenAttentionItemViewModel> AttentionItems { get; set; } = Array.Empty<DoughKitchenAttentionItemViewModel>();
 
     public IReadOnlyList<DoughTaskViewModel> Tasks { get; set; } = Array.Empty<DoughTaskViewModel>();
 }

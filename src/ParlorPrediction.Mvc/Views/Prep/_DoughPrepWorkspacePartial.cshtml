@@ -4,80 +4,80 @@
     var toolbarRequestToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
 }
 
-<section id="dough-prep-workspace" class="stack-lg">
-    <section class="content-card content-card--padded dq-toolbar-card">
-        <div class="toolbar-header">
-            <div class="section-heading mb-0">
-                <span class="eyebrow">Daily Dough View</span>
-                <h2>Pick the day you want to review</h2>
-                <p class="dq-section-copy">Load the saved dough picture for a day, then calculate fresh guidance without leaving the page.</p>
+<section id="dough-prep-workspace" class="space-y-gutter">
+    <section class="bg-surface-container-low rounded-2xl border border-outline-variant p-6">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-6">
+            <div>
+                <p class="text-on-secondary-fixed-variant font-label-caps text-label-caps mb-1">Daily Dough View</p>
+                <h2 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Pick the day you want to review</h2>
+                <p class="text-on-surface-variant font-body-lg mt-2 max-w-3xl">Load the saved dough picture for a day, then calculate fresh guidance without leaving the page.</p>
             </div>
         </div>
 
         <input id="dough-prep-anti-forgery" type="hidden" name="__RequestVerificationToken" value="@toolbarRequestToken" />
 
-        <form asp-action="Dough" asp-controller="Prep" method="get" class="row g-3 align-items-end dq-toolbar-grid">
-            <div class="col-md-4">
-                <label class="form-label" for="targetDate">Target date</label>
+        <form asp-action="Dough" asp-controller="Prep" method="get" class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+            <div class="md:col-span-2">
+                <label class="block text-on-surface-variant font-label-caps text-label-caps mb-2" for="targetDate">Target date</label>
                 <input id="targetDate"
                        name="targetDate"
                        type="date"
                        value="@Model.TargetDate.ToString("yyyy-MM-dd")"
-                       class="form-control" />
+                       class="w-full h-touch-target-min rounded-xl border border-outline-variant bg-white px-4" />
             </div>
 
-            <div class="col-md-3">
-                <label class="form-label" for="historicalWeeksToUse">Past weeks to review</label>
+            <div class="md:col-span-1">
+                <label class="block text-on-surface-variant font-label-caps text-label-caps mb-2" for="historicalWeeksToUse">Past weeks</label>
                 <input id="historicalWeeksToUse"
                        name="historicalWeeksToUse"
                        type="number"
                        min="1"
                        value="@Model.HistoricalWeeksToUse"
-                       class="form-control" />
+                       class="w-full h-touch-target-min rounded-xl border border-outline-variant bg-white px-4" />
             </div>
 
-            <div class="col-md-5">
-                <div class="d-flex flex-wrap gap-2 dq-action-bar">
-                    <button type="submit" class="btn btn-outline-secondary">
-                        <i class="fa-solid fa-calendar-day me-2"></i>
-                        Load Day View
+            <div class="md:col-span-3 flex flex-wrap gap-3">
+                <button type="submit" class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest transition-colors">
+                    <span class="material-symbols-outlined">calendar_month</span>
+                    Load Day View
+                </button>
+
+                @if (Model.CanManageRecommendations)
+                {
+                    <button type="button"
+                            class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl bg-primary text-on-primary font-bold hover:opacity-90 transition-opacity"
+                            hx-post="@Url.Action("CalculateDough", "Prep")"
+                            hx-include="#targetDate,#historicalWeeksToUse,#dough-prep-anti-forgery"
+                            hx-target="#dough-prep-workspace"
+                            hx-swap="outerHTML">
+                        <span class="material-symbols-outlined">auto_awesome</span>
+                        Calculate Dough Guidance
                     </button>
+                }
 
-                    @if (Model.CanManageRecommendations)
-                    {
-                        <button type="button"
-                                class="btn btn-primary"
-                                hx-post="@Url.Action("CalculateDough", "Prep")"
-                                hx-include="#targetDate,#historicalWeeksToUse,#dough-prep-anti-forgery"
-                                hx-target="#dough-prep-workspace"
-                                hx-swap="outerHTML">
-                            <i class="fa-solid fa-wand-magic-sparkles me-2"></i>
-                            Calculate Dough Guidance
-                        </button>
-                    }
+                <a asp-action="Help" asp-controller="Prep" class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest no-underline">
+                    <span class="material-symbols-outlined">help</span>
+                    Help
+                </a>
 
-                    <a class="btn btn-outline-secondary" asp-action="Help" asp-controller="Prep">
-                        <i class="fa-regular fa-circle-question me-2"></i>
-                        Help
-                    </a>
-
-                    <a class="btn btn-outline-secondary"
-                       asp-action="DoughWeek"
-                       asp-controller="Prep"
-                       asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
-                       asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse">
-                        <i class="fa-regular fa-calendar-days me-2"></i>
-                        Weekly Dough Calendar
-                    </a>
-                </div>
+                <a asp-action="DoughWeek"
+                   asp-controller="Prep"
+                   asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
+                   asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse"
+                   class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest no-underline">
+                    <span class="material-symbols-outlined">date_range</span>
+                    Weekly Dough Calendar
+                </a>
             </div>
         </form>
     </section>
 
     <partial name="_DoughProductionPlanningPartial" model="Model" />
 
-    <div class="prep-grid prep-grid-wide">
-        <partial name="_DoughRecommendationPartial" model="Model.Recommendation" />
+    <div class="grid grid-cols-1 gap-gutter">
+        <partial name="_DoughRecommendationPartial"
+                 model="Model.Recommendation"
+                 view-data='new ViewDataDictionary(ViewData) { ["DoughPrepPage"] = Model }' />
         <partial name="_DoughTasksPartial" model="Model" />
     </div>
 </section>

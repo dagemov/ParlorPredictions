@@ -2,7 +2,7 @@
   const BALLS_PER_CASE = 12;
   const BALLS_PER_FULL_LOAD = 168;
 
-  const buildQuantityPreviewText = (mode, unit, quantityValue) => {
+  const buildQuantityPreviewText = (mode, unit, quantityValue, taskType) => {
     const quantity = Number.parseInt(quantityValue ?? "", 10);
     if (!unit || !Number.isFinite(quantity) || quantity <= 0) {
       switch (mode) {
@@ -28,6 +28,18 @@
         break;
     }
 
+    if (taskType === "MakeDoughLoad") {
+      return mode === "planned"
+        ? `${quantity} full load${quantity === 1 ? "" : "s"} will create ${balls} potential balls for tomorrow. These do not count as available yet.`
+        : `${quantity} full load${quantity === 1 ? "" : "s"} will be marked mixed today. This does not count as available balls yet.`;
+    }
+
+    if (taskType === "BallDough") {
+      return mode === "planned"
+        ? `${balls} dough balls will count as available after the balling task is completed.`
+        : `${balls} dough balls will count as available after this task is completed.`;
+    }
+
     switch (mode) {
       case "planned":
         return `This task will plan ${balls} dough balls for the kitchen.`;
@@ -50,12 +62,14 @@
 
     const unitInput = form.querySelector("[data-dough-quantity-unit]");
     const quantityInput = form.querySelector("[data-dough-quantity-value]");
+    const taskTypeInput = form.querySelector("[data-dough-task-type]");
     const mode = form.dataset.doughQuantityPreviewMode ?? "completed";
 
     preview.textContent = buildQuantityPreviewText(
       mode,
       unitInput?.value,
-      quantityInput?.value
+      quantityInput?.value,
+      taskTypeInput?.value
     );
   };
 

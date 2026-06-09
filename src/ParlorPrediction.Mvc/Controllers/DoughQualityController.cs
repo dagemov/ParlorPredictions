@@ -255,7 +255,7 @@ public sealed class DoughQualityController : Controller
                 },
                 cancellationToken);
 
-            SetStatusMessage("success", "Reball saved. The recovered dough now counts as Must Use Next Day.");
+            SetStatusMessage("success", "Reball saved. The recovered dough is now marked Use First for the next day.");
             return RedirectToAction(
                 nameof(Reball),
                 new
