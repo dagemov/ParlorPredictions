@@ -2,355 +2,185 @@
 @{
     var planning = Model.ProductionPlanning;
     var weeklyGoal = Model.WeeklyGoal;
+    var qualitySummary = Model.QualitySummary;
 
     var readyNowBalls = weeklyGoal?.ReadyNowBalls ?? planning?.ReadyBalls ?? 0;
     var stillFermentingBalls = weeklyGoal?.StillFermentingBalls ?? planning?.FermentingBalls ?? 0;
     var mixedButNotBalledBalls = weeklyGoal?.MixedButNotBalledBalls ?? planning?.UnballedBalls ?? 0;
-    var doughNeededThisWeekBalls = weeklyGoal?.DoughNeededBalls ?? planning?.TotalFutureRequiredBalls ?? 0;
-    var doughStillMissingThisWeekBalls = weeklyGoal?.DoughStillMissingThisWeekBalls ?? planning?.MissingBallsForProductionWindow ?? 0;
-    var finishedThisWeekBalls = weeklyGoal?.FinishedThisWeekBalls ?? 0;
+    var weeklyGoalBalls = weeklyGoal?.DoughNeededBalls ?? planning?.TotalFutureRequiredBalls ?? 0;
+    var stillMissingBalls = weeklyGoal?.DoughStillMissingThisWeekBalls ?? planning?.MissingBallsForProductionWindow ?? 0;
+    var todayLoadPlan = planning?.RecommendedLoadsToMakeToday ?? 0;
+    var todayCasesToMake = planning?.RecommendedCasesToMakeToday ?? 0;
+    var todayBallsToBall = planning?.RecommendedBallsToBallToday ?? 0;
+    var useFirstBalls = qualitySummary.MustUseNextDayBalls;
     var previousWeekFinishedBalls = weeklyGoal?.PreviousWeekFinishedBalls ?? 0;
+    var needsMixing = todayLoadPlan > 0;
+    var needsBalling = todayBallsToBall > 0;
 
-    var needsMixing = (planning?.RecommendedCasesToMakeToday ?? 0) > 0;
-    var needsBalling = (planning?.RecommendedBallsToBallToday ?? 0) > 0;
-
-    var nextNeed = planning?.UpcomingNeeds.FirstOrDefault(need => need.IsRecommendedForSelectedProductionDate)
-        ?? planning?.UpcomingNeeds.FirstOrDefault();
-
-    var nextNeedDateLabel = nextNeed?.NeedDate.ToString("ddd, MMM d") ?? "No urgent event";
-    var nextNeedSubtitle = nextNeed is null ? "No future dough spike in this window" : $"{nextNeed.TotalRequiredBalls} balls required";
-
-    var bannerTitle = !needsMixing && !needsBalling
+    var statusTitle = !needsMixing && !needsBalling
         ? "No Action Needed"
         : needsMixing && needsBalling
             ? "Mix And Ball Today"
             : needsMixing
-                ? "Start A New Mix"
-                : "Ball Existing Dough";
+                ? "Start A New Load Today"
+                : "Ball Existing Dough Today";
 
-    var bannerMessage = !needsMixing && !needsBalling
-        ? "No New Mixing Needed Today • No Extra Balling Today"
+    var statusMessage = !needsMixing && !needsBalling
+        ? "Service is covered right now. No new mixing or extra balling is needed today."
         : needsMixing && needsBalling
-            ? $"Mix {planning?.RecommendedCasesToMakeToday ?? 0} cases today and ball {planning?.RecommendedBallsToBallToday ?? 0} existing dough balls."
+            ? $"Make {todayLoadPlan} load{(todayLoadPlan == 1 ? string.Empty : "s")} today and ball {todayBallsToBall} dough balls already waiting."
             : needsMixing
-                ? $"Mix {planning?.RecommendedCasesToMakeToday ?? 0} cases today so the next demand window stays covered."
-                : $"Ball {planning?.RecommendedBallsToBallToday ?? 0} existing dough balls today. No new mix is needed yet.";
+                ? $"Make {todayLoadPlan} load{(todayLoadPlan == 1 ? string.Empty : "s")} today. This creates future capacity, not ready balls."
+                : $"Ball {todayBallsToBall} dough balls from existing mixed loads today.";
 
-    var bannerBackground = !needsMixing && !needsBalling
-        ? "from-[#8bc53f] to-[#76ac31]"
+    var statusToneClass = !needsMixing && !needsBalling
+        ? "bg-[#7db335] text-white"
         : needsMixing
-            ? "from-[#c87917] to-[#a95f00]"
-            : "from-[#27466f] to-[#17345a]";
-
-    var decisionAnswer = needsMixing ? "YES" : "NO";
-    var decisionAnswerColor = needsMixing ? "text-[#b46200]" : "text-[#7db335]";
-    var decisionPlan = needsMixing
-        ? (needsBalling ? "Plan: Mix + Ball" : "Plan: Start Mix")
-        : needsBalling
-            ? "Plan: Ball Existing Dough"
-            : "Plan: Service Focus";
-
-    var targetCoverage = nextNeed is null
-        ? "No urgent event window is driving today's decision."
-        : readyNowBalls >= nextNeed.TotalRequiredBalls
-            ? "Covered by carryover."
-            : readyNowBalls + stillFermentingBalls + mixedButNotBalledBalls >= nextNeed.TotalRequiredBalls
-                ? "Covered by carryover and dough already in process."
-                : nextNeed.IsRecommendedForSelectedProductionDate
-                    ? "Today's mix protects this demand window."
-                    : "Watch the next prep window.";
-
-    var strategicNote = weeklyGoal?.HasClosingCarryover == true
-        ? $"Carryover from {weeklyGoal.CarryoverSourceWeekStartDate?.ToString("MMM d")} - {weeklyGoal.CarryoverSourceWeekEndDate?.ToString("MMM d")} is already doing part of the work. Mixed loads stay separate until Ball Dough is completed."
-        : "No weekly closing carryover is saved yet, so today's plan is driven by live inventory and in-process dough only.";
+            ? "bg-[#c87917] text-white"
+            : "bg-primary text-white";
 }
 
 @if (planning is null)
 {
-    <section class="content-card content-card--padded dq-production-card">
+    <section class="rounded-[28px] border border-outline-variant bg-white p-8 shadow-sm">
         <div class="empty-state">
             <i class="fa-regular fa-calendar"></i>
-            <span>The system could not build a production plan for this work date.</span>
+            <span>The system could not build a dough production plan for this date.</span>
         </div>
     </section>
 }
 else
 {
-    <section class="content-card content-card--padded dq-production-card space-y-6">
-        <div class="section-heading">
-            <span class="eyebrow">Daily Operations</span>
-            <h2>Today's Production Recommendation</h2>
-            <p class="dq-section-copy">Work date: @planning.ProductionDate.ToString("dddd, MMM d"). This looks ahead @planning.DaysAhead days so the kitchen can act before dough is needed.</p>
-        </div>
-
-        @if (weeklyGoal is not null)
-        {
-            <div class="rounded-[24px] border border-outline-variant bg-surface-container-low px-5 py-4">
-                <p class="m-0 text-sm font-semibold uppercase tracking-[0.18em] text-on-surface-variant">Week Goal</p>
-                <p class="mt-2 mb-0 text-lg leading-8 text-on-surface-variant">
-                    For @weeklyGoal.WeekStartDate.ToString("MMM d") through @weeklyGoal.WeekEndDate.ToString("MMM d"),
-                    keep ready dough, in-process dough, and historical last-week activity separate.
-                </p>
-            </div>
-        }
-
-        <section class="rounded-[28px] bg-gradient-to-r @bannerBackground px-7 py-7 text-white shadow-sm">
-            <div class="grid gap-6 lg:grid-cols-[1.65fr_.65fr] lg:items-center">
+    <section class="space-y-6">
+        <section class="rounded-[28px] @statusToneClass p-7 shadow-sm">
+            <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                    <div class="flex items-center gap-4">
-                        <span class="inline-flex h-12 w-12 items-center justify-center rounded-full border-4 border-white/80 text-2xl">
-                            <i class="fa-solid fa-check"></i>
-                        </span>
-                        <h3 class="m-0 text-4xl font-extrabold tracking-[-0.04em] lg:text-6xl">@bannerTitle</h3>
-                    </div>
-                    <p class="mt-4 mb-0 text-2xl font-semibold leading-tight text-white/95 lg:text-[2.15rem]">
-                        @bannerMessage
-                    </p>
+                    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-white/80">Today's Production Recommendation</p>
+                    <h2 class="mt-3 text-4xl font-black tracking-[-0.05em] text-white lg:text-6xl">@statusTitle</h2>
+                    <p class="mt-4 max-w-4xl text-xl leading-9 text-white/95">@statusMessage</p>
                 </div>
 
-                <div class="border-t border-white/20 pt-4 text-left lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0 lg:text-right">
-                    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-white/75">Next Event</p>
-                    <strong class="mt-2 block text-3xl font-extrabold tracking-[-0.04em] lg:text-5xl">@nextNeedDateLabel</strong>
-                    <span class="mt-2 block text-xl text-white/90">@nextNeedSubtitle</span>
+                <div class="rounded-[22px] border border-white/20 bg-white/10 px-6 py-5 lg:min-w-[260px]">
+                    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-white/75">Work Date</p>
+                    <strong class="mt-2 block text-3xl font-black tracking-[-0.04em] text-white">@planning.ProductionDate.ToString("dddd, MMM d")</strong>
+                    <span class="mt-2 block text-lg text-white/85">Planning window: @weeklyGoal?.WeekStartDate.ToString("MMM d") - @weeklyGoal?.WeekEndDate.ToString("MMM d")</span>
                 </div>
             </div>
         </section>
 
-        <section class="grid gap-6 xl:grid-cols-[1.05fr_2.15fr]">
-            <article class="overflow-hidden rounded-[28px] border border-outline-variant bg-white shadow-sm">
-                <div class="border-b border-outline-variant px-7 py-6">
-                    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Decision Status</p>
-                    <h3 class="mt-4 mb-0 text-2xl font-semibold tracking-[-0.03em] text-on-surface lg:text-4xl">Do we need to mix?</h3>
+        <section class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            <article class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Ready Dough Balls</p>
+                <div class="mt-5 flex items-end gap-3">
+                    <strong class="text-6xl font-black leading-none tracking-[-0.06em] text-[#2e6e14]">@readyNowBalls</strong>
+                    <span class="pb-2 text-2xl text-on-surface-variant">balls</span>
                 </div>
-                <div class="flex min-h-[350px] flex-col items-center justify-center gap-6 px-7 py-10 text-center">
-                    <strong class="text-[7rem] font-black leading-none tracking-[-0.08em] @decisionAnswerColor lg:text-[9rem]">@decisionAnswer</strong>
-                    <span class="inline-flex min-h-[64px] items-center rounded-full bg-[#7db335] px-8 text-2xl font-extrabold text-white shadow-sm">
-                        @decisionPlan
-                    </span>
-                </div>
-            </article>
-
-            <div class="grid gap-6 md:grid-cols-2">
-                <article class="rounded-[28px] border border-outline-variant bg-white p-7 shadow-sm">
-                    <div class="flex items-start justify-between gap-4">
-                        <div>
-                            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Ready Now</p>
-                        </div>
-                        <i class="fa-regular fa-box-open text-3xl text-[#76ac31]"></i>
-                    </div>
-                    <div class="mt-7 flex items-end gap-3">
-                        <strong class="text-6xl font-black leading-none tracking-[-0.06em] text-primary lg:text-[5.25rem]">@readyNowBalls</strong>
-                        <span class="pb-2 text-2xl text-on-surface-variant">balls</span>
-                    </div>
-                    <div class="mt-7 h-3 w-full overflow-hidden rounded-full bg-surface-container">
-                        <div class="h-full rounded-full bg-[#76ac31]" style="width:@Math.Max(12, Math.Min(100, doughNeededThisWeekBalls == 0 ? 12 : (int)Math.Round(readyNowBalls * 100d / doughNeededThisWeekBalls)))%"></div>
-                    </div>
-                </article>
-
-                <article class="rounded-[28px] border border-outline-variant bg-white p-7 shadow-sm">
-                    <div class="flex items-start justify-between gap-4">
-                        <div>
-                            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">7-Day Window Need</p>
-                        </div>
-                        <i class="fa-regular fa-calendar text-3xl text-primary"></i>
-                    </div>
-                    <div class="mt-7 flex items-end gap-3">
-                        <strong class="text-6xl font-black leading-none tracking-[-0.06em] text-primary lg:text-[5.25rem]">@doughNeededThisWeekBalls</strong>
-                        <span class="pb-2 text-2xl text-on-surface-variant">balls</span>
-                    </div>
-                    <div class="mt-7 flex items-center gap-3">
-                        <span class="inline-flex rounded-lg bg-primary px-4 py-2 text-base font-extrabold uppercase tracking-[0.08em] text-white">Calculated</span>
-                        <span class="text-xl text-on-surface-variant">Until @weeklyGoal?.WeekEndDate.ToString("MMM d")</span>
-                    </div>
-                </article>
-
-                <article class="rounded-[28px] border border-outline-variant bg-white p-7 shadow-sm">
-                    <div class="flex items-start justify-between gap-4">
-                        <div>
-                            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Mixed (Wait For Balling)</p>
-                        </div>
-                        <i class="fa-regular fa-hourglass-half text-3xl text-[#9b5200]"></i>
-                    </div>
-                    <div class="mt-7 flex items-end gap-3">
-                        <strong class="text-6xl font-black leading-none tracking-[-0.06em] text-[#9b5200] lg:text-[5.25rem]">@mixedButNotBalledBalls</strong>
-                        <span class="pb-2 text-2xl text-on-surface-variant">balls potential</span>
-                    </div>
-                    <p class="mt-7 mb-0 text-xl leading-8 text-on-surface-variant">
-                        @if (weeklyGoal?.HasClosingCarryover == true && weeklyGoal.CarryoverMixedButNotBalledLoads > 0)
-                        {
-                            <span>Dough from prior week sequence.</span>
-                        }
-                        else
-                        {
-                            <span>Dough already mixed, but not yet counted as available balls.</span>
-                        }
-                    </p>
-                </article>
-
-                <article class="rounded-[28px] border-2 border-[#f19b3f] bg-white p-7 shadow-sm">
-                    <div class="flex items-start justify-between gap-4">
-                        <div>
-                            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Still Missing (This Week)</p>
-                        </div>
-                        <i class="fa-solid fa-triangle-exclamation text-3xl text-[#f19b3f]"></i>
-                    </div>
-                    <div class="mt-7 flex items-end gap-3">
-                        <strong class="text-6xl font-black leading-none tracking-[-0.06em] text-primary lg:text-[5.25rem]">@doughStillMissingThisWeekBalls</strong>
-                        <span class="pb-2 text-2xl text-on-surface-variant">balls</span>
-                    </div>
-                    <p class="mt-7 mb-0 text-xl font-semibold text-[#b46200]">Wait for next mix cycle</p>
-                </article>
-            </div>
-        </section>
-
-        <section class="grid gap-6 xl:grid-cols-[1.6fr_.8fr]">
-            <article class="rounded-[28px] border border-outline-variant bg-white p-7 shadow-sm">
-                <div class="flex items-start gap-4">
-                    <i class="fa-solid fa-circle-info mt-1 text-3xl text-primary"></i>
-                    <div>
-                        <h3 class="m-0 text-3xl font-bold tracking-[-0.04em] text-primary lg:text-5xl">Why this daily plan matters</h3>
-                        <p class="mt-6 mb-0 text-2xl leading-[1.55] text-on-surface-variant lg:text-[2rem]">
-                            @planning.Reason
-                        </p>
-                    </div>
-                </div>
-
-                <div class="mt-8 grid gap-5 lg:grid-cols-2">
-                    <article class="rounded-[22px] border border-outline-variant bg-surface-container-low p-6">
-                        <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Target: @nextNeedDateLabel</p>
-                        <p class="mt-4 mb-0 text-2xl text-on-surface">Demand: @nextNeed?.TotalRequiredBalls ?? 0 balls</p>
-                        <p class="mt-5 mb-0 text-xl font-extrabold uppercase tracking-[0.08em] text-[#7db335]">@targetCoverage</p>
-                    </article>
-
-                    <article class="rounded-[22px] border-l-4 border-[#c87917] bg-surface-container-low p-6">
-                        <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Strategic Note</p>
-                        <p class="mt-4 mb-0 text-2xl leading-10 text-on-surface-variant">@strategicNote</p>
-                    </article>
-                </div>
-            </article>
-
-            <aside class="rounded-[28px] border border-outline-variant bg-white p-7 shadow-sm">
-                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Historical Reference (Last Week)</p>
-
-                <div class="mt-8 space-y-8">
-                    <div class="flex items-end justify-between gap-4 border-b border-outline-variant pb-6">
-                        <span class="text-2xl text-on-surface">Total Produced</span>
-                        <strong class="text-4xl font-black leading-none tracking-[-0.05em] text-primary">@weeklyGoal?.PreviousWeekProducedBalls ?? 0</strong>
-                    </div>
-
-                    <div class="flex items-end justify-between gap-4 border-b border-outline-variant pb-6">
-                        <span class="text-2xl text-on-surface">Total Used</span>
-                        <strong class="text-4xl font-black leading-none tracking-[-0.05em] text-[#7db335]">@previousWeekFinishedBalls</strong>
-                    </div>
-
-                    <div class="flex items-end justify-between gap-4 border-b border-outline-variant pb-6">
-                        <span class="text-2xl text-on-surface">Lost / Waste</span>
-                        <strong class="text-4xl font-black leading-none tracking-[-0.05em] text-[#c1272d]">@weeklyGoal?.PreviousWeekLostBalls ?? 0</strong>
-                    </div>
-                </div>
-
-                <p class="mt-8 mb-0 text-xl italic leading-9 text-on-surface-variant">
-                    Prior week metrics are for context only and are not counted toward current available inventory.
+                <p class="mt-5 mb-0 text-lg leading-8 text-on-surface-variant">
+                    Ready to use now. Attention dough still counts here if it is not discarded.
                 </p>
-            </aside>
+            </article>
+
+            <article class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Weekly Goal</p>
+                <div class="mt-5 flex items-end gap-3">
+                    <strong class="text-6xl font-black leading-none tracking-[-0.06em] text-primary">@weeklyGoalBalls</strong>
+                    <span class="pb-2 text-2xl text-on-surface-variant">balls</span>
+                </div>
+                <p class="mt-5 mb-0 text-lg leading-8 text-on-surface-variant">
+                    Total dough needed from Tuesday through Sunday for this operating week.
+                </p>
+            </article>
+
+            <article class="rounded-[24px] border-2 border-[#f19b3f] bg-white p-6 shadow-sm">
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Still Missing This Week</p>
+                <div class="mt-5 flex items-end gap-3">
+                    <strong class="text-6xl font-black leading-none tracking-[-0.06em] text-primary">@stillMissingBalls</strong>
+                    <span class="pb-2 text-2xl text-on-surface-variant">balls</span>
+                </div>
+                <p class="mt-5 mb-0 text-lg leading-8 text-[#b46200]">
+                    Weekly need after ready dough, fermenting dough, and mixed-but-not-balled dough are counted.
+                </p>
+            </article>
+
+            <article class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Today's Load Plan</p>
+                <div class="mt-5 flex items-end gap-3">
+                    <strong class="text-6xl font-black leading-none tracking-[-0.06em] text-[#9b5200]">@todayLoadPlan</strong>
+                    <span class="pb-2 text-2xl text-on-surface-variant">loads</span>
+                </div>
+                <p class="mt-5 mb-0 text-lg leading-8 text-on-surface-variant">
+                    About @todayCasesToMake cases today. `Make Dough Load` is future capacity only and does not increase ready balls.
+                </p>
+            </article>
+        </section>
+
+        <section class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            <article class="rounded-[22px] border border-outline-variant bg-white p-5 shadow-sm">
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Still Fermenting</p>
+                <strong class="mt-4 block text-4xl font-black tracking-[-0.05em] text-primary">@stillFermentingBalls</strong>
+                <p class="mt-4 mb-0 text-base leading-7 text-on-surface-variant">Already mixed for this week, but not usable right now.</p>
+            </article>
+
+            <article class="rounded-[22px] border border-outline-variant bg-white p-5 shadow-sm">
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Mixed But Not Balled</p>
+                <strong class="mt-4 block text-4xl font-black tracking-[-0.05em] text-[#9b5200]">@mixedButNotBalledBalls</strong>
+                <p class="mt-4 mb-0 text-base leading-7 text-on-surface-variant">Potential only. These balls do not count as available until Ball Dough is completed.</p>
+            </article>
+
+            <article class="rounded-[22px] border border-outline-variant bg-white p-5 shadow-sm">
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Use First</p>
+                <strong class="mt-4 block text-4xl font-black tracking-[-0.05em] text-secondary">@useFirstBalls</strong>
+                <p class="mt-4 mb-0 text-base leading-7 text-on-surface-variant">MustUseNextDay dough shown in plain kitchen language.</p>
+            </article>
+
+            <article class="rounded-[22px] border border-outline-variant bg-white p-5 shadow-sm">
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Previous Week Used / Finished</p>
+                <strong class="mt-4 block text-4xl font-black tracking-[-0.05em] text-primary">@previousWeekFinishedBalls</strong>
+                <p class="mt-4 mb-0 text-base leading-7 text-on-surface-variant">Historical only. This number is not counted as available for this week.</p>
+            </article>
         </section>
 
         @if (weeklyGoal?.HasClosingCarryover == true)
         {
-            <section class="rounded-[28px] border border-outline-variant bg-surface-container-low p-6">
+            <section class="rounded-[24px] border border-outline-variant bg-surface-container-low p-6">
                 <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Weekly Closing Carryover</p>
-                <p class="mt-3 mb-0 text-2xl leading-10 text-on-surface-variant">
-                    The prior closing for @weeklyGoal.CarryoverSourceWeekStartDate?.ToString("MMM d") through @weeklyGoal.CarryoverSourceWeekEndDate?.ToString("MMM d")
-                    recorded @weeklyGoal.CarryoverAvailableBalls balls still on hand and @weeklyGoal.CarryoverMixedButNotBalledLoads mixed load@(weeklyGoal.CarryoverMixedButNotBalledLoads == 1 ? string.Empty : "s")
-                    waiting to be balled. Those loads do not count as available until Ball Dough is completed.
+                <p class="mt-3 mb-0 text-lg leading-8 text-on-surface-variant">
+                    The previous closing passed
+                    <strong>@weeklyGoal.CarryoverAvailableBalls balls</strong>
+                    plus
+                    <strong>@weeklyGoal.CarryoverMixedButNotBalledLoads mixed load@(weeklyGoal.CarryoverMixedButNotBalledLoads == 1 ? string.Empty : "s")</strong>
+                    into this week. Mixed loads stay separate until Ball Dough is completed.
                 </p>
                 @if (!string.IsNullOrWhiteSpace(weeklyGoal.CarryoverClosingNotes))
                 {
-                    <p class="mt-4 mb-0 text-xl text-on-surface"><strong>Closing note:</strong> @weeklyGoal.CarryoverClosingNotes</p>
+                    <p class="mt-3 mb-0 text-base leading-7 text-on-surface"><strong>Closing note:</strong> @weeklyGoal.CarryoverClosingNotes</p>
                 }
             </section>
         }
 
-        <div class="flex flex-wrap gap-4">
-            @if (Model.CanManageRecommendations)
-            {
-                <button type="button"
-                        class="inline-flex min-h-[72px] items-center justify-center gap-3 rounded-[20px] bg-primary px-8 text-2xl font-bold text-white shadow-sm transition-opacity hover:opacity-90"
-                        hx-post="@Url.Action("CalculateDough", "Prep")"
-                        hx-include="#targetDate,#historicalWeeksToUse,#dough-prep-anti-forgery"
-                        hx-target="#dough-prep-workspace"
-                        hx-swap="outerHTML">
-                    <i class="fa-solid fa-plus"></i>
-                    Recalculate Guidance
-                </button>
-            }
+        <section class="rounded-[28px] border border-outline-variant bg-white p-7 shadow-sm">
+            <div class="section-heading">
+                <span class="eyebrow">Why This Daily Plan Matters</span>
+                <h2>Explain the plan in kitchen language</h2>
+                <p>Keep the reasoning visible without opening analytics or technical tables.</p>
+            </div>
 
-            <a class="inline-flex min-h-[72px] items-center justify-center gap-3 rounded-[20px] border-2 border-primary bg-white px-8 text-2xl font-bold text-primary no-underline shadow-sm transition-colors hover:bg-primary-fixed"
-               asp-controller="PrepTasks"
-               asp-action="Index"
-               asp-route-taskDate="@Model.TargetDate.ToString("yyyy-MM-dd")">
-                <i class="fa-regular fa-clipboard-check"></i>
-                Open Task Board
-            </a>
-        </div>
+            <p class="mt-6 mb-0 text-xl leading-10 text-on-surface-variant">@planning.Reason</p>
 
-        @if (planning.HasUpcomingNeeds)
-        {
-            <details class="dq-detail-toggle">
-                <summary>View future dough planning details</summary>
-                <div class="table-responsive">
-                    <table class="table prep-table align-middle">
-                        <thead>
-                            <tr>
-                                <th scope="col">Need Date</th>
-                                <th scope="col">Usual Dough</th>
-                                <th scope="col">Event Dough</th>
-                                <th scope="col">Total Needed</th>
-                                <th scope="col">Best Prep Window</th>
-                                <th scope="col">Best Day To Mix</th>
-                                <th scope="col">Notes</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var need in planning.UpcomingNeeds)
-                            {
-                                <tr>
-                                    <td><strong>@need.NeedDate.ToString("ddd, MMM d")</strong></td>
-                                    <td>@need.RestaurantBaselineBalls</td>
-                                    <td>@need.EventBalls</td>
-                                    <td><strong>@need.TotalRequiredBalls</strong></td>
-                                    <td>@need.ProductionWindowStart.ToString("MMM d") - @need.ProductionWindowEnd.ToString("MMM d")</td>
-                                    <td>
-                                        <span class="status-pill @(need.IsRecommendedForSelectedProductionDate ? "status-pill--warning" : "status-pill--neutral")">
-                                            @need.RecommendedMakeDate.ToString("MMM d")
-                                        </span>
-                                    </td>
-                                    <td>
-                                        @if (need.UsesShortFermentation)
-                                        {
-                                            <span class="inline-hint">
-                                                <i class="fa-solid fa-sun"></i>
-                                                Summer event timing
-                                            </span>
-                                        }
-                                        else if (need.IsRecommendedForSelectedProductionDate)
-                                        {
-                                            <span class="inline-hint">
-                                                <i class="fa-solid fa-circle-check"></i>
-                                                Mix on this work date
-                                            </span>
-                                        }
-                                        else
-                                        {
-                                            <span>-</span>
-                                        }
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+            <div class="mt-6 grid gap-4 lg:grid-cols-3">
+                <div class="rounded-[20px] bg-surface-container-low p-5">
+                    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Ready Right Now</p>
+                    <strong class="mt-3 block text-3xl font-black tracking-[-0.05em] text-[#2e6e14]">@readyNowBalls balls</strong>
                 </div>
-            </details>
-        }
+                <div class="rounded-[20px] bg-surface-container-low p-5">
+                    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Ball Work Today</p>
+                    <strong class="mt-3 block text-3xl font-black tracking-[-0.05em] text-[#9b5200]">@todayBallsToBall balls</strong>
+                </div>
+                <div class="rounded-[20px] bg-surface-container-low p-5">
+                    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Load Work Today</p>
+                    <strong class="mt-3 block text-3xl font-black tracking-[-0.05em] text-primary">@todayLoadPlan load@(todayLoadPlan == 1 ? string.Empty : "s")</strong>
+                </div>
+            </div>
+        </section>
     </section>
 }
