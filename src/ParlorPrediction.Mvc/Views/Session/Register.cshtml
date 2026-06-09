@@ -3,47 +3,55 @@
     ViewData["Title"] = "Register";
 }
 
-<section class="auth-shell">
+<section class="auth-shell pp-auth-shell pp-auth-shell--wide">
     <div class="auth-card auth-card--wide">
+        <div class="pp-auth-brand">
+            <span class="pp-auth-brand__mark">PP</span>
+            <div class="pp-auth-brand__copy">
+                <strong>Parlor Prediction</strong>
+                <small>Team registration</small>
+            </div>
+        </div>
+
         <div class="section-heading">
             <span class="eyebrow">Parlor Prep Access</span>
             <h1>Create your account</h1>
             <p>Register first, confirm your email, and then wait for an Admin or Manager to approve your kitchen role.</p>
         </div>
 
-        <form asp-action="Register" asp-controller="Session" method="post" class="row g-3 auth-form">
+        <form asp-action="Register" asp-controller="Session" method="post" class="row g-3">
             @Html.AntiForgeryToken()
 
             <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
-            <div class="col-md-6 form-floating">
+            <div class="col-md-6">
+                <label asp-for="FirstName" class="form-label"></label>
                 <input asp-for="FirstName" class="form-control" placeholder="First name" />
-                <label asp-for="FirstName"></label>
             </div>
 
-            <div class="col-md-6 form-floating">
+            <div class="col-md-6">
+                <label asp-for="LastName" class="form-label"></label>
                 <input asp-for="LastName" class="form-control" placeholder="Last name" />
-                <label asp-for="LastName"></label>
             </div>
 
-            <div class="col-12 form-floating">
+            <div class="col-12">
+                <label asp-for="Email" class="form-label"></label>
                 <input asp-for="Email" class="form-control" placeholder="name@example.com" />
-                <label asp-for="Email"></label>
             </div>
 
-            <div class="col-12 form-floating">
+            <div class="col-12">
+                <label asp-for="PhoneNumber" class="form-label"></label>
                 <input asp-for="PhoneNumber" class="form-control" placeholder="Phone number" />
-                <label asp-for="PhoneNumber"></label>
             </div>
 
-            <div class="col-md-6 form-floating">
+            <div class="col-md-6">
+                <label asp-for="Password" class="form-label"></label>
                 <input asp-for="Password" class="form-control" placeholder="Password" />
-                <label asp-for="Password"></label>
             </div>
 
-            <div class="col-md-6 form-floating">
+            <div class="col-md-6">
+                <label asp-for="PasswordConfirmation" class="form-label"></label>
                 <input asp-for="PasswordConfirmation" class="form-control" placeholder="Confirm password" />
-                <label asp-for="PasswordConfirmation"></label>
             </div>
 
             <div class="col-12 d-grid gap-2">
@@ -51,7 +59,7 @@
                     <i class="fa-solid fa-user-plus me-2"></i>
                     Register
                 </button>
-                <a class="btn btn-link" asp-action="Login" asp-controller="Session">Back to Sign In</a>
+                <a class="btn btn-outline-secondary" asp-action="Login" asp-controller="Session">Back to Sign In</a>
             </div>
         </form>
     </div>
