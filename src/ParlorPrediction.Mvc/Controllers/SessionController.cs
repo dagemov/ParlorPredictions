@@ -53,7 +53,7 @@ public sealed class SessionController : Controller
     {
         if (User.Identity?.IsAuthenticated == true)
         {
-            return RedirectToAction("Index", "Prep");
+            return RedirectToAction("Index", "Home");
         }
 
         return View(new RegisterViewModel());
@@ -66,7 +66,7 @@ public sealed class SessionController : Controller
     {
         if (User.Identity?.IsAuthenticated == true)
         {
-            return RedirectToAction("Index", "Prep");
+            return RedirectToAction("Index", "Home");
         }
 
         if (!ModelState.IsValid)
@@ -204,7 +204,7 @@ public sealed class SessionController : Controller
             return Redirect(returnUrl);
         }
 
-        return RedirectToAction("Index", "Prep");
+        return RedirectToAction("Index", "Home");
     }
 
     private string GetApplicationBaseUrl()

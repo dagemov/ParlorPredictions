@@ -121,13 +121,9 @@
     @{
         var canSeePrep = User.Identity?.IsAuthenticated == true &&
             (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("PizzaMaker"));
-        var canSeeDashboard = User.Identity?.IsAuthenticated == true &&
+        var canSeeHome = canSeePrep;
+        var canSeeAdminPanel = User.Identity?.IsAuthenticated == true &&
             (User.IsInRole("Admin") || User.IsInRole("Manager"));
-        var canManageUsers = User.Identity?.IsAuthenticated == true &&
-            (User.IsInRole("Admin") || User.IsInRole("Manager"));
-        var canSeeQuality = User.Identity?.IsAuthenticated == true &&
-            (User.IsInRole("Admin") || User.IsInRole("Manager"));
-        var canSeeWeeklyClosing = canSeeQuality;
         var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
         var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
         var isSessionPage = string.Equals(currentController, "Session", StringComparison.OrdinalIgnoreCase);
@@ -141,8 +137,8 @@
                     ? "PizzaMaker"
                     : "Guest";
         var displayName = User.Identity?.Name ?? "Parlor User";
-        var brandController = canSeeDashboard ? "Dashboard" : canSeePrep ? "Prep" : "Home";
-        var brandAction = canSeeDashboard ? "Index" : canSeePrep ? "Dough" : "Index";
+        var brandController = canSeeHome ? "Home" : canSeePrep ? "Prep" : "Home";
+        var brandAction = canSeeHome ? "Index" : canSeePrep ? "Dough" : "Index";
 
         string NavLinkClass(string controller, string? action = null)
         {
@@ -154,8 +150,14 @@
                 : "pp-nav-link";
         }
 
-        var doughQualityNavClass = string.Equals(currentController, "DoughQuality", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(currentAction, "Losses", StringComparison.OrdinalIgnoreCase)
+        var adminPanelNavClass =
+            (string.Equals(currentController, "AdminPanel", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(currentController, "AdminUsers", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(currentController, "PrepData", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(currentController, "PrepRecommendations", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(currentController, "WeeklyClosing", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(currentController, "DoughQuality", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(currentController, "Dashboard", StringComparison.OrdinalIgnoreCase))
             ? "pp-nav-link is-active"
             : "pp-nav-link";
     }
@@ -224,14 +226,14 @@
                 <aside class="pp-sidebar" aria-label="Primary">
                     <div class="pp-sidebar__section">
                         <span class="pp-sidebar__eyebrow">Navigation</span>
-                        <p class="pp-sidebar__copy">Use one workflow shell across dashboard, dough planning, weekly closing, and quality review.</p>
+                        <p class="pp-sidebar__copy">Keep the product simple: one home view, one kitchen workflow, and one admin area.</p>
                     </div>
                     <nav class="pp-sidebar__nav">
-                        @if (canSeeDashboard)
+                        @if (canSeeHome)
                         {
-                            <a class="@NavLinkClass("Dashboard", "Index")" asp-controller="Dashboard" asp-action="Index">
-                                <i class="fa-solid fa-chart-line"></i>
-                                Dashboard
+                            <a class="@NavLinkClass("Home", "Index")" asp-controller="Home" asp-action="Index">
+                                <i class="fa-solid fa-house"></i>
+                                Home
                             </a>
                         }
                         @if (canSeePrep)
@@ -240,37 +242,12 @@
                                 <i class="fa-solid fa-bread-slice"></i>
                                 Dough Prep
                             </a>
-                            <a class="@NavLinkClass("PrepTasks")" asp-controller="PrepTasks" asp-action="Index">
-                                <i class="fa-solid fa-list-check"></i>
-                                Dough Tasks
-                            </a>
                         }
-                        @if (canSeeQuality)
+                        @if (canSeeAdminPanel)
                         {
-                            <a class="@doughQualityNavClass" asp-controller="DoughQuality" asp-action="Review">
-                                <i class="fa-solid fa-magnifying-glass-chart"></i>
-                                Dough Quality
-                            </a>
-                        }
-                        @if (canSeeWeeklyClosing)
-                        {
-                            <a class="@NavLinkClass("WeeklyClosing", "Index")" asp-controller="WeeklyClosing" asp-action="Index">
-                                <i class="fa-solid fa-clipboard-check"></i>
-                                Weekly Closing
-                            </a>
-                        }
-                        @if (canSeeQuality)
-                        {
-                            <a class="@NavLinkClass("DoughQuality", "Losses")" asp-controller="DoughQuality" asp-action="Losses">
-                                <i class="fa-solid fa-chart-pie"></i>
-                                Losses
-                            </a>
-                        }
-                        @if (canManageUsers)
-                        {
-                            <a class="@NavLinkClass("AdminUsers")" asp-controller="AdminUsers" asp-action="Index">
-                                <i class="fa-solid fa-users"></i>
-                                Users
+                            <a class="@adminPanelNavClass" asp-controller="AdminPanel" asp-action="Index">
+                                <i class="fa-solid fa-screwdriver-wrench"></i>
+                                Admin Panel
                             </a>
                         }
                     </nav>
