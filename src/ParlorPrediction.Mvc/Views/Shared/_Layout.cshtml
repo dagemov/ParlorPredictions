@@ -7,11 +7,13 @@
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/app-shell.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/ParlorPrediction.Mvc.styles.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
-<body>
+<body class="pp-shell-body">
     @{
         var canSeePrep = User.Identity?.IsAuthenticated == true &&
             (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("PizzaMaker"));
@@ -19,65 +21,154 @@
             (User.IsInRole("Admin") || User.IsInRole("Manager"));
         var canManageUsers = User.Identity?.IsAuthenticated == true &&
             (User.IsInRole("Admin") || User.IsInRole("Manager"));
+        var canSeeQuality = User.Identity?.IsAuthenticated == true &&
+            (User.IsInRole("Admin") || User.IsInRole("Manager"));
+        var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+        var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
+        var isSessionPage = string.Equals(currentController, "Session", StringComparison.OrdinalIgnoreCase);
+        var showSidebar = User.Identity?.IsAuthenticated == true && !isSessionPage;
+        var isPublicHome = !showSidebar && string.Equals(currentController, "Home", StringComparison.OrdinalIgnoreCase);
+        var roleLabel = User.IsInRole("Admin")
+            ? "Admin"
+            : User.IsInRole("Manager")
+                ? "Manager"
+                : User.IsInRole("PizzaMaker")
+                    ? "PizzaMaker"
+                    : "Guest";
+        var displayName = User.Identity?.Name ?? "Parlor User";
+
+        string NavLinkClass(string controller, string? action = null)
+        {
+            var controllerMatches = string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase);
+            var actionMatches = string.IsNullOrWhiteSpace(action) ||
+                string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase);
+            return controllerMatches && actionMatches
+                ? "pp-nav-link is-active"
+                : "pp-nav-link";
+        }
     }
 
-    <div class="app-frame">
-        <header class="app-header">
-            <div class="container app-shell header-bar">
-                <div class="header-branding">
-                    <a class="app-brand" asp-controller="Home" asp-action="Index">
-                        <span class="app-brand__mark">PP</span>
-                        <span>
-                            <strong>Parlor Prediction</strong>
-                            <small>Dough Prep Prototype</small>
-                        </span>
-                    </a>
-                    <nav class="app-nav" aria-label="Primary">
-                        <a asp-controller="Home" asp-action="Index">Home</a>
-                        @if (canSeeDashboard)
-                        {
-                            <a asp-controller="Dashboard" asp-action="Index">Dashboard</a>
-                        }
-                        @if (canManageUsers)
-                        {
-                            <a asp-controller="AdminUsers" asp-action="Index">Users</a>
-                        }
-                        @if (canSeePrep)
-                        {
-                            <a asp-controller="Prep" asp-action="Index">Prep</a>
-                        }
-                    </nav>
-                </div>
+    <div class="pp-shell">
+        <header class="pp-topbar">
+            <a class="pp-topbar__brand" asp-controller="Home" asp-action="Index">
+                <span class="pp-topbar__mark">PP</span>
+                <span>
+                    <strong>Parlor Prediction</strong>
+                    <small>Kitchen workflow system</small>
+                </span>
+            </a>
 
-                <div class="header-actions">
-                    @if (User.Identity?.IsAuthenticated == true)
+            <div class="pp-topbar__meta">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <span class="pp-chip">
+                        <i class="fa-regular fa-calendar"></i>
+                        @DateTime.Today.ToString("MMM dd, yyyy")
+                    </span>
+                    <span class="pp-chip--outline">
+                        <i class="fa-solid fa-user-shield"></i>
+                        @roleLabel
+                    </span>
+                    <span class="pp-chip--outline">
+                        <i class="fa-regular fa-user"></i>
+                        @displayName
+                    </span>
+                    <form asp-controller="Session" asp-action="Logout" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">
+                            <i class="fa-solid fa-right-from-bracket me-2"></i>
+                            Sign Out
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    if (!isPublicHome)
                     {
-                        <span class="user-chip">
-                            <i class="fa-regular fa-user"></i>
-                            @User.Identity?.Name
-                        </span>
-                        <form asp-controller="Session" asp-action="Logout" method="post" class="d-inline">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-sm btn-outline-secondary">Sign Out</button>
-                        </form>
+                        <a class="btn btn-outline-secondary btn-sm" asp-controller="Home" asp-action="Index">
+                            <i class="fa-solid fa-house me-2"></i>
+                            Home
+                        </a>
                     }
-                    else
+                    if (!string.Equals(currentAction, "Login", StringComparison.OrdinalIgnoreCase))
                     {
-                        <a class="btn btn-sm btn-primary" asp-controller="Session" asp-action="Login">Sign In</a>
+                        <a class="btn btn-outline-secondary btn-sm" asp-controller="Session" asp-action="Login">
+                            Sign In
+                        </a>
                     }
-                </div>
+                    if (!string.Equals(currentAction, "Register", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <a class="btn btn-primary btn-sm" asp-controller="Session" asp-action="Register">
+                            Create Account
+                        </a>
+                    }
+                }
             </div>
         </header>
 
-        <main class="container app-shell py-4 py-lg-5" role="main">
-            @RenderBody()
-        </main>
+        <div class="pp-frame">
+            @if (showSidebar)
+            {
+                <aside class="pp-sidebar" aria-label="Primary">
+                    <div class="pp-sidebar__section">
+                        <span class="pp-sidebar__eyebrow">Navigation</span>
+                        <p class="pp-sidebar__copy">Use the same workflow shell across dashboard, users, and dough operations.</p>
+                    </div>
+                    <nav class="pp-sidebar__nav">
+                        <a class="@NavLinkClass("Home", "Index")" asp-controller="Home" asp-action="Index">
+                            <i class="fa-solid fa-house"></i>
+                            Home
+                        </a>
+                        @if (canSeeDashboard)
+                        {
+                            <a class="@NavLinkClass("Dashboard", "Index")" asp-controller="Dashboard" asp-action="Index">
+                                <i class="fa-solid fa-chart-line"></i>
+                                Dashboard
+                            </a>
+                        }
+                        @if (canManageUsers)
+                        {
+                            <a class="@NavLinkClass("AdminUsers")" asp-controller="AdminUsers" asp-action="Index">
+                                <i class="fa-solid fa-users"></i>
+                                Users
+                            </a>
+                        }
+                        @if (canSeePrep)
+                        {
+                            <a class="@NavLinkClass("Prep")" asp-controller="Prep" asp-action="Dough">
+                                <i class="fa-solid fa-bread-slice"></i>
+                                Dough Prep
+                            </a>
+                            <a class="@NavLinkClass("PrepTasks")" asp-controller="PrepTasks" asp-action="Index">
+                                <i class="fa-solid fa-list-check"></i>
+                                Tasks
+                            </a>
+                        }
+                        @if (canSeeQuality)
+                        {
+                            <a class="@NavLinkClass("DoughQuality", "Review")" asp-controller="DoughQuality" asp-action="Review">
+                                <i class="fa-solid fa-magnifying-glass-chart"></i>
+                                Dough Review
+                            </a>
+                            <a class="@NavLinkClass("DoughQuality", "Losses")" asp-controller="DoughQuality" asp-action="Losses">
+                                <i class="fa-solid fa-chart-pie"></i>
+                                Loss Analytics
+                            </a>
+                        }
+                    </nav>
+                </aside>
+            }
 
-        <footer class="footer">
-            <div class="container app-shell footer-content">
-                <span>&copy; 2026 Parlor Prediction</span>
-                <span>Internal workflow prototype for Parlor Pizza, Wilton CT.</span>
-            </div>
+            <main class="pp-main @(showSidebar ? string.Empty : (isSessionPage ? "pp-main--session" : "pp-main--public"))" role="main">
+                <div class="pp-page">
+                    @RenderBody()
+                </div>
+            </main>
+        </div>
+
+        <footer class="pp-footer">
+            <span>&copy; 2026 Parlor Prediction</span>
+            <span>Shared workflow shell for kitchen planning, dough prep, and team operations.</span>
         </footer>
     </div>
 
