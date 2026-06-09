@@ -1,27 +1,48 @@
 @{
     ViewData["Title"] = "Home";
+    var canSeePrep = User.Identity?.IsAuthenticated == true &&
+        (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("PizzaMaker"));
+    var canSeeDashboard = User.Identity?.IsAuthenticated == true &&
+        (User.IsInRole("Admin") || User.IsInRole("Manager"));
+    var canManageUsers = User.Identity?.IsAuthenticated == true &&
+        (User.IsInRole("Admin") || User.IsInRole("Manager"));
 }
 
 <section class="page-hero">
     <div>
         <span class="eyebrow">Parlor Pizza - Wilton, CT</span>
-        <h1>A clean base for dough prep, recommendations, and daily execution.</h1>
-        <p class="page-copy">The prototype now covers authentication, persistence, dough calculation, recommendation snapshots, and prep task tracking. The next screen is already operational for day-to-day dough prep work.</p>
+        <h1>One workflow shell for dough planning, kitchen prep, and team actions.</h1>
+        <p class="page-copy">ParlorPrediction now shares the same operational language across planning, dough prep, task execution, and team management. Start from the screen that matches today&apos;s job.</p>
     </div>
 
     <div class="hero-actions">
-        @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("PizzaMaker")))
+        @if (canSeePrep)
         {
-            <a class="btn btn-primary btn-lg" asp-controller="Prep" asp-action="Index">
+            <a class="btn btn-primary btn-lg" asp-controller="Prep" asp-action="Dough">
                 <i class="fa-solid fa-arrow-right me-2"></i>
-                Open Prep
+                Open Dough Prep
             </a>
+            <a class="btn btn-outline-secondary btn-lg" asp-controller="PrepTasks" asp-action="Index">
+                <i class="fa-solid fa-list-check me-2"></i>
+                Open Tasks
+            </a>
+            @if (canSeeDashboard)
+            {
+                <a class="btn btn-outline-secondary btn-lg" asp-controller="Dashboard" asp-action="Index">
+                    <i class="fa-solid fa-chart-line me-2"></i>
+                    Open Dashboard
+                </a>
+            }
         }
         else
         {
             <a class="btn btn-primary btn-lg" asp-controller="Session" asp-action="Login">
                 <i class="fa-solid fa-arrow-right-to-bracket me-2"></i>
                 Sign In
+            </a>
+            <a class="btn btn-outline-secondary btn-lg" asp-controller="Session" asp-action="Register">
+                <i class="fa-solid fa-user-plus me-2"></i>
+                Create Account
             </a>
         }
     </div>
@@ -30,34 +51,62 @@
 <section class="feature-grid">
     <article class="feature-card">
         <div class="feature-card__icon">
-            <i class="fa-solid fa-shield-halved"></i>
+            <i class="fa-solid fa-bread-slice"></i>
         </div>
         <div class="feature-card__body">
-            <div class="feature-card__meta">Foundation</div>
-            <h2>Secure auth and files</h2>
-            <p>Identity, JWT, Blob-ready uploads, and local SQL Server are already wired for the prototype.</p>
+            <div class="feature-card__meta">Kitchen workflow</div>
+            <h2>Dough Prep with real guidance</h2>
+            <p>Managers can calculate dough need, review current availability, save guidance, and turn that guidance into kitchen tasks.</p>
         </div>
     </article>
 
     <article class="feature-card">
         <div class="feature-card__icon">
-            <i class="fa-solid fa-calculator"></i>
+            <i class="fa-solid fa-chart-line"></i>
         </div>
         <div class="feature-card__body">
-            <div class="feature-card__meta">Operational core</div>
-            <h2>Dough calculations</h2>
-            <p>The system can calculate dough demand from history, events, and inventory snapshots before saving a recommendation.</p>
+            <div class="feature-card__meta">Operational view</div>
+            <h2>Dashboard for the day and week</h2>
+            <p>The dashboard keeps the current dough picture visible so the team can see what is covered, what is missing, and where to act next.</p>
         </div>
     </article>
 
     <article class="feature-card">
         <div class="feature-card__icon">
-            <i class="fa-solid fa-list-check"></i>
+            <i class="fa-solid fa-users-gear"></i>
         </div>
         <div class="feature-card__body">
-            <div class="feature-card__meta">Execution</div>
-            <h2>Prep task tracking</h2>
-            <p>Dough recommendations can become real prep tasks that managers and pizza makers can complete with traceability.</p>
+            <div class="feature-card__meta">Team control</div>
+            <h2>Users and access in the same product language</h2>
+            <p>Admins and managers can onboard, approve, and support the team without leaving the same shared shell used by prep operations.</p>
         </div>
     </article>
 </section>
+
+@if (canManageUsers)
+{
+    <section class="content-card content-card--padded">
+        <div class="toolbar-header">
+            <div class="section-heading mb-0">
+                <span class="eyebrow">Quick Actions</span>
+                <h2>Manager shortcuts</h2>
+                <p>Jump directly into the parts of the product that need attention most often during service and prep.</p>
+            </div>
+
+            <div class="pp-toolbar-actions">
+                <a class="btn btn-outline-secondary" asp-controller="AdminUsers" asp-action="Index">
+                    <i class="fa-solid fa-users me-2"></i>
+                    Open Users
+                </a>
+                <a class="btn btn-outline-secondary" asp-controller="DoughQuality" asp-action="Review">
+                    <i class="fa-solid fa-magnifying-glass-chart me-2"></i>
+                    Review Dough
+                </a>
+                <a class="btn btn-outline-secondary" asp-controller="DoughQuality" asp-action="Losses">
+                    <i class="fa-solid fa-chart-pie me-2"></i>
+                    View Losses
+                </a>
+            </div>
+        </div>
+    </section>
+}
