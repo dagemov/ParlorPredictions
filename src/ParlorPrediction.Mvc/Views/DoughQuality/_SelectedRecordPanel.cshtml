@@ -1,0 +1,61 @@
+@model DoughQualityReviewRecordViewModel
+
+<article class="dq-review-card dq-review-card--selected">
+    <div class="dq-review-card__header">
+        <div>
+            <span class="dq-summary-card__label">Selected dough</span>
+            <h2 class="dq-review-card__title">@Model.Title</h2>
+        </div>
+        <span class="status-pill @(Model.CountsAsAvailable ? "status-pill--success" : "status-pill--danger")">@Model.DisplayStatus</span>
+    </div>
+
+    <div class="dq-review-card__stats">
+        <div class="dq-stat-box">
+            <span class="dq-stat-box__label">Quantity</span>
+            <span class="dq-stat-box__value">@Model.QuantityBalls balls</span>
+        </div>
+        <div class="dq-stat-box">
+            <span class="dq-stat-box__label">Created</span>
+            <span class="dq-stat-box__value">@Model.CreatedOrBalledAt.ToLocalTime().ToString("MMM d")</span>
+        </div>
+        <div class="dq-stat-box">
+            <span class="dq-stat-box__label">Available</span>
+            <span class="dq-stat-box__value">@(Model.CountsAsAvailable ? "Yes" : "No")</span>
+        </div>
+    </div>
+
+    <dl class="dq-review-card__details">
+        <div>
+            <dt>Status meaning</dt>
+            <dd>@Model.AvailabilityText</dd>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Model.StatusReason))
+        {
+            <div>
+                <dt>Status reason</dt>
+                <dd>@Model.StatusReason</dd>
+            </div>
+        }
+        @if (Model.MustUseByDate.HasValue)
+        {
+            <div>
+                <dt>Must use by</dt>
+                <dd>@Model.MustUseByDate.Value.ToString("MMM d, yyyy")</dd>
+            </div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.DisplayDiscardReason))
+        {
+            <div>
+                <dt>Discard reason</dt>
+                <dd>@Model.DisplayDiscardReason</dd>
+            </div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.ManagerNote))
+        {
+            <div>
+                <dt>Manager note</dt>
+                <dd>@Model.ManagerNote</dd>
+            </div>
+        }
+    </dl>
+</article>

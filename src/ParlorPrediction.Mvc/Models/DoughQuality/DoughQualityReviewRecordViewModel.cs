@@ -30,6 +30,12 @@ public sealed class DoughQualityReviewRecordViewModel
 
     public string Title => $"Dough from {SourceDate:dddd}";
 
+    public string DisplayStatus => DoughQualityDisplayText.Format(CurrentStatus);
+
+    public string? DisplayDiscardReason => string.IsNullOrWhiteSpace(DiscardReason)
+        ? null
+        : DoughQualityDisplayText.Format(DiscardReason);
+
     public string AvailabilityText => CountsAsAvailable
         ? "Still counts as available."
         : "No longer counts as available.";

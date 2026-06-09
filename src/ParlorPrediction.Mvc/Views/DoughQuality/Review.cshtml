@@ -27,12 +27,22 @@
         </div>
     </section>
 
-    @if (!string.IsNullOrWhiteSpace(statusMessage))
+@if (!string.IsNullOrWhiteSpace(statusMessage))
     {
         <div class="alert alert-@statusType" role="alert">
             @statusMessage
         </div>
     }
+
+    <section class="content-card content-card--padded dq-toolbar-card">
+        <div class="section-heading">
+            <span class="eyebrow">Live Dough Quality</span>
+            <h2>Quality numbers at a glance</h2>
+            <p class="dq-section-copy">Start with the totals, then move into review, reball, discard, or admin correction.</p>
+        </div>
+
+        <partial name="_SummaryCards" model="Model.Summary" />
+    </section>
 
     <section class="content-card content-card--padded dq-toolbar-card">
         <div class="section-heading">
@@ -105,7 +115,7 @@
                                 <span class="dq-summary-card__label">Needs review</span>
                                 <h3 class="dq-review-card__title">@candidate.Title</h3>
                             </div>
-                            <span class="status-pill status-pill--warning">@candidate.CurrentStatus</span>
+                            <span class="status-pill status-pill--warning">@candidate.DisplayStatus</span>
                         </div>
 
                         <div class="dq-review-card__stats">
@@ -143,6 +153,14 @@
                                 <i class="fa-solid fa-triangle-exclamation me-2"></i>
                                 Mark Attention
                             </button>
+                            <a class="btn btn-outline-secondary"
+                               asp-action="Reball"
+                               asp-controller="DoughQuality"
+                               asp-route-recordId="@candidate.DoughBatchQualityRecordId"
+                               asp-route-referenceDate="@Model.Filter.ReferenceDate.ToString("yyyy-MM-dd")">
+                                <i class="fa-solid fa-rotate-right me-2"></i>
+                                Open Reball
+                            </a>
                         </form>
                     </article>
                 }
@@ -175,7 +193,7 @@
                                 <span class="dq-summary-card__label">Tracked dough</span>
                                 <h3 class="dq-review-card__title">@record.Title</h3>
                             </div>
-                            <span class="status-pill @(record.CountsAsAvailable ? "status-pill--success" : "status-pill--danger")">@record.CurrentStatus</span>
+                            <span class="status-pill @(record.CountsAsAvailable ? "status-pill--success" : "status-pill--danger")">@record.DisplayStatus</span>
                         </div>
 
                         <div class="dq-review-card__stats">
@@ -230,7 +248,7 @@
                             {
                                 <div>
                                     <dt>Discard reason</dt>
-                                    <dd>@record.DiscardReason</dd>
+                                    <dd>@record.DisplayDiscardReason</dd>
                                 </div>
                             }
                             @if (!string.IsNullOrWhiteSpace(record.ManagerNote))
@@ -243,13 +261,38 @@
                         </dl>
 
                         <div class="dq-review-card__footer">
-                            @if (Model.CanCorrectStatus)
-                            {
-                                <span class="inline-hint dq-inline-note">
-                                    <i class="fa-solid fa-circle-info me-2"></i>
-                                    Admin status correction arrives in the next phase.
-                                </span>
-                            }
+                            <div class="dq-action-bar dq-action-bar--compact">
+                                @if (!string.Equals(record.CurrentStatus, "Discarded", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <a class="btn btn-primary"
+                                       asp-action="Reball"
+                                       asp-controller="DoughQuality"
+                                       asp-route-recordId="@record.Id"
+                                       asp-route-referenceDate="@Model.Filter.ReferenceDate.ToString("yyyy-MM-dd")">
+                                        <i class="fa-solid fa-rotate-right me-2"></i>
+                                        Reball Dough
+                                    </a>
+                                    <a class="btn btn-outline-danger"
+                                       asp-action="Discard"
+                                       asp-controller="DoughQuality"
+                                       asp-route-recordId="@record.Id"
+                                       asp-route-referenceDate="@Model.Filter.ReferenceDate.ToString("yyyy-MM-dd")">
+                                        <i class="fa-regular fa-trash-can me-2"></i>
+                                        Discard Dough
+                                    </a>
+                                }
+                                @if (Model.CanCorrectStatus)
+                                {
+                                    <a class="btn btn-outline-secondary"
+                                       asp-action="CorrectStatus"
+                                       asp-controller="DoughQuality"
+                                       asp-route-recordId="@record.Id"
+                                       asp-route-referenceDate="@Model.Filter.ReferenceDate.ToString("yyyy-MM-dd")">
+                                        <i class="fa-regular fa-pen-to-square me-2"></i>
+                                        Correct Status
+                                    </a>
+                                }
+                            </div>
                         </div>
                     </article>
                 }

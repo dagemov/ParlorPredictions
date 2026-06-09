@@ -508,6 +508,15 @@
   border-left: 6px solid var(--dq-attention);
 }
 
+.dq-page .dq-review-card--selected {
+  border-left: 6px solid var(--dq-primary);
+}
+
+.dq-page .dq-review-card--selected-outline {
+  outline: 3px solid rgba(0, 32, 69, 0.16);
+  outline-offset: -3px;
+}
+
 .dq-page .dq-review-card__header {
   display: flex;
   justify-content: space-between;
@@ -557,6 +566,79 @@
   padding-top: 0.25rem;
 }
 
+.dq-page .dq-action-bar--compact .btn {
+  min-height: 3rem;
+}
+
+.dq-page .dq-summary-card--discarded {
+  background: linear-gradient(180deg, rgba(255, 218, 214, 0.54), rgba(255, 255, 255, 0.98));
+}
+
+.dq-page .dq-summary-card--discarded .dq-summary-card__value,
+.dq-page .dq-summary-card--discarded .dq-summary-card__bar > span {
+  color: var(--dq-danger);
+  background: var(--dq-danger);
+}
+
+.dq-page .dq-manager-banner--danger {
+  margin-top: 1rem;
+  background: rgba(255, 218, 214, 0.9);
+  border: 1px solid rgba(186, 26, 26, 0.2);
+  color: var(--dq-text);
+}
+
+.dq-page .dq-manager-banner--danger .dq-manager-banner__eyebrow {
+  color: var(--dq-danger);
+}
+
+.dq-page .dq-manager-banner--danger p {
+  color: var(--dq-text-muted);
+}
+
+.dq-page .dq-form-card {
+  border-radius: var(--dq-radius-lg);
+}
+
+.dq-page .dq-form-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.dq-page .dq-form-shell {
+  padding: 1.35rem;
+  border: 1px solid var(--dq-line);
+  border-radius: var(--dq-radius-md);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 243, 240, 0.88));
+}
+
+.dq-page .dq-form-shell .form-control,
+.dq-page .dq-form-shell .form-select {
+  min-height: 3.35rem;
+  border-radius: var(--dq-radius-sm);
+  border-color: var(--dq-line);
+}
+
+.dq-page .dq-form-shell textarea.form-control {
+  min-height: auto;
+  border-radius: var(--dq-radius-sm);
+}
+
+.dq-page .dq-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin-top: 1.25rem;
+}
+
+.dq-page .dq-form-actions .btn {
+  min-height: 3.5rem;
+  padding-inline: 1.25rem;
+  border-radius: 1rem;
+  font-weight: 700;
+}
+
 @media (max-width: 991.98px) {
   .dq-page .dq-hero {
     padding: 1.6rem;
@@ -566,6 +648,10 @@
   .dq-page .dq-toolbar-grid .btn,
   .dq-page .dq-action-stack .btn {
     width: 100%;
+  }
+
+  .dq-page .dq-form-layout {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -18,6 +18,8 @@ public sealed class DoughQualityReviewCandidateViewModel
 
     public string Title => $"Dough from {SourceDate:dddd}";
 
+    public string DisplayStatus => DoughQualityDisplayText.Format(CurrentStatus);
+
     public string AvailabilityText =>
         string.Equals(CurrentStatus, "Discarded", StringComparison.OrdinalIgnoreCase)
             ? "No longer counts as available."

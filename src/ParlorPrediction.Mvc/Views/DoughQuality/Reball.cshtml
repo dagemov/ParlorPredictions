@@ -1,0 +1,189 @@
+@model DoughQualityReballPageViewModel
+@{
+    ViewData["Title"] = "Reball Dough";
+    var statusType = TempData["DoughQualityStatusType"] as string;
+    var statusMessage = TempData["DoughQualityStatusMessage"] as string;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/dough-quality.css" asp-append-version="true" />
+}
+
+<div class="dq-page dq-page--review">
+    <section class="page-hero page-hero--compact dq-hero">
+        <div>
+            <span class="eyebrow">Dough Recovery</span>
+            <h1>Reball Dough</h1>
+            <p class="page-copy dq-hero-copy">Choose one dough group, enter how many balls were recovered, and let the system move that dough to Must Use Next Day.</p>
+        </div>
+        <div class="hero-actions dq-action-bar">
+            <a class="btn btn-outline-secondary"
+               asp-controller="Prep"
+               asp-action="Dough"
+               asp-route-targetDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")">
+                <i class="fa-solid fa-bread-slice me-2"></i>
+                Back to Dough
+            </a>
+            @if (Model.IsManagerOrAdmin)
+            {
+                <a class="btn btn-primary"
+                   asp-controller="DoughQuality"
+                   asp-action="Review"
+                   asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")">
+                    <i class="fa-regular fa-flag me-2"></i>
+                    Back to Review
+                </a>
+            }
+        </div>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(statusMessage))
+    {
+        <div class="alert alert-@statusType" role="alert">
+            @statusMessage
+        </div>
+    }
+
+    <section class="content-card content-card--padded dq-toolbar-card">
+        <div class="section-heading">
+            <span class="eyebrow">Live Dough Quality</span>
+            <h2>What the kitchen has right now</h2>
+        </div>
+
+        <partial name="_SummaryCards" model="Model.Summary" />
+    </section>
+
+    <section class="content-card content-card--padded dq-recommendation-card">
+        <div class="section-heading">
+            <span class="eyebrow">Step 1</span>
+            <h2>Choose the dough to reball</h2>
+            <p class="dq-section-copy">Start with one active dough record. Discarded dough is hidden here because it cannot be re-balled.</p>
+        </div>
+
+        @if (Model.Records.Count == 0)
+        {
+            <div class="empty-state dq-task-empty">
+                <i class="fa-regular fa-folder-open"></i>
+                <span>No active dough records are ready for reball yet.</span>
+            </div>
+        }
+        else
+        {
+            <div class="dq-review-grid">
+                @foreach (var record in Model.Records)
+                {
+                    <article class="dq-review-card @(record.Id == Model.Form.DoughBatchQualityRecordId ? "dq-review-card--selected-outline" : string.Empty)">
+                        <div class="dq-review-card__header">
+                            <div>
+                                <span class="dq-summary-card__label">Tracked dough</span>
+                                <h3 class="dq-review-card__title">@record.Title</h3>
+                            </div>
+                            <span class="status-pill @(record.CountsAsAvailable ? "status-pill--success" : "status-pill--danger")">@record.DisplayStatus</span>
+                        </div>
+
+                        <div class="dq-review-card__stats">
+                            <div class="dq-stat-box">
+                                <span class="dq-stat-box__label">Quantity</span>
+                                <span class="dq-stat-box__value">@record.QuantityBalls balls</span>
+                            </div>
+                            <div class="dq-stat-box">
+                                <span class="dq-stat-box__label">Created</span>
+                                <span class="dq-stat-box__value">@record.CreatedOrBalledAt.ToLocalTime().ToString("MMM d")</span>
+                            </div>
+                        </div>
+
+                        <div class="dq-review-card__footer">
+                            <a class="btn btn-outline-secondary"
+                               asp-action="Reball"
+                               asp-controller="DoughQuality"
+                               asp-route-recordId="@record.Id"
+                               asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")">
+                                Select This Dough
+                            </a>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="content-card content-card--padded dq-form-card">
+        <div class="section-heading">
+            <span class="eyebrow">Step 2</span>
+            <h2>Save the reball result</h2>
+            <p class="dq-section-copy">Enter only what was recovered. The system calculates the loss automatically.</p>
+        </div>
+
+        @if (Model.SelectedRecord is null)
+        {
+            <div class="empty-state dq-task-empty">
+                <i class="fa-regular fa-hand-point-up"></i>
+                <span>Select a dough record first to open the reball form.</span>
+            </div>
+        }
+        else
+        {
+            <div class="dq-form-layout">
+                <partial name="_SelectedRecordPanel" model="Model.SelectedRecord" />
+
+                <form asp-action="Reball" asp-controller="DoughQuality" method="post" class="dq-form-shell">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                    <input asp-for="Form.DoughBatchQualityRecordId" type="hidden" />
+                    <input asp-for="Form.ReferenceDate" type="hidden" />
+                    <input asp-for="Form.QuantityBeforeBalls" type="hidden" />
+
+                    <div class="dq-manager-banner dq-manager-banner--light">
+                        <span class="dq-manager-banner__eyebrow">Kitchen reminder</span>
+                        <h3>Recovered dough becomes Must Use Next Day.</h3>
+                        <p>If the dough smells bad or looks unsafe, stop here and ask a manager to discard it instead.</p>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" asp-for="Form.QuantityBeforeBalls">Quantity before reball</label>
+                            <input asp-for="Form.QuantityBeforeBalls" class="form-control" readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" asp-for="Form.QuantityRecoveredBalls">Recovered balls</label>
+                            <input asp-for="Form.QuantityRecoveredBalls" class="form-control" />
+                            <span asp-validation-for="Form.QuantityRecoveredBalls" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" asp-for="Form.ReballDate">Reball date</label>
+                            <input asp-for="Form.ReballDate" type="date" class="form-control" />
+                            <span asp-validation-for="Form.ReballDate" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" asp-for="Form.LossReason">Why some dough was lost? Optional</label>
+                            <select asp-for="Form.LossReason" asp-items="Model.LossReasonOptions" class="form-select"></select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" asp-for="Form.ManagerNote">Kitchen note</label>
+                            <textarea asp-for="Form.ManagerNote" class="form-control" rows="4" placeholder="Optional note for the manager or next shift."></textarea>
+                            <span asp-validation-for="Form.ManagerNote" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="dq-form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-rotate-right me-2"></i>
+                            Save Reball
+                        </button>
+                        @if (Model.IsManagerOrAdmin)
+                        {
+                            <a class="btn btn-outline-danger"
+                               asp-action="Discard"
+                               asp-controller="DoughQuality"
+                               asp-route-recordId="@Model.SelectedRecord.Id"
+                               asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")">
+                                <i class="fa-regular fa-trash-can me-2"></i>
+                                Discard Instead
+                            </a>
+                        }
+                    </div>
+                </form>
+            </div>
+        }
+    </section>
+</div>

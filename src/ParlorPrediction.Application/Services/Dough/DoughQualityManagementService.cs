@@ -220,7 +220,7 @@ public sealed class DoughQualityManagementService : IDoughQualityManagementServi
 
             case ReballResult.Discarded:
             {
-                var discardReason = ParseLossReason(request.DiscardReason, nameof(request.DiscardReason));
+                var discardReason = ParseLossReason(request.DiscardReason ?? string.Empty, nameof(request.DiscardReason));
                 record.Discard(discardReason, reballDate, user.Id, request.ManagerNote);
 
                 await _doughReballRecordRepository.AddAsync(

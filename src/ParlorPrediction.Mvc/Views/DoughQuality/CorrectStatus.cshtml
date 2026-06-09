@@ -1,0 +1,172 @@
+@model DoughQualityCorrectStatusPageViewModel
+@{
+    ViewData["Title"] = "Correct Dough Status";
+    var statusType = TempData["DoughQualityStatusType"] as string;
+    var statusMessage = TempData["DoughQualityStatusMessage"] as string;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/dough-quality.css" asp-append-version="true" />
+}
+
+<div class="dq-page dq-page--review">
+    <section class="page-hero page-hero--compact dq-hero">
+        <div>
+            <span class="eyebrow">Admin Correction</span>
+            <h1>Correct Dough Status</h1>
+            <p class="page-copy dq-hero-copy">Use this only to fix a wrong status. This screen is for admin cleanup when the tracked dough state does not match reality.</p>
+        </div>
+        <div class="hero-actions dq-action-bar">
+            <a class="btn btn-outline-secondary"
+               asp-controller="DoughQuality"
+               asp-action="Review"
+               asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")">
+                <i class="fa-regular fa-flag me-2"></i>
+                Back to Review
+            </a>
+        </div>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(statusMessage))
+    {
+        <div class="alert alert-@statusType" role="alert">
+            @statusMessage
+        </div>
+    }
+
+    <section class="content-card content-card--padded dq-toolbar-card">
+        <div class="section-heading">
+            <span class="eyebrow">Live Dough Quality</span>
+            <h2>Current dough quality totals</h2>
+        </div>
+
+        <partial name="_SummaryCards" model="Model.Summary" />
+    </section>
+
+    <section class="content-card content-card--padded dq-recommendation-card">
+        <div class="section-heading">
+            <span class="eyebrow">Step 1</span>
+            <h2>Choose the dough record to correct</h2>
+            <p class="dq-section-copy">Admin correction is meant for fixing tracking mistakes, not for normal kitchen flow.</p>
+        </div>
+
+        @if (Model.Records.Count == 0)
+        {
+            <div class="empty-state dq-task-empty">
+                <i class="fa-regular fa-folder-open"></i>
+                <span>No dough quality records are available to correct.</span>
+            </div>
+        }
+        else
+        {
+            <div class="dq-review-grid">
+                @foreach (var record in Model.Records)
+                {
+                    <article class="dq-review-card @(record.Id == Model.Form.DoughBatchQualityRecordId ? "dq-review-card--selected-outline" : string.Empty)">
+                        <div class="dq-review-card__header">
+                            <div>
+                                <span class="dq-summary-card__label">Tracked dough</span>
+                                <h3 class="dq-review-card__title">@record.Title</h3>
+                            </div>
+                            <span class="status-pill @(record.CountsAsAvailable ? "status-pill--success" : "status-pill--danger")">@record.DisplayStatus</span>
+                        </div>
+                        <div class="dq-review-card__stats">
+                            <div class="dq-stat-box">
+                                <span class="dq-stat-box__label">Quantity</span>
+                                <span class="dq-stat-box__value">@record.QuantityBalls balls</span>
+                            </div>
+                            <div class="dq-stat-box">
+                                <span class="dq-stat-box__label">Created</span>
+                                <span class="dq-stat-box__value">@record.CreatedOrBalledAt.ToLocalTime().ToString("MMM d")</span>
+                            </div>
+                        </div>
+                        <div class="dq-review-card__footer">
+                            <a class="btn btn-outline-secondary"
+                               asp-action="CorrectStatus"
+                               asp-controller="DoughQuality"
+                               asp-route-recordId="@record.Id"
+                               asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")">
+                                Select This Dough
+                            </a>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="content-card content-card--padded dq-form-card">
+        <div class="section-heading">
+            <span class="eyebrow">Step 2</span>
+            <h2>Save the corrected status</h2>
+            <p class="dq-section-copy">Use plain status names so the next manager can understand the change quickly.</p>
+        </div>
+
+        @if (Model.SelectedRecord is null)
+        {
+            <div class="empty-state dq-task-empty">
+                <i class="fa-regular fa-hand-point-up"></i>
+                <span>Select a dough record first to open the correction form.</span>
+            </div>
+        }
+        else
+        {
+            <div class="dq-form-layout">
+                <partial name="_SelectedRecordPanel" model="Model.SelectedRecord" />
+
+                <form asp-action="CorrectStatus" asp-controller="DoughQuality" method="post" class="dq-form-shell">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                    <input asp-for="Form.DoughBatchQualityRecordId" type="hidden" />
+                    <input asp-for="Form.ReferenceDate" type="hidden" />
+
+                    <div class="dq-manager-banner dq-manager-banner--light">
+                        <span class="dq-manager-banner__eyebrow">Admin reminder</span>
+                        <h3>Use Must Use Next Day for reballed dough.</h3>
+                        <p>The UI does not offer a standalone Reballed status because kitchen operations should always see a clear must-use instruction.</p>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" asp-for="Form.NewStatus">Corrected status</label>
+                            <select asp-for="Form.NewStatus" asp-items="Model.StatusOptions" class="form-select"></select>
+                            <span asp-validation-for="Form.NewStatus" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" asp-for="Form.EffectiveDate">Effective date</label>
+                            <input asp-for="Form.EffectiveDate" type="date" class="form-control" />
+                            <span asp-validation-for="Form.EffectiveDate" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" asp-for="Form.MustUseByDate">Must use by</label>
+                            <input asp-for="Form.MustUseByDate" type="date" class="form-control" />
+                            <span asp-validation-for="Form.MustUseByDate" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" asp-for="Form.DiscardReason">Discard reason if needed</label>
+                            <select asp-for="Form.DiscardReason" asp-items="Model.LossReasonOptions" class="form-select"></select>
+                            <span asp-validation-for="Form.DiscardReason" class="text-danger"></span>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" asp-for="Form.StatusReason">Status reason</label>
+                            <input asp-for="Form.StatusReason" class="form-control" placeholder="Short reason for the correction." />
+                            <span asp-validation-for="Form.StatusReason" class="text-danger"></span>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" asp-for="Form.ManagerNote">Admin note</label>
+                            <textarea asp-for="Form.ManagerNote" class="form-control" rows="4" placeholder="Optional context for the correction."></textarea>
+                            <span asp-validation-for="Form.ManagerNote" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="dq-form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-regular fa-pen-to-square me-2"></i>
+                            Save Correction
+                        </button>
+                    </div>
+                </form>
+            </div>
+        }
+    </section>
+</div>
