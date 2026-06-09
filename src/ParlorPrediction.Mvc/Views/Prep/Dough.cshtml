@@ -20,6 +20,14 @@
                 View Weekly Dough Calendar
             </a>
             <a class="btn btn-outline-secondary"
+               asp-action="KitchenSheet"
+               asp-controller="Prep"
+               asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
+               asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse">
+                <i class="fa-solid fa-print me-2"></i>
+                Print Kitchen Sheet
+            </a>
+            <a class="btn btn-outline-secondary"
                asp-action="Reball"
                asp-controller="DoughQuality"
                asp-route-referenceDate="@Model.TargetDate.ToString("yyyy-MM-dd")">

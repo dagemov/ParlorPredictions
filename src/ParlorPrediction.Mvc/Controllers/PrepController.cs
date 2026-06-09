@@ -1,10 +1,12 @@
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Mvc;
 using ParlorPrediction.Application.Interfaces.Dough;
 using ParlorPrediction.Application.Interfaces.Prep;
 using ParlorPrediction.Contracts.Requests.Dough;
+using ParlorPrediction.Contracts.Requests.DoughQuality;
 using ParlorPrediction.Contracts.Requests.Prep;
 using ParlorPrediction.Contracts.Responses.Dough;
 using ParlorPrediction.Contracts.Responses.Prep;
@@ -23,6 +25,7 @@ public sealed class PrepController : Controller
     private const int DefaultPlanningDaysAhead = 7;
 
     private readonly IDoughPrepCalculationService _doughPrepCalculationService;
+    private readonly IDoughQualityReadService _doughQualityReadService;
     private readonly IDoughProductionPlanningService _doughProductionPlanningService;
     private readonly IDoughPrepRecommendationReadService _doughPrepRecommendationReadService;
     private readonly IDoughPrepRecommendationService _doughPrepRecommendationService;
@@ -32,6 +35,7 @@ public sealed class PrepController : Controller
 
     public PrepController(
         IDoughPrepCalculationService doughPrepCalculationService,
+        IDoughQualityReadService doughQualityReadService,
         IDoughProductionPlanningService doughProductionPlanningService,
         IDoughPrepRecommendationReadService doughPrepRecommendationReadService,
         IDoughPrepRecommendationService doughPrepRecommendationService,
@@ -40,6 +44,7 @@ public sealed class PrepController : Controller
         IPrepTaskService prepTaskService)
     {
         _doughPrepCalculationService = doughPrepCalculationService;
+        _doughQualityReadService = doughQualityReadService;
         _doughProductionPlanningService = doughProductionPlanningService;
         _doughPrepRecommendationReadService = doughPrepRecommendationReadService;
         _doughPrepRecommendationService = doughPrepRecommendationService;
@@ -74,6 +79,57 @@ public sealed class PrepController : Controller
             cancellationToken);
 
         return View(pageModel);
+    }
+
+    [HttpGet("dough/kitchen-sheet")]
+    public async Task<IActionResult> KitchenSheet(
+        DateOnly? targetDate,
+        int historicalWeeksToUse = DefaultHistoricalWeeksToUse,
+        CancellationToken cancellationToken = default)
+    {
+        var selectedDate = targetDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var normalizedHistoricalWeeks = NormalizeHistoricalWeeks(historicalWeeksToUse);
+        var pageModel = await BuildPageViewModelAsync(
+            selectedDate,
+            null,
+            normalizedHistoricalWeeks,
+            cancellationToken);
+
+        var warnings = new List<string>();
+        var printableRecommendation = await EnsurePrintableRecommendationAsync(
+            pageModel.Recommendation,
+            selectedDate,
+            normalizedHistoricalWeeks,
+            warnings,
+            cancellationToken);
+
+        var doughQualitySummary = new Models.DoughQuality.DoughQualitySummaryViewModel();
+        IReadOnlyList<DoughKitchenAttentionItemViewModel> attentionItems = Array.Empty<DoughKitchenAttentionItemViewModel>();
+
+        try
+        {
+            doughQualitySummary = await BuildDoughQualitySummaryAsync(cancellationToken);
+            attentionItems = await BuildKitchenAttentionItemsAsync(selectedDate, cancellationToken);
+        }
+        catch (Exception exception) when (IsRecoverableDoughQualityException(exception))
+        {
+            warnings.Add("Dough Quality data could not be fully loaded for printing. The kitchen sheet still shows the Dough Prep guidance that is available.");
+        }
+
+        return View(new DoughKitchenSheetPageViewModel
+        {
+            TargetDate = selectedDate,
+            HistoricalWeeksToUse = normalizedHistoricalWeeks,
+            Recommendation = printableRecommendation,
+            ProductionPlanning = pageModel.ProductionPlanning,
+            WeeklyGoal = pageModel.WeeklyGoal,
+            QualitySummary = doughQualitySummary,
+            AttentionItems = attentionItems,
+            OpenTasks = pageModel.Tasks
+                .Where(task => !string.Equals(task.Status, nameof(PrepTaskStatus.Completed), StringComparison.OrdinalIgnoreCase))
+                .ToArray(),
+            Warnings = warnings
+        });
     }
 
     [HttpGet("dough/week")]
@@ -407,6 +463,145 @@ public sealed class PrepController : Controller
         };
     }
 
+    private async Task<DoughRecommendationViewModel?> EnsurePrintableRecommendationAsync(
+        DoughRecommendationViewModel? recommendation,
+        DateOnly targetDate,
+        int historicalWeeksToUse,
+        IList<string> warnings,
+        CancellationToken cancellationToken)
+    {
+        if (recommendation is not null)
+        {
+            return recommendation;
+        }
+
+        try
+        {
+            var calculation = await _doughPrepCalculationService.CalculateAsync(
+                new CalculateDoughPrepRequest
+                {
+                    TargetDate = targetDate,
+                    HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse)
+                },
+                cancellationToken);
+
+            warnings.Add("No saved dough snapshot existed for this day, so the kitchen sheet uses a fresh live calculation.");
+            return MapCalculation(calculation, historicalWeeksToUse);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or
+            ArgumentOutOfRangeException or
+            InvalidOperationException)
+        {
+            warnings.Add("No dough recommendation could be calculated for this day. Print the sheet only after the team reviews the missing guidance.");
+            return null;
+        }
+    }
+
+    private async Task<Models.DoughQuality.DoughQualitySummaryViewModel> BuildDoughQualitySummaryAsync(CancellationToken cancellationToken)
+    {
+        var summary = await _doughQualityReadService.GetSummaryAsync(cancellationToken);
+
+        return new Models.DoughQuality.DoughQualitySummaryViewModel
+        {
+            GoodBalls = summary.GoodBalls,
+            AttentionBalls = summary.AttentionBalls,
+            ReballedBalls = summary.ReballedBalls,
+            MustUseNextDayBalls = summary.MustUseNextDayBalls,
+            DiscardedBalls = summary.DiscardedBalls,
+            TotalAvailableBalls = summary.TotalAvailableBalls
+        };
+    }
+
+    private async Task<IReadOnlyList<DoughKitchenAttentionItemViewModel>> BuildKitchenAttentionItemsAsync(
+        DateOnly targetDate,
+        CancellationToken cancellationToken)
+    {
+        var mustUseRecords = await _doughQualityReadService.SearchAsync(
+            new SearchDoughBatchQualityRecordsRequest
+            {
+                CurrentStatus = nameof(DoughQualityStatus.MustUseNextDay)
+            },
+            cancellationToken);
+
+        var attentionRecords = await _doughQualityReadService.SearchAsync(
+            new SearchDoughBatchQualityRecordsRequest
+            {
+                CurrentStatus = nameof(DoughQualityStatus.Attention)
+            },
+            cancellationToken);
+
+        var candidates = await _doughQualityReadService.EvaluateAttentionCandidatesAsync(
+            new EvaluateDoughAttentionCandidatesRequest
+            {
+                ReferenceDate = targetDate
+            },
+            cancellationToken);
+
+        var items = new List<DoughKitchenAttentionItemViewModel>();
+        var seenIds = new HashSet<Guid>();
+
+        foreach (var record in mustUseRecords.OrderBy(item => item.MustUseByDate).ThenBy(item => item.CreatedOrBalledAt))
+        {
+            if (!seenIds.Add(record.Id))
+            {
+                continue;
+            }
+
+            items.Add(new DoughKitchenAttentionItemViewModel
+            {
+                Title = $"Use first: dough from {record.SourceDate:ddd, MMM d}",
+                StatusText = "Must Use Next Day",
+                QuantityBalls = record.QuantityBalls,
+                Detail = "Use this first.",
+                SecondaryDetail = record.MustUseByDate.HasValue
+                    ? $"Must use by {record.MustUseByDate.Value:MMM d, yyyy}"
+                    : null,
+                IsMustUsePriority = true
+            });
+        }
+
+        foreach (var record in attentionRecords.OrderBy(item => item.SourceDate).ThenBy(item => item.CreatedOrBalledAt))
+        {
+            if (!seenIds.Add(record.Id))
+            {
+                continue;
+            }
+
+            items.Add(new DoughKitchenAttentionItemViewModel
+            {
+                Title = $"Review dough from {record.SourceDate:ddd, MMM d}",
+                StatusText = Models.DoughQuality.DoughQualityDisplayText.Format(record.CurrentStatus),
+                QuantityBalls = record.QuantityBalls,
+                Detail = string.IsNullOrWhiteSpace(record.StatusReason)
+                    ? "Still counts, but review it."
+                    : record.StatusReason,
+                SecondaryDetail = $"Created {record.CreatedOrBalledAt.ToLocalTime():MMM d, h:mm tt}",
+                IsMustUsePriority = false
+            });
+        }
+
+        foreach (var candidate in candidates.OrderBy(item => item.CreatedOrBalledAt))
+        {
+            if (!seenIds.Add(candidate.DoughBatchQualityRecordId))
+            {
+                continue;
+            }
+
+            items.Add(new DoughKitchenAttentionItemViewModel
+            {
+                Title = $"Check dough from {candidate.SourceDate:ddd, MMM d}",
+                StatusText = Models.DoughQuality.DoughQualityDisplayText.Format(candidate.CurrentStatus),
+                QuantityBalls = candidate.QuantityBalls,
+                Detail = candidate.CandidateReason,
+                SecondaryDetail = $"{candidate.AgeDays} operational day{(candidate.AgeDays == 1 ? string.Empty : "s")} old",
+                IsMustUsePriority = false
+            });
+        }
+
+        return items;
+    }
+
     private IActionResult RenderDoughResult(DoughPrepPageViewModel pageModel)
     {
         if (Request.Headers.TryGetValue("HX-Request", out var headerValue) &&
@@ -646,6 +841,27 @@ public sealed class PrepController : Controller
     private static int NormalizeHistoricalWeeks(int historicalWeeksToUse)
     {
         return historicalWeeksToUse < 1 ? DefaultHistoricalWeeksToUse : historicalWeeksToUse;
+    }
+
+    private static bool IsRecoverableDoughQualityException(Exception exception)
+    {
+        if (exception is ArgumentException or ArgumentOutOfRangeException or InvalidOperationException or KeyNotFoundException)
+        {
+            return true;
+        }
+
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is SqlException { Number: 208 } sqlException &&
+                (sqlException.Message.Contains("DoughBatchQualityRecords", StringComparison.OrdinalIgnoreCase) ||
+                 sqlException.Message.Contains("DoughLossRecords", StringComparison.OrdinalIgnoreCase) ||
+                 sqlException.Message.Contains("DoughReballRecords", StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool TryResolveCompletedBalls(

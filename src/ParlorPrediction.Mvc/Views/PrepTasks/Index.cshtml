@@ -3,6 +3,7 @@
     ViewData["Title"] = "Dough Task Board";
     var statusType = TempData["PrepTaskStatusType"] as string;
     var statusMessage = TempData["PrepTaskStatusMessage"] as string;
+    var selectedDate = Model.TaskDate?.ToString("yyyy-MM-dd");
 }
 
 <section class="page-hero page-hero--compact">
@@ -20,7 +21,22 @@
                 Add Manual Dough Task
             </a>
         }
-        <a class="btn btn-outline-secondary" asp-action="Dough" asp-controller="Prep" asp-route-targetDate="@(Model.TaskDate?.ToString("yyyy-MM-dd"))">
+        <a class="btn btn-outline-secondary" asp-action="KitchenSheet" asp-controller="Prep" asp-route-targetDate="@selectedDate">
+            <i class="fa-solid fa-print me-2"></i>
+            Print Kitchen Sheet
+        </a>
+        <a class="btn btn-outline-secondary" asp-action="Reball" asp-controller="DoughQuality" asp-route-referenceDate="@selectedDate">
+            <i class="fa-solid fa-rotate-right me-2"></i>
+            Reball Dough
+        </a>
+        @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+        {
+            <a class="btn btn-outline-secondary" asp-action="Review" asp-controller="DoughQuality" asp-route-referenceDate="@selectedDate">
+                <i class="fa-regular fa-flag me-2"></i>
+                Review Older Dough
+            </a>
+        }
+        <a class="btn btn-outline-secondary" asp-action="Dough" asp-controller="Prep" asp-route-targetDate="@selectedDate">
             <i class="fa-solid fa-bread-slice me-2"></i>
             Back To Dough Prep
         </a>

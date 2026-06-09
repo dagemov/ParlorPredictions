@@ -639,6 +639,116 @@
   font-weight: 700;
 }
 
+.dq-page .dq-sheet-alert {
+  border-left: 6px solid var(--dq-attention);
+}
+
+.dq-page .dq-sheet-warning-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.dq-page .dq-sheet-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(260px, 0.9fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.dq-page .dq-sheet-meta {
+  margin: 0;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.dq-page .dq-sheet-meta div {
+  padding: 1rem;
+  border: 1px solid var(--dq-line);
+  border-radius: var(--dq-radius-sm);
+  background: var(--dq-surface-soft);
+}
+
+.dq-page .dq-sheet-meta dt,
+.dq-page .dq-sheet-mini-details dt {
+  color: var(--dq-text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dq-page .dq-sheet-meta dd,
+.dq-page .dq-sheet-mini-details dd {
+  margin: 0.35rem 0 0;
+  font-weight: 700;
+}
+
+.dq-page .dq-sheet-summary {
+  gap: 1rem;
+}
+
+.dq-page .dq-sheet-note {
+  display: inline-flex;
+  align-items: center;
+  color: var(--dq-text-muted);
+}
+
+.dq-page .dq-sheet-priority {
+  background: linear-gradient(180deg, rgba(255, 220, 195, 0.5), rgba(255, 255, 255, 0.98));
+  border-left: 6px solid var(--dq-attention);
+}
+
+.dq-page .dq-sheet-priority h2 {
+  margin: 0.35rem 0 0;
+  font-size: 1.9rem;
+  line-height: 1.1;
+}
+
+.dq-page .dq-sheet-priority p {
+  margin: 0.55rem 0 0;
+}
+
+.dq-page .dq-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.dq-page .dq-sheet-section {
+  border-radius: var(--dq-radius-lg);
+}
+
+.dq-page .dq-sheet-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.85rem;
+}
+
+.dq-page .dq-sheet-list {
+  margin: 1rem 0 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.dq-page .dq-sheet-week-note {
+  margin: 0.35rem 0 0.9rem;
+  color: var(--dq-text-muted);
+}
+
+.dq-page .dq-sheet-mini-details {
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.dq-page .dq-sheet-mini-details div {
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(217, 212, 207, 0.8);
+}
+
 @media (max-width: 991.98px) {
   .dq-page .dq-hero {
     padding: 1.6rem;
@@ -651,6 +761,11 @@
   }
 
   .dq-page .dq-form-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .dq-page .dq-sheet-header,
+  .dq-page .dq-sheet-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -666,5 +781,83 @@
 
   .dq-page .dq-task-card__header {
     flex-direction: column;
+  }
+}
+
+@media print {
+  @page {
+    margin: 0.45in;
+  }
+
+  .app-header,
+  .footer,
+  .dq-print-hide {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  main.container.app-shell {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .dq-page {
+    --dq-bg: #fff;
+    --dq-surface: #fff;
+    --dq-surface-soft: #fff;
+    --dq-surface-muted: #f4f4f4;
+    --dq-line: #8d8d8d;
+    --dq-text: #000;
+    --dq-text-muted: #222;
+    --dq-primary: #000;
+    --dq-primary-soft: #000;
+    --dq-attention: #000;
+    --dq-good: #000;
+    --dq-danger: #000;
+  }
+
+  .dq-page .page-hero,
+  .dq-page .content-card,
+  .dq-page .dq-summary-card,
+  .dq-page .dq-review-card,
+  .dq-page .dq-week-card,
+  .dq-page .dq-stat-box,
+  .dq-page .dq-manager-banner,
+  .dq-page .recommendation-note,
+  .dq-page .empty-state {
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .dq-page .content-card,
+  .dq-page .dq-summary-card,
+  .dq-page .dq-review-card,
+  .dq-page .dq-week-card,
+  .dq-page .dq-stat-box,
+  .dq-page .dq-manager-banner,
+  .dq-page .recommendation-note {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .dq-page .status-pill {
+    border: 1px solid #000 !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .dq-page .dq-summary-card__bar,
+  .dq-page .dq-summary-card__bar > span {
+    background: #000 !important;
+  }
+
+  .dq-page .dq-manager-banner--light,
+  .dq-page .dq-sheet-priority,
+  .dq-page .dq-sheet-alert {
+    border-left-width: 3px;
   }
 }
