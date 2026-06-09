@@ -60,6 +60,39 @@ public sealed class DoughQualityController : Controller
     }
 
     [Authorize(Roles = $"{nameof(ApplicationRole.Admin)},{nameof(ApplicationRole.Manager)}")]
+    [HttpGet("loss-analytics")]
+    public async Task<IActionResult> Losses(
+        DateOnly? fromDate,
+        DateOnly? toDate,
+        string? lossReason,
+        CancellationToken cancellationToken = default)
+    {
+        var filter = BuildLossAnalyticsFilter(fromDate, toDate, lossReason);
+
+        if (filter.FromDate.HasValue && filter.ToDate.HasValue && filter.FromDate.Value > filter.ToDate.Value)
+        {
+            SetStatusMessage("danger", "The start date must be on or before the end date.");
+            return View(BuildEmptyLossAnalyticsPageViewModel(filter));
+        }
+
+        try
+        {
+            var model = await BuildLossAnalyticsPageViewModelAsync(filter, cancellationToken);
+            return View(model);
+        }
+        catch (Exception exception)
+        {
+            if (!TryHandleRecoverableException(exception, out var statusType, out var statusMessage))
+            {
+                throw;
+            }
+
+            SetStatusMessage(statusType, statusMessage);
+            return View(BuildEmptyLossAnalyticsPageViewModel(filter));
+        }
+    }
+
+    [Authorize(Roles = $"{nameof(ApplicationRole.Admin)},{nameof(ApplicationRole.Manager)}")]
     [HttpGet("review")]
     public async Task<IActionResult> Review(
         DateOnly? referenceDate,
@@ -510,6 +543,96 @@ public sealed class DoughQualityController : Controller
         };
     }
 
+    private async Task<DoughLossAnalyticsPageViewModel> BuildLossAnalyticsPageViewModelAsync(
+        DoughLossAnalyticsFilterViewModel filter,
+        CancellationToken cancellationToken)
+    {
+        var analytics = await _doughQualityReadService.GetLossAnalyticsAsync(
+            new GetDoughLossAnalyticsRequest
+            {
+                FromDate = filter.FromDate,
+                ToDate = filter.ToDate,
+                LossReason = filter.LossReason
+            },
+            cancellationToken);
+
+        var items = analytics.Items
+            .OrderBy(item => item.LossDate)
+            .ThenBy(item => item.LossReason, StringComparer.OrdinalIgnoreCase)
+            .Select(item => new DoughLossAnalyticsItemViewModel
+            {
+                LossDate = item.LossDate,
+                LossReason = item.LossReason,
+                QuantityLostBalls = item.QuantityLostBalls
+            })
+            .ToArray();
+
+        var reasonBreakdown = items
+            .GroupBy(item => item.LossReason, StringComparer.OrdinalIgnoreCase)
+            .Select(group => new DoughLossAnalyticsReasonSummaryViewModel
+            {
+                LossReason = group.First().LossReason,
+                QuantityLostBalls = group.Sum(item => item.QuantityLostBalls),
+                SharePercent = analytics.TotalLostBalls <= 0
+                    ? 0
+                    : (int)Math.Round(group.Sum(item => item.QuantityLostBalls) * 100d / analytics.TotalLostBalls, MidpointRounding.AwayFromZero),
+                LossDaysCount = group.Select(item => item.LossDate).Distinct().Count()
+            })
+            .OrderByDescending(item => item.QuantityLostBalls)
+            .ThenBy(item => item.DisplayReason, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var dayBreakdown = items
+            .GroupBy(item => item.LossDate)
+            .Select(group =>
+            {
+                var topReason = group
+                    .OrderByDescending(item => item.QuantityLostBalls)
+                    .ThenBy(item => item.DisplayReason, StringComparer.OrdinalIgnoreCase)
+                    .First();
+
+                return new DoughLossAnalyticsDaySummaryViewModel
+                {
+                    LossDate = group.Key,
+                    QuantityLostBalls = group.Sum(item => item.QuantityLostBalls),
+                    TopReason = topReason.LossReason,
+                    ReasonsCount = group.Count()
+                };
+            })
+            .OrderBy(item => item.LossDate)
+            .ToArray();
+
+        var topReasonSummary = reasonBreakdown.FirstOrDefault();
+        var topDaySummary = dayBreakdown
+            .OrderByDescending(item => item.QuantityLostBalls)
+            .ThenBy(item => item.LossDate)
+            .FirstOrDefault();
+
+        return new DoughLossAnalyticsPageViewModel
+        {
+            Filter = filter,
+            LossReasonOptions = BuildLossReasonOptions(filter.LossReason, includeBlankOption: true, blankLabel: "All reasons"),
+            Items = items,
+            ReasonBreakdown = reasonBreakdown,
+            DayBreakdown = dayBreakdown,
+            TotalLostBalls = analytics.TotalLostBalls,
+            TotalLossDays = dayBreakdown.Length,
+            AverageLostBallsPerLossDay = dayBreakdown.Length == 0
+                ? 0
+                : (int)Math.Round(analytics.TotalLostBalls / (double)dayBreakdown.Length, MidpointRounding.AwayFromZero),
+            MostCommonReasonLabel = topReasonSummary?.DisplayReason ?? "No losses yet",
+            MostCommonReasonBalls = topReasonSummary?.QuantityLostBalls ?? 0,
+            HighestLossDayLabel = topDaySummary is null
+                ? "No loss day yet"
+                : topDaySummary.LossDate.ToString("ddd, MMM d"),
+            HighestLossDayBalls = topDaySummary?.QuantityLostBalls ?? 0,
+            RangeSummary = BuildLossRangeSummary(filter),
+            PrimaryInsight = BuildPrimaryLossInsight(filter, analytics.TotalLostBalls, topReasonSummary),
+            SecondaryInsight = BuildSecondaryLossInsight(analytics.TotalLostBalls, topDaySummary),
+            FutureFacingNote = "These loss patterns can support future recommendations."
+        };
+    }
+
     private async Task<DoughQualityReballPageViewModel> BuildReballPageViewModelAsync(
         DateOnly referenceDate,
         Guid? selectedRecordId,
@@ -657,6 +780,18 @@ public sealed class DoughQualityController : Controller
             Summary = new DoughQualitySummaryViewModel(),
             StatusOptions = BuildStatusOptions(filter.CurrentStatus),
             CanCorrectStatus = User.IsInRole(nameof(ApplicationRole.Admin))
+        };
+    }
+
+    private DoughLossAnalyticsPageViewModel BuildEmptyLossAnalyticsPageViewModel(DoughLossAnalyticsFilterViewModel filter)
+    {
+        return new DoughLossAnalyticsPageViewModel
+        {
+            Filter = filter,
+            LossReasonOptions = BuildLossReasonOptions(filter.LossReason, includeBlankOption: true, blankLabel: "All reasons"),
+            RangeSummary = BuildLossRangeSummary(filter),
+            PrimaryInsight = "No dough losses were recorded for this range.",
+            SecondaryInsight = "When losses appear, this screen will highlight the strongest pattern by day and reason."
         };
     }
 
@@ -825,6 +960,86 @@ public sealed class DoughQualityController : Controller
         }
 
         return options;
+    }
+
+    private static DoughLossAnalyticsFilterViewModel BuildLossAnalyticsFilter(
+        DateOnly? fromDate,
+        DateOnly? toDate,
+        string? lossReason)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var weekStart = GetMondayOfWeek(today);
+
+        return new DoughLossAnalyticsFilterViewModel
+        {
+            FromDate = fromDate ?? weekStart,
+            ToDate = toDate ?? today,
+            LossReason = string.IsNullOrWhiteSpace(lossReason) ? null : lossReason.Trim()
+        };
+    }
+
+    private static string BuildLossRangeSummary(DoughLossAnalyticsFilterViewModel filter)
+    {
+        if (filter.FromDate.HasValue && filter.ToDate.HasValue)
+        {
+            return $"{filter.FromDate.Value:MMM d, yyyy} to {filter.ToDate.Value:MMM d, yyyy}";
+        }
+
+        if (filter.FromDate.HasValue)
+        {
+            return $"From {filter.FromDate.Value:MMM d, yyyy}";
+        }
+
+        if (filter.ToDate.HasValue)
+        {
+            return $"Through {filter.ToDate.Value:MMM d, yyyy}";
+        }
+
+        return "All recorded loss dates";
+    }
+
+    private static string BuildPrimaryLossInsight(
+        DoughLossAnalyticsFilterViewModel filter,
+        int totalLostBalls,
+        DoughLossAnalyticsReasonSummaryViewModel? topReasonSummary)
+    {
+        if (totalLostBalls <= 0)
+        {
+            return "No dough losses were recorded for this range.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.LossReason))
+        {
+            var displayReason = DoughQualityDisplayText.Format(filter.LossReason);
+            return $"{displayReason} caused {totalLostBalls} lost balls in this range.";
+        }
+
+        if (topReasonSummary is not null)
+        {
+            return $"Most losses came from {topReasonSummary.DisplayReason} in this range.";
+        }
+
+        return "Losses were recorded in this range. Start with the biggest reason first.";
+    }
+
+    private static string BuildSecondaryLossInsight(
+        int totalLostBalls,
+        DoughLossAnalyticsDaySummaryViewModel? topDaySummary)
+    {
+        if (totalLostBalls <= 0 || topDaySummary is null)
+        {
+            return "When losses appear, this screen will highlight the strongest pattern by day and reason.";
+        }
+
+        return topDaySummary.ReasonsCount > 1
+            ? $"{topDaySummary.LossDate:dddd} had the highest loss total with {topDaySummary.QuantityLostBalls} balls across {topDaySummary.ReasonsCount} reasons."
+            : $"{topDaySummary.LossDate:dddd} had the highest loss total with {topDaySummary.QuantityLostBalls} lost balls.";
+    }
+
+    private static DateOnly GetMondayOfWeek(DateOnly date)
+    {
+        var daysSinceMonday = ((int)date.DayOfWeek + 6) % 7;
+        return date.AddDays(-daysSinceMonday);
     }
 
     private static DoughQualityReviewCandidateViewModel MapCandidate(DoughAttentionCandidateResponse candidate)
