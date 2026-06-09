@@ -166,6 +166,82 @@ public sealed class DoughTaskWorkflowTests
     }
 
     [Fact]
+    public async Task Tuesday_Scenario_New_Load_Does_Not_Change_Ready_Balls_But_Schedules_Wednesday_Ball_Work()
+    {
+        var fixture = CreateFixture();
+        fixture.InventorySnapshots.Snapshots.Add(new DoughInventorySnapshot(
+            Guid.NewGuid(),
+            new DateOnly(2026, 6, 9),
+            availableBalls: 168,
+            newBalls: 0,
+            oldBalls: 168,
+            reservedBalls: 0,
+            usedBalls: 0,
+            wasteBalls: 0));
+
+        var loadTask = CreateTask(
+            date: new DateOnly(2026, 6, 9),
+            taskType: PrepTaskType.MakeDoughLoad,
+            quantityUnit: DoughQuantityUnit.FullLoads,
+            quantityRecommended: 1,
+            prepItem: fixture.DoughPrepItem);
+        fixture.Tasks.Tasks.Add(loadTask);
+
+        await fixture.Service.CompleteAsync(new CompletePrepTaskRequest
+        {
+            PrepTaskId = loadTask.Id,
+            CompletedByUserId = fixture.ActiveUser.Id,
+            QuantityUnit = nameof(DoughQuantityUnit.FullLoads),
+            QuantityValue = 1
+        });
+
+        var nextDayBallTask = fixture.Tasks.Tasks.Single(task => task.Id != loadTask.Id);
+
+        Assert.Equal(168, fixture.InventorySnapshots.Snapshots.Single().AvailableBalls);
+        Assert.Equal(new DateOnly(2026, 6, 10), nextDayBallTask.TaskDate);
+        Assert.Equal(168, nextDayBallTask.RecommendedBallsEquivalent);
+        Assert.Equal(PrepTaskType.BallDough, nextDayBallTask.TaskType);
+    }
+
+    [Fact]
+    public async Task Wednesday_Scenario_Balling_Tuesday_Load_Adds_168_Available_Balls()
+    {
+        var fixture = CreateFixture();
+        fixture.InventorySnapshots.Snapshots.Add(new DoughInventorySnapshot(
+            Guid.NewGuid(),
+            new DateOnly(2026, 6, 10),
+            availableBalls: 168,
+            newBalls: 0,
+            oldBalls: 168,
+            reservedBalls: 0,
+            usedBalls: 0,
+            wasteBalls: 0));
+
+        var batch = new DoughBatch(Guid.NewGuid(), new DateOnly(2026, 6, 9), DoughBatch.StandardLoadCases);
+        fixture.Batches.Batches.Add(batch);
+
+        var ballTask = CreateTask(
+            date: new DateOnly(2026, 6, 10),
+            taskType: PrepTaskType.BallDough,
+            quantityUnit: DoughQuantityUnit.Balls,
+            quantityRecommended: 168,
+            sourcePrepTaskId: Guid.NewGuid(),
+            sourceDoughBatchId: batch.Id);
+        fixture.Tasks.Tasks.Add(ballTask);
+
+        await fixture.Service.CompleteAsync(new CompletePrepTaskRequest
+        {
+            PrepTaskId = ballTask.Id,
+            CompletedByUserId = fixture.ActiveUser.Id,
+            QuantityUnit = nameof(DoughQuantityUnit.Balls),
+            QuantityValue = 168
+        });
+
+        Assert.Equal(336, fixture.InventorySnapshots.Snapshots.Single().AvailableBalls);
+        Assert.True(batch.IsBalled);
+    }
+
+    [Fact]
     public async Task Existing_Generic_Dough_Task_Behavior_Remains_Intact()
     {
         var taskRepository = new InMemoryPrepTaskRepository();

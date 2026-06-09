@@ -143,6 +143,32 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         Assert.Equal(240, result.StillMissingThisWeekBalls);
     }
 
+    [Fact]
+    public async Task Tuesday_Scenario_Shows_One_Ready_Load_And_Two_Mixed_Loads_Separately()
+    {
+        var fixture = CreateFixture(referenceDate: new DateOnly(2026, 6, 9));
+        fixture.InventorySnapshots.Snapshots.Add(CreateSnapshot(
+            snapshotDate: new DateOnly(2026, 6, 9),
+            availableBalls: 168));
+
+        fixture.Batches.Batches.Add(new DoughBatch(
+            Guid.NewGuid(),
+            batchDate: new DateOnly(2026, 6, 7),
+            totalCases: DoughBatch.StandardLoadCases));
+
+        fixture.Batches.Batches.Add(new DoughBatch(
+            Guid.NewGuid(),
+            batchDate: new DateOnly(2026, 6, 7),
+            totalCases: DoughBatch.StandardLoadCases));
+
+        var result = await fixture.Service.GetWeekAsync(
+            new DateOnly(2026, 6, 9),
+            historicalWeeksToUse: 8);
+
+        Assert.Equal(168, result.ReadyNowBalls);
+        Assert.Equal(336, result.MixedButNotBalledBalls);
+    }
+
     private static TestFixture CreateFixture(DateOnly referenceDate)
     {
         var calculationService = new FixedWeeklyCalculationService(referenceDate);
