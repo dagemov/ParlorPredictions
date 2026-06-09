@@ -72,15 +72,18 @@ public static class PersistenceLayerServiceCollectionExtensions
         });
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IDoughBatchRepository, DoughBatchRepository>();
         services.AddScoped<IDoughBatchReadRepository, DoughBatchReadRepository>();
         services.AddScoped<IDoughBatchQualityRepository, DoughBatchQualityRepository>();
         services.AddScoped<IDoughDemandPlanReadRepository, DoughDemandPlanRepository>();
         services.AddScoped<IDoughDemandPlanRepository, DoughDemandPlanRepository>();
+        services.AddScoped<IDoughInventorySnapshotRepository, DoughInventorySnapshotRepository>();
         services.AddScoped<IDoughInventoryReadRepository, DoughInventoryReadRepository>();
         services.AddScoped<IDoughLossRecordRepository, DoughLossRecordRepository>();
         services.AddScoped<IDoughPrepRecommendationReadRepository, DoughPrepRecommendationReadRepository>();
         services.AddScoped<IDoughPrepRecommendationRepository, DoughPrepRecommendationRepository>();
         services.AddScoped<IDoughReballRecordRepository, DoughReballRecordRepository>();
+        services.AddScoped<IWeeklyDoughClosingRepository, WeeklyDoughClosingRepository>();
         services.AddScoped<IManagerPrepRecommendationRepository, ManagerPrepRecommendationRepository>();
         services.AddScoped<IPrepItemReadRepository, PrepItemReadRepository>();
         services.AddScoped<IPrepStationReadRepository, PrepStationReadRepository>();

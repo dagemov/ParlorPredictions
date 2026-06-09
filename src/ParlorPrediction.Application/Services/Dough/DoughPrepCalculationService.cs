@@ -16,19 +16,22 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
     private readonly IPrepTaskRepository _prepTaskRepository;
     private readonly IRestaurantEventReadRepository _restaurantEventReadRepository;
     private readonly ISalesHistoryReadRepository _salesHistoryReadRepository;
+    private readonly IWeeklyDoughClosingReadService _weeklyDoughClosingReadService;
 
     public DoughPrepCalculationService(
         IDoughDemandPlanReadRepository doughDemandPlanReadRepository,
         IDoughInventoryReadRepository doughInventoryReadRepository,
         IPrepTaskRepository prepTaskRepository,
         IRestaurantEventReadRepository restaurantEventReadRepository,
-        ISalesHistoryReadRepository salesHistoryReadRepository)
+        ISalesHistoryReadRepository salesHistoryReadRepository,
+        IWeeklyDoughClosingReadService weeklyDoughClosingReadService)
     {
         _doughDemandPlanReadRepository = doughDemandPlanReadRepository;
         _doughInventoryReadRepository = doughInventoryReadRepository;
         _prepTaskRepository = prepTaskRepository;
         _restaurantEventReadRepository = restaurantEventReadRepository;
         _salesHistoryReadRepository = salesHistoryReadRepository;
+        _weeklyDoughClosingReadService = weeklyDoughClosingReadService;
     }
 
     public async Task<DoughPrepCalculationResult> CalculateAsync(
@@ -51,16 +54,19 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
             request.TargetDate,
             cancellationToken);
         var prepTasks = await _prepTaskRepository.GetDoughTasksByDateAsync(request.TargetDate, cancellationToken);
+        var carryover = await GetCarryoverFallbackAsync(request.TargetDate, latestInventorySnapshot, cancellationToken);
 
         var historicalAverageBalls = demandPlans.Count > 0
             ? CalculateDemandPlanBaselineBalls(demandPlans)
             : CalculateHistoricalAverageBalls(historicalSales);
         var eventEstimatedBalls = events.Sum(restaurantEvent => restaurantEvent.EstimatedDoughBalls);
         var requiredBalls = checked(historicalAverageBalls + eventEstimatedBalls);
-        var availableBalls = latestInventorySnapshot?.AvailableBalls ?? 0;
+        var availableBalls = carryover?.CarryoverAvailableBalls
+            ?? latestInventorySnapshot?.AvailableBalls
+            ?? 0;
         var completedBalls = prepTasks
-            .Where(task => task.Status == PrepTaskStatus.Completed)
-            .Sum(task => task.QuantityCompleted);
+            .Where(task => task.Status == PrepTaskStatus.Completed && task.CountsAsAvailableBallsWhenCompleted)
+            .Sum(task => task.CompletedBallsEquivalent);
         var missingBalls = Math.Max(requiredBalls - availableBalls - completedBalls, 0);
         var recommendedCases = CalculateRoundedUpUnits(missingBalls, DoughRules.BallsPerCase);
         var recommendedLoads = CalculateRoundedUpUnits(recommendedCases, DoughRules.StandardBatchCases);
@@ -218,5 +224,37 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
         }
 
         return reasonBuilder.ToString();
+    }
+
+    private async Task<Contracts.Responses.DoughClosing.WeeklyDoughCarryoverResponse?> GetCarryoverFallbackAsync(
+        DateOnly targetDate,
+        DoughInventorySnapshot? latestInventorySnapshot,
+        CancellationToken cancellationToken)
+    {
+        var weekStartDate = GetOperationalWeekStart(targetDate);
+        var hasCurrentWeekSnapshot = latestInventorySnapshot is not null &&
+            latestInventorySnapshot.SnapshotDate >= weekStartDate;
+
+        if (hasCurrentWeekSnapshot)
+        {
+            return null;
+        }
+
+        var carryover = await _weeklyDoughClosingReadService.GetCarryoverForWeekAsync(
+            new Contracts.Requests.DoughClosing.GetWeeklyDoughCarryoverRequest
+            {
+                WeekStartDate = targetDate
+            },
+            cancellationToken);
+
+        return carryover.HasClosingCarryover
+            ? carryover
+            : null;
+    }
+
+    private static DateOnly GetOperationalWeekStart(DateOnly referenceDate)
+    {
+        var diff = ((int)referenceDate.DayOfWeek - (int)DayOfWeek.Tuesday + 7) % 7;
+        return referenceDate.AddDays(-diff);
     }
 }

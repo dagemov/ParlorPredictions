@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ParlorPrediction.Persistence;
 
@@ -11,9 +12,11 @@ using ParlorPrediction.Persistence;
 namespace ParlorPrediction.Persistence.Migrations
 {
     [DbContext(typeof(ParlorPredictionDbContext))]
-    partial class ParlorPredictionDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260609122354_AddPrepTaskLoadBallWorkflow")]
+    partial class AddPrepTaskLoadBallWorkflow
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1287,102 +1290,6 @@ namespace ParlorPrediction.Persistence.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("ParlorPrediction.Domain.Entities.WeeklyDoughClosing", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("ClosedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ClosedByUserId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTime?>("CorrectedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CorrectedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("CorrectionNote")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
-
-                    b.Property<int>("LeftoverAttentionBalls")
-                        .HasColumnType("int");
-
-                    b.Property<int>("LeftoverMixedLoads")
-                        .HasColumnType("int");
-
-                    b.Property<int>("LeftoverReadyBalls")
-                        .HasColumnType("int");
-
-                    b.Property<int>("LostBalls")
-                        .HasColumnType("int");
-
-                    b.Property<int>("NeededBalls")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<int>("ProducedBalls")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
-
-                    b.Property<int>("UsedBalls")
-                        .HasColumnType("int");
-
-                    b.Property<DateOnly>("WeekEndDate")
-                        .HasColumnType("date");
-
-                    b.Property<DateOnly>("WeekStartDate")
-                        .HasColumnType("date");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ClosedAtUtc");
-
-                    b.HasIndex("ClosedByUserId");
-
-                    b.HasIndex("CorrectedByUserId");
-
-                    b.HasIndex("WeekStartDate")
-                        .IsUnique();
-
-                    b.ToTable("WeeklyDoughClosings", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_WeeklyDoughClosings_LeftoverAttentionBalls_NonNegative", "[LeftoverAttentionBalls] >= 0");
-
-                            t.HasCheckConstraint("CK_WeeklyDoughClosings_LeftoverMixedLoads_NonNegative", "[LeftoverMixedLoads] >= 0");
-
-                            t.HasCheckConstraint("CK_WeeklyDoughClosings_LeftoverReadyBalls_NonNegative", "[LeftoverReadyBalls] >= 0");
-
-                            t.HasCheckConstraint("CK_WeeklyDoughClosings_LostBalls_NonNegative", "[LostBalls] >= 0");
-
-                            t.HasCheckConstraint("CK_WeeklyDoughClosings_NeededBalls_NonNegative", "[NeededBalls] >= 0");
-
-                            t.HasCheckConstraint("CK_WeeklyDoughClosings_ProducedBalls_NonNegative", "[ProducedBalls] >= 0");
-
-                            t.HasCheckConstraint("CK_WeeklyDoughClosings_UsedBalls_NonNegative", "[UsedBalls] >= 0");
-
-                            t.HasCheckConstraint("CK_WeeklyDoughClosings_WeekWindow", "DATEDIFF(day, [WeekStartDate], [WeekEndDate]) = 5");
-                        });
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -1584,24 +1491,6 @@ namespace ParlorPrediction.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("ParlorPrediction.Domain.Entities.WeeklyDoughClosing", b =>
-                {
-                    b.HasOne("ParlorPrediction.Domain.Entities.User", "ClosedByUser")
-                        .WithMany()
-                        .HasForeignKey("ClosedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ParlorPrediction.Domain.Entities.User", "CorrectedByUser")
-                        .WithMany()
-                        .HasForeignKey("CorrectedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("ClosedByUser");
-
-                    b.Navigation("CorrectedByUser");
                 });
 
             modelBuilder.Entity("ParlorPrediction.Domain.Entities.DoughBatchQualityRecord", b =>

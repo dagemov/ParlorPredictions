@@ -40,6 +40,8 @@ public sealed class ParlorPredictionDbContext : IdentityDbContext<User>
 
     public DbSet<SalesHistory> SalesHistories => Set<SalesHistory>();
 
+    public DbSet<WeeklyDoughClosing> WeeklyDoughClosings => Set<WeeklyDoughClosing>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

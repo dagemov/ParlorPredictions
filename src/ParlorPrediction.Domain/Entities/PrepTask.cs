@@ -1,4 +1,5 @@
 using ParlorPrediction.Domain.Enums;
+using ParlorPrediction.Domain.Rules;
 
 namespace ParlorPrediction.Domain.Entities;
 
@@ -17,7 +18,11 @@ public sealed class PrepTask
         Guid prepStationId,
         Guid? doughPrepRecommendationId,
         ApplicationRole assignedRole,
+        PrepTaskType taskType,
+        DoughQuantityUnit quantityUnit,
         int quantityRecommended,
+        Guid? sourcePrepTaskId,
+        Guid? sourceDoughBatchId,
         string? notes)
     {
         Id = id == Guid.Empty ? Guid.NewGuid() : id;
@@ -25,8 +30,13 @@ public sealed class PrepTask
         SetPrepItem(prepItemId);
         SetPrepStation(prepStationId);
         SetRecommendation(doughPrepRecommendationId);
+        SetSourcePrepTaskId(sourcePrepTaskId);
+        SetSourceDoughBatchId(sourceDoughBatchId);
         AssignedRole = assignedRole;
-        QuantityRecommended = EnsureNonNegative(quantityRecommended, nameof(quantityRecommended));
+        TaskType = taskType;
+        QuantityUnit = quantityUnit;
+        QuantityRecommended = EnsurePositive(quantityRecommended, nameof(quantityRecommended));
+        ValidateTaskConfiguration(taskType, quantityUnit, quantityRecommended, sourcePrepTaskId, sourceDoughBatchId);
         QuantityCompleted = 0;
         Status = PrepTaskStatus.Pending;
         Notes = NormalizeOptional(notes);
@@ -46,9 +56,17 @@ public sealed class PrepTask
 
     public ApplicationRole AssignedRole { get; private set; }
 
+    public PrepTaskType TaskType { get; private set; }
+
+    public DoughQuantityUnit QuantityUnit { get; private set; }
+
     public int QuantityRecommended { get; private set; }
 
     public int QuantityCompleted { get; private set; }
+
+    public Guid? SourcePrepTaskId { get; private set; }
+
+    public Guid? SourceDoughBatchId { get; private set; }
 
     public PrepTaskStatus Status { get; private set; }
 
@@ -70,6 +88,18 @@ public sealed class PrepTask
 
     public User? CompletedByUser { get; private set; }
 
+    public PrepTask? SourcePrepTask { get; private set; }
+
+    public DoughBatch? SourceDoughBatch { get; private set; }
+
+    public int RecommendedBallsEquivalent => ConvertToBalls(QuantityRecommended, QuantityUnit);
+
+    public int CompletedBallsEquivalent => ConvertToBalls(QuantityCompleted, QuantityUnit);
+
+    public bool CountsAsAvailableBallsWhenCompleted => TaskType is not PrepTaskType.MakeDoughLoad;
+
+    public bool CreatesBallingFollowUpWhenCompleted => TaskType == PrepTaskType.MakeDoughLoad;
+
     public static PrepTask Create(
         DateOnly taskDate,
         Guid prepItemId,
@@ -77,6 +107,10 @@ public sealed class PrepTask
         ApplicationRole assignedRole,
         int quantityRecommended,
         Guid? doughPrepRecommendationId = null,
+        PrepTaskType taskType = PrepTaskType.GenericDough,
+        DoughQuantityUnit quantityUnit = DoughQuantityUnit.Balls,
+        Guid? sourcePrepTaskId = null,
+        Guid? sourceDoughBatchId = null,
         string? notes = null,
         Guid? id = null)
     {
@@ -87,7 +121,11 @@ public sealed class PrepTask
             prepStationId,
             doughPrepRecommendationId,
             assignedRole,
+            taskType,
+            quantityUnit,
             quantityRecommended,
+            sourcePrepTaskId,
+            sourceDoughBatchId,
             notes);
     }
 
@@ -171,6 +209,8 @@ public sealed class PrepTask
         Guid prepItemId,
         Guid prepStationId,
         ApplicationRole assignedRole,
+        PrepTaskType taskType,
+        DoughQuantityUnit quantityUnit,
         int quantityRecommended,
         string? notes = null)
     {
@@ -183,7 +223,10 @@ public sealed class PrepTask
         SetPrepItem(prepItemId);
         SetPrepStation(prepStationId);
         AssignedRole = assignedRole;
-        QuantityRecommended = EnsureNonNegative(quantityRecommended, nameof(quantityRecommended));
+        TaskType = taskType;
+        QuantityUnit = quantityUnit;
+        QuantityRecommended = EnsurePositive(quantityRecommended, nameof(quantityRecommended));
+        ValidateTaskConfiguration(TaskType, QuantityUnit, QuantityRecommended, SourcePrepTaskId, SourceDoughBatchId);
         Notes = NormalizeOptional(notes);
         UpdatedAtUtc = DateTime.UtcNow;
     }
@@ -234,11 +277,31 @@ public sealed class PrepTask
         DoughPrepRecommendationId = doughPrepRecommendationId;
     }
 
-    private static int EnsureNonNegative(int value, string parameterName)
+    private void SetSourcePrepTaskId(Guid? sourcePrepTaskId)
     {
-        if (value < 0)
+        if (sourcePrepTaskId == Guid.Empty)
         {
-            throw new ArgumentOutOfRangeException(parameterName, "Value cannot be negative.");
+            throw new ArgumentException("Source prep task id cannot be an empty guid.", nameof(sourcePrepTaskId));
+        }
+
+        SourcePrepTaskId = sourcePrepTaskId;
+    }
+
+    private void SetSourceDoughBatchId(Guid? sourceDoughBatchId)
+    {
+        if (sourceDoughBatchId == Guid.Empty)
+        {
+            throw new ArgumentException("Source dough batch id cannot be an empty guid.", nameof(sourceDoughBatchId));
+        }
+
+        SourceDoughBatchId = sourceDoughBatchId;
+    }
+
+    private static int EnsurePositive(int value, string parameterName)
+    {
+        if (value <= 0)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, "Value must be greater than zero.");
         }
 
         return value;
@@ -259,5 +322,70 @@ public sealed class PrepTask
     {
         var normalized = value?.Trim();
         return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
+
+    private static int ConvertToBalls(int quantity, DoughQuantityUnit quantityUnit)
+    {
+        return quantity <= 0
+            ? 0
+            : DoughRules.ConvertToBalls(quantity, quantityUnit);
+    }
+
+    private static void ValidateTaskConfiguration(
+        PrepTaskType taskType,
+        DoughQuantityUnit quantityUnit,
+        int quantityRecommended,
+        Guid? sourcePrepTaskId,
+        Guid? sourceDoughBatchId)
+    {
+        if (quantityRecommended <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(quantityRecommended), "Quantity recommended must be greater than zero.");
+        }
+
+        switch (taskType)
+        {
+            case PrepTaskType.GenericDough:
+                if (quantityUnit != DoughQuantityUnit.Balls)
+                {
+                    throw new InvalidOperationException("Generic dough tasks must store quantities in balls.");
+                }
+
+                break;
+
+            case PrepTaskType.MakeDoughLoad:
+                if (quantityUnit != DoughQuantityUnit.FullLoads)
+                {
+                    throw new InvalidOperationException("Make dough load tasks must store quantities in full loads.");
+                }
+
+                if (sourceDoughBatchId.HasValue)
+                {
+                    throw new InvalidOperationException("Make dough load tasks cannot reference a source dough batch.");
+                }
+
+                break;
+
+            case PrepTaskType.BallDough:
+                if (quantityUnit != DoughQuantityUnit.Balls)
+                {
+                    throw new InvalidOperationException("Ball dough tasks must store quantities in balls.");
+                }
+
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(taskType), "The prep task type is not supported.");
+        }
+
+        if (sourcePrepTaskId == Guid.Empty)
+        {
+            throw new ArgumentException("Source prep task id cannot be an empty guid.", nameof(sourcePrepTaskId));
+        }
+
+        if (sourceDoughBatchId == Guid.Empty)
+        {
+            throw new ArgumentException("Source dough batch id cannot be an empty guid.", nameof(sourceDoughBatchId));
+        }
     }
 }

@@ -20,6 +20,8 @@ public static class ApplicationLayerServiceCollectionExtensions
         services.AddScoped<IDoughPrepCalculationService, DoughPrepCalculationService>();
         services.AddScoped<IDoughQualityManagementService, DoughQualityManagementService>();
         services.AddScoped<IDoughQualityReadService, DoughQualityReadService>();
+        services.AddScoped<IWeeklyDoughClosingManagementService, WeeklyDoughClosingManagementService>();
+        services.AddScoped<IWeeklyDoughClosingReadService, WeeklyDoughClosingReadService>();
         services.AddScoped<IDoughProductionPlanningService, DoughProductionPlanningService>();
         services.AddScoped<IDoughPrepRecommendationReadService, DoughPrepRecommendationReadService>();
         services.AddScoped<IDoughPrepRecommendationService, DoughPrepRecommendationService>();

@@ -22,9 +22,23 @@ public sealed class DoughTaskListItemResponse
 
     public string AssignedRole { get; set; } = string.Empty;
 
+    public string TaskType { get; set; } = string.Empty;
+
+    public string QuantityUnit { get; set; } = string.Empty;
+
     public int QuantityRecommended { get; set; }
 
     public int QuantityCompleted { get; set; }
+
+    public int QuantityRecommendedBallsEquivalent { get; set; }
+
+    public int QuantityCompletedBallsEquivalent { get; set; }
+
+    public bool CountsAsAvailableBallsWhenCompleted { get; set; }
+
+    public Guid? SourcePrepTaskId { get; set; }
+
+    public Guid? SourceDoughBatchId { get; set; }
 
     public string Status { get; set; } = string.Empty;
 

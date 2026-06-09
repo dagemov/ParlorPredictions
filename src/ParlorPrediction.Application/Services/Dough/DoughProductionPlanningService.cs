@@ -14,19 +14,22 @@ public sealed class DoughProductionPlanningService : IDoughProductionPlanningSer
     private readonly IDoughInventoryReadRepository _doughInventoryReadRepository;
     private readonly IRestaurantEventReadRepository _restaurantEventReadRepository;
     private readonly ISalesHistoryReadRepository _salesHistoryReadRepository;
+    private readonly IWeeklyDoughClosingReadService _weeklyDoughClosingReadService;
 
     public DoughProductionPlanningService(
         IDoughBatchReadRepository doughBatchReadRepository,
         IDoughDemandPlanReadRepository doughDemandPlanReadRepository,
         IDoughInventoryReadRepository doughInventoryReadRepository,
         IRestaurantEventReadRepository restaurantEventReadRepository,
-        ISalesHistoryReadRepository salesHistoryReadRepository)
+        ISalesHistoryReadRepository salesHistoryReadRepository,
+        IWeeklyDoughClosingReadService weeklyDoughClosingReadService)
     {
         _doughBatchReadRepository = doughBatchReadRepository;
         _doughDemandPlanReadRepository = doughDemandPlanReadRepository;
         _doughInventoryReadRepository = doughInventoryReadRepository;
         _restaurantEventReadRepository = restaurantEventReadRepository;
         _salesHistoryReadRepository = salesHistoryReadRepository;
+        _weeklyDoughClosingReadService = weeklyDoughClosingReadService;
     }
 
     public async Task<DoughProductionPlanningResponse> PlanAsync(
@@ -43,6 +46,7 @@ public sealed class DoughProductionPlanningService : IDoughProductionPlanningSer
         var doughBatches = await _doughBatchReadRepository.GetProducedOnOrBeforeAsync(
             request.ProductionDate,
             cancellationToken);
+        var carryover = await GetCarryoverFallbackAsync(request.ProductionDate, latestInventorySnapshot, cancellationToken);
         var upcomingEvents = await _restaurantEventReadRepository.GetBetweenDatesAsync(
             request.ProductionDate,
             horizonEndDate,
@@ -66,15 +70,22 @@ public sealed class DoughProductionPlanningService : IDoughProductionPlanningSer
             .ToArray();
 
         var totalFutureRequiredBalls = upcomingNeedsReadOnly.Sum(need => need.TotalRequiredBalls);
-        var readyBalls = latestInventorySnapshot?.AvailableBalls ?? 0;
+        var readyBalls = carryover?.CarryoverAvailableBalls
+            ?? latestInventorySnapshot?.AvailableBalls
+            ?? 0;
 
-        var fermentingBalls = doughBatches
+        var liveFermentingBalls = doughBatches
             .Where(batch => batch.FermentationReadyDate > request.ProductionDate)
             .Sum(batch => batch.TotalBalls);
 
-        var unballedBalls = doughBatches
+        var liveUnballedBalls = doughBatches
             .Where(batch => !batch.IsBalled)
             .Sum(batch => batch.TotalBalls);
+        var carryoverUnballedBalls = liveUnballedBalls == 0
+            ? carryover?.MixedButNotBalledLoads * DoughRules.StandardBatchBalls ?? 0
+            : 0;
+        var fermentingBalls = liveFermentingBalls;
+        var unballedBalls = liveUnballedBalls + carryoverUnballedBalls;
 
         var totalBallsNeedingCoverageToday = needsForTodayWindow.Sum(need => need.TotalRequiredBalls);
         var coverageWindowEndDate = needsForTodayWindow.Length == 0
@@ -87,11 +98,12 @@ public sealed class DoughProductionPlanningService : IDoughProductionPlanningSer
                 batch.FermentationReadyDate <= coverageWindowEndDate)
             .Sum(batch => batch.TotalBalls);
 
-        var readyUnballedBalls = doughBatches
+        var liveReadyUnballedBalls = doughBatches
             .Where(batch =>
                 !batch.IsBalled &&
                 batch.FermentationReadyDate <= coverageWindowEndDate)
             .Sum(batch => batch.TotalBalls);
+        var readyUnballedBalls = liveReadyUnballedBalls + carryoverUnballedBalls;
 
         var availableCoverageForWindow = readyBalls + fermentingBallsReadyInWindow + readyUnballedBalls;
         var missingBallsForProductionWindow = Math.Max(totalBallsNeedingCoverageToday - availableCoverageForWindow, 0);
@@ -263,5 +275,37 @@ public sealed class DoughProductionPlanningService : IDoughProductionPlanningSer
             ", ",
             needsForTodayWindow.Select(need =>
                 $"{need.NeedDate:ddd MMM d} ({need.TotalRequiredBalls} balls, best made on {need.RecommendedMakeDate:MMM d})"));
+    }
+
+    private async Task<Contracts.Responses.DoughClosing.WeeklyDoughCarryoverResponse?> GetCarryoverFallbackAsync(
+        DateOnly productionDate,
+        DoughInventorySnapshot? latestInventorySnapshot,
+        CancellationToken cancellationToken)
+    {
+        var weekStartDate = GetOperationalWeekStart(productionDate);
+        var hasCurrentWeekSnapshot = latestInventorySnapshot is not null &&
+            latestInventorySnapshot.SnapshotDate >= weekStartDate;
+
+        if (hasCurrentWeekSnapshot)
+        {
+            return null;
+        }
+
+        var carryover = await _weeklyDoughClosingReadService.GetCarryoverForWeekAsync(
+            new Contracts.Requests.DoughClosing.GetWeeklyDoughCarryoverRequest
+            {
+                WeekStartDate = productionDate
+            },
+            cancellationToken);
+
+        return carryover.HasClosingCarryover
+            ? carryover
+            : null;
+    }
+
+    private static DateOnly GetOperationalWeekStart(DateOnly referenceDate)
+    {
+        var diff = ((int)referenceDate.DayOfWeek - (int)DayOfWeek.Tuesday + 7) % 7;
+        return referenceDate.AddDays(-diff);
     }
 }
