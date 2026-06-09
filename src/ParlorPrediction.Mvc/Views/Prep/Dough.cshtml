@@ -19,6 +19,16 @@
                 <i class="fa-regular fa-calendar-days me-2"></i>
                 View Weekly Dough Calendar
             </a>
+            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+            {
+                <a class="btn btn-outline-secondary"
+                   asp-action="Review"
+                   asp-controller="DoughQuality"
+                   asp-route-referenceDate="@Model.TargetDate.ToString("yyyy-MM-dd")">
+                    <i class="fa-regular fa-flag me-2"></i>
+                    Review Older Dough
+                </a>
+            }
             <a class="btn btn-outline-secondary"
                asp-action="Index"
                asp-controller="PrepTasks"
