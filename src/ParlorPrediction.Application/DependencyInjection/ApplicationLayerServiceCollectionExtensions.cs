@@ -18,6 +18,8 @@ public static class ApplicationLayerServiceCollectionExtensions
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IDoughDemandPlanService, DoughDemandPlanService>();
         services.AddScoped<IDoughPrepCalculationService, DoughPrepCalculationService>();
+        services.AddScoped<IDoughQualityManagementService, DoughQualityManagementService>();
+        services.AddScoped<IDoughQualityReadService, DoughQualityReadService>();
         services.AddScoped<IDoughProductionPlanningService, DoughProductionPlanningService>();
         services.AddScoped<IDoughPrepRecommendationReadService, DoughPrepRecommendationReadService>();
         services.AddScoped<IDoughPrepRecommendationService, DoughPrepRecommendationService>();

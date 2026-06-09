@@ -14,11 +14,17 @@ public sealed class ParlorPredictionDbContext : IdentityDbContext<User>
 
     public DbSet<DoughBatch> DoughBatches => Set<DoughBatch>();
 
+    public DbSet<DoughBatchQualityRecord> DoughBatchQualityRecords => Set<DoughBatchQualityRecord>();
+
     public DbSet<DoughDemandPlan> DoughDemandPlans => Set<DoughDemandPlan>();
 
     public DbSet<DoughInventorySnapshot> DoughInventorySnapshots => Set<DoughInventorySnapshot>();
 
+    public DbSet<DoughLossRecord> DoughLossRecords => Set<DoughLossRecord>();
+
     public DbSet<DoughPrepRecommendation> DoughPrepRecommendations => Set<DoughPrepRecommendation>();
+
+    public DbSet<DoughReballRecord> DoughReballRecords => Set<DoughReballRecord>();
 
     public DbSet<ManagerPrepRecommendation> ManagerPrepRecommendations => Set<ManagerPrepRecommendation>();
 
