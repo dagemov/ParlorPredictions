@@ -56,6 +56,56 @@ dotnet user-secrets set "DevelopmentSeedUsers:Users:2:Password" "Polondrolo3*" -
 dotnet run --project src/ParlorPrediction.Mvc
 ```
 
+## One-command local demo flow
+
+If you want to start the local app and Tailscale sharing from one script, use the scripts stored in:
+
+```text
+src/ParlorPrediction.Infrastructure/Scripts/
+```
+
+### Start the app and expose it publicly with Funnel
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\src\ParlorPrediction.Infrastructure\Scripts\Start-ParlorPredictionDemo.ps1
+```
+
+### Start the app and keep it tailnet-only
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\src\ParlorPrediction.Infrastructure\Scripts\Start-ParlorPredictionDemo.ps1 -ShareMode Serve
+```
+
+### Start the app without Tailscale
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\src\ParlorPrediction.Infrastructure\Scripts\Start-ParlorPredictionDemo.ps1 -ShareMode None
+```
+
+### Stop only the local app
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\src\ParlorPrediction.Infrastructure\Scripts\Stop-ParlorPredictionApp.ps1
+```
+
+### Stop Funnel and Serve
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\src\ParlorPrediction.Infrastructure\Scripts\Stop-ParlorPredictionShare.ps1
+```
+
+The start script writes logs and a PID file under:
+
+```text
+artifacts/local-demo/
+```
+
+You can read a full command reference in:
+
+```text
+src/ParlorPrediction.Infrastructure/Scripts/README.md
+```
+
 ## EF Core migrations
 
 Use the local tool manifest already committed in the repo:
