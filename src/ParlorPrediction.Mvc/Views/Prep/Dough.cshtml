@@ -3,36 +3,42 @@
     ViewData["Title"] = "Dough Prep";
 }
 
-<section class="page-hero page-hero--compact">
-    <div>
-        <span class="eyebrow">Pizza Station</span>
-        <h1>Dough Prep</h1>
-        <p class="page-copy">See what dough is available, what still needs to be mixed, and what the kitchen team should work on next.</p>
-    </div>
-    <div class="hero-actions">
-        <a class="btn btn-primary" asp-action="DoughWeek" asp-controller="Prep" asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")" asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse">
-            <i class="fa-regular fa-calendar-days me-2"></i>
-            View Weekly Dough Calendar
-        </a>
-        <a class="btn btn-outline-secondary"
-           asp-action="Index"
-           asp-controller="PrepTasks"
-           asp-route-taskDate="@Model.TargetDate.ToString("yyyy-MM-dd")">
-            <i class="fa-solid fa-list-check me-2"></i>
-            Open Task Board
-        </a>
-        @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
-        {
-            <a class="btn btn-outline-secondary" asp-action="Create" asp-controller="PrepRecommendations">
-                <i class="fa-regular fa-note-sticky me-2"></i>
-                Add Manager Note
-            </a>
-        }
-        <a class="btn btn-outline-secondary" asp-action="Help" asp-controller="Prep">
-            <i class="fa-regular fa-circle-question me-2"></i>
-            How Dough Prep Works
-        </a>
-    </div>
-</section>
+@section Styles {
+    <link rel="stylesheet" href="~/css/dough-quality.css" asp-append-version="true" />
+}
 
-<partial name="_DoughPrepWorkspacePartial" model="Model" />
+<div class="dq-page dq-page--dough-home">
+    <section class="page-hero page-hero--compact dq-hero">
+        <div>
+            <span class="eyebrow">Kitchen Decision Board</span>
+            <h1>Dough for Today</h1>
+            <p class="page-copy dq-hero-copy">Start with one clear daily dough picture: what service needs, what the kitchen already has, what still needs action, and which dough tasks the team should touch next.</p>
+        </div>
+        <div class="hero-actions dq-action-bar">
+            <a class="btn btn-primary" asp-action="DoughWeek" asp-controller="Prep" asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")" asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse">
+                <i class="fa-regular fa-calendar-days me-2"></i>
+                View Weekly Dough Calendar
+            </a>
+            <a class="btn btn-outline-secondary"
+               asp-action="Index"
+               asp-controller="PrepTasks"
+               asp-route-taskDate="@Model.TargetDate.ToString("yyyy-MM-dd")">
+                <i class="fa-solid fa-list-check me-2"></i>
+                Open Task Board
+            </a>
+            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+            {
+                <a class="btn btn-outline-secondary" asp-action="Create" asp-controller="PrepRecommendations">
+                    <i class="fa-regular fa-note-sticky me-2"></i>
+                    Add Manager Note
+                </a>
+            }
+            <a class="btn btn-outline-secondary" asp-action="Help" asp-controller="Prep">
+                <i class="fa-regular fa-circle-question me-2"></i>
+                How Dough Prep Works
+            </a>
+        </div>
+    </section>
+
+    <partial name="_DoughPrepWorkspacePartial" model="Model" />
+</div>

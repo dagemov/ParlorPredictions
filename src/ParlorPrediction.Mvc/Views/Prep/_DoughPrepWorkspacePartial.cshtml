@@ -5,18 +5,18 @@
 }
 
 <section id="dough-prep-workspace" class="stack-lg">
-    <section class="content-card content-card--padded">
+    <section class="content-card content-card--padded dq-toolbar-card">
         <div class="toolbar-header">
             <div class="section-heading mb-0">
                 <span class="eyebrow">Daily Dough View</span>
                 <h2>Pick the day you want to review</h2>
-                <p>Load the saved dough picture for a day, then calculate fresh guidance without leaving the page.</p>
+                <p class="dq-section-copy">Load the saved dough picture for a day, then calculate fresh guidance without leaving the page.</p>
             </div>
         </div>
 
         <input id="dough-prep-anti-forgery" type="hidden" name="__RequestVerificationToken" value="@toolbarRequestToken" />
 
-        <form asp-action="Dough" asp-controller="Prep" method="get" class="row g-3 align-items-end">
+        <form asp-action="Dough" asp-controller="Prep" method="get" class="row g-3 align-items-end dq-toolbar-grid">
             <div class="col-md-4">
                 <label class="form-label" for="targetDate">Target date</label>
                 <input id="targetDate"
@@ -37,7 +37,7 @@
             </div>
 
             <div class="col-md-5">
-                <div class="d-flex flex-wrap gap-2">
+                <div class="d-flex flex-wrap gap-2 dq-action-bar">
                     <button type="submit" class="btn btn-outline-secondary">
                         <i class="fa-solid fa-calendar-day me-2"></i>
                         Load Day View

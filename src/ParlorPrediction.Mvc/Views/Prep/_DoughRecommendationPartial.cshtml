@@ -1,20 +1,20 @@
 @model DoughRecommendationViewModel?
 
-<section class="content-card content-card--padded">
+<section class="content-card content-card--padded dq-recommendation-card">
     <div class="section-heading">
-        <span class="eyebrow">Demand Snapshot</span>
-        <h2>Expected dough for the day</h2>
+        <span class="eyebrow">Daily Dough Snapshot</span>
+        <h2>Dough guidance for the selected day</h2>
         @if (Model is null)
         {
-            <p>No dough guidance is loaded for this date yet.</p>
+            <p class="dq-section-copy">No dough guidance is loaded for this date yet.</p>
         }
         else if (Model.IsPersisted)
         {
-            <p>This saved dough snapshot can be reviewed later and turned into a prep task when the manager is ready.</p>
+            <p class="dq-section-copy">This saved dough snapshot is ready for the kitchen team to review, print later, or turn into a prep task when the manager is ready.</p>
         }
         else
         {
-            <p>This dough guidance is only in memory right now. Save it if you want to keep a record for the team.</p>
+            <p class="dq-section-copy">This dough guidance is only in memory right now. Save it if you want to keep a record for the team.</p>
         }
     </div>
 
@@ -27,7 +27,7 @@
     }
     else
     {
-        <div class="d-flex flex-wrap gap-2 mb-3">
+        <div class="dq-pill-row">
             <span class="status-pill @(Model.IsPersisted ? "status-pill--success" : "status-pill--info")">
                 @(Model.IsPersisted ? "Saved For The Team" : "Just Calculated")
             </span>
@@ -43,30 +43,90 @@
             }
         </div>
 
-        <div class="metric-grid">
-            <article class="metric-card">
-                <span class="metric-card__label">Expected Dough For The Day</span>
-                <strong>@Model.RequiredBalls</strong>
-                <small>@Model.HistoricalAverageBalls usual + @Model.EventEstimatedBalls extra for events</small>
+        <div class="dq-summary-grid">
+            <article class="dq-summary-card dq-summary-card--need">
+                <div>
+                    <span class="dq-summary-card__label">Need Today</span>
+                    <p class="dq-summary-card__helper">What service needs today</p>
+                </div>
+                <div class="dq-summary-card__value-row">
+                    <span class="dq-summary-card__value">@Model.RequiredBalls</span>
+                    <span class="dq-summary-card__unit">balls</span>
+                </div>
+                <div class="dq-summary-card__bar">
+                    <span></span>
+                </div>
             </article>
-            <article class="metric-card">
-                <span class="metric-card__label">Current Dough Available</span>
-                <strong>@Model.AvailableBalls</strong>
-                <small>Latest dough count captured on or before @Model.RecommendationDate.ToString("MMM d")</small>
+            <article class="dq-summary-card dq-summary-card--available">
+                <div>
+                    <span class="dq-summary-card__label">Current Dough Available</span>
+                    <p class="dq-summary-card__helper">Real dough counted on or before @Model.RecommendationDate.ToString("MMM d")</p>
+                </div>
+                <div class="dq-summary-card__value-row">
+                    <span class="dq-summary-card__value">@Model.AvailableBalls</span>
+                    <span class="dq-summary-card__unit">balls</span>
+                </div>
+                <div class="dq-summary-card__bar">
+                    <span></span>
+                </div>
             </article>
-            <article class="metric-card">
-                <span class="metric-card__label">Dough Already Done</span>
-                <strong>@Model.CompletedBalls</strong>
-                <small>Dough balls already completed through prep tasks for this day</small>
+            <article class="dq-summary-card dq-summary-card--completed">
+                <div>
+                    <span class="dq-summary-card__label">Dough Already Done</span>
+                    <p class="dq-summary-card__helper">Finished through dough tasks for this day</p>
+                </div>
+                <div class="dq-summary-card__value-row">
+                    <span class="dq-summary-card__value">@Model.CompletedBalls</span>
+                    <span class="dq-summary-card__unit">balls</span>
+                </div>
+                <div class="dq-summary-card__bar">
+                    <span></span>
+                </div>
             </article>
-            <article class="metric-card">
-                <span class="metric-card__label">Dough Still Needed</span>
-                <strong>@Model.MissingBalls</strong>
-                <small>@Model.RecommendedCases cases / @Model.RecommendedLoads full batch@(Model.RecommendedLoads == 1 ? string.Empty : "es")</small>
+            <article class="dq-summary-card dq-summary-card--missing">
+                <div>
+                    <span class="dq-summary-card__label">Need To Make</span>
+                    <p class="dq-summary-card__helper">Still missing for today</p>
+                </div>
+                <div class="dq-summary-card__value-row">
+                    <span class="dq-summary-card__value">@Model.MissingBalls</span>
+                    <span class="dq-summary-card__unit">balls</span>
+                </div>
+                <div class="dq-summary-card__bar">
+                    <span></span>
+                </div>
             </article>
         </div>
 
-        <div class="recommendation-note">
+        @if (Model.ShouldBallDough || Model.UsesShortFermentationException)
+        {
+            <div class="dq-guidance-banner">
+                <span class="dq-guidance-banner__eyebrow">Operational attention</span>
+                <h3>
+                    @if (Model.ShouldBallDough)
+                    {
+                        @:Ball ready dough today
+                    }
+                    else
+                    {
+                        @:Short-timing event window in play
+                    }
+                </h3>
+                <p>
+                    @if (Model.ShouldBallDough)
+                    {
+                        @:Some dough is already mixed and should be balled now so the kitchen stays ahead.
+                    }
+                    else
+                    {
+                        @:The guidance includes shorter fermentation timing because of event timing and seasonal heat conditions.
+                    }
+                </p>
+            </div>
+        }
+
+        <div class="dq-manager-banner">
+            <span class="dq-manager-banner__eyebrow">System guidance</span>
             <h3>Why the system is saying this</h3>
             <p>@Model.Reason</p>
             @if (Model.SavedAtUtc.HasValue)
@@ -85,7 +145,7 @@
             </ul>
         </div>
 
-        <div class="d-flex flex-wrap gap-2 mt-4">
+        <div class="dq-action-stack">
             @if (Model.CanSaveRecommendation)
             {
                 <form asp-action="SaveDoughRecommendation"
@@ -126,7 +186,7 @@
 
         @if (Model.TaskAlreadyExists)
         {
-            <p class="inline-hint mt-3 mb-0">
+            <p class="inline-hint dq-inline-note mt-3 mb-0">
                 <i class="fa-solid fa-circle-info me-2"></i>
                 A dough task already exists for this saved guidance.
             </p>

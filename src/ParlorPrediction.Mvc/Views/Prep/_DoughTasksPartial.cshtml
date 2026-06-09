@@ -1,11 +1,16 @@
 @model DoughPrepPageViewModel
 
-<section class="content-card content-card--padded">
+@{
+    var openTasks = Model.Tasks.Where(task => !string.Equals(task.Status, "Completed", StringComparison.OrdinalIgnoreCase)).ToArray();
+    var completedTasks = Model.Tasks.Where(task => string.Equals(task.Status, "Completed", StringComparison.OrdinalIgnoreCase)).ToArray();
+}
+
+<section class="content-card content-card--padded dq-tasks-card">
     <div class="section-heading section-heading--split">
         <div>
             <span class="eyebrow">Tasks</span>
-            <h2>Dough tasks for @Model.TargetDate.ToString("dddd, MMM d")</h2>
-            <p>Use this list to see what the team still needs to finish and what has already been completed.</p>
+            <h2>Today's dough tasks</h2>
+            <p class="dq-section-copy">See what still needs attention first, then scan what the team already finished for @Model.TargetDate.ToString("dddd, MMM d").</p>
         </div>
         <a class="btn btn-outline-secondary"
            asp-controller="PrepTasks"
@@ -18,32 +23,184 @@
 
     @if (Model.Tasks.Count == 0)
     {
-        <div class="empty-state">
+        <div class="empty-state dq-task-empty">
             <i class="fa-regular fa-clipboard"></i>
             <span>No dough tasks have been created for this date yet.</span>
         </div>
     }
     else
     {
-        <div class="table-responsive">
-            <table class="table prep-table align-middle">
-                <thead>
-                    <tr>
-                        <th scope="col">Task</th>
-                        <th scope="col">Assigned To</th>
-                        <th scope="col">Needed</th>
-                        <th scope="col">Completed</th>
-                        <th scope="col">Status</th>
-                        <th scope="col" class="text-end">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var task in Model.Tasks)
-                    {
-                        <partial name="_DoughTaskRowPartial" model="task" />
-                    }
-                </tbody>
-            </table>
+        <div class="dq-task-groups">
+            <section class="dq-task-group dq-task-group--open">
+                <div class="dq-task-group__title">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span>Needs attention now</span>
+                </div>
+
+                @if (openTasks.Length == 0)
+                {
+                    <div class="empty-state dq-task-empty">
+                        <i class="fa-regular fa-circle-check"></i>
+                        <span>No open dough tasks are waiting right now.</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="dq-task-grid">
+                        @foreach (var task in openTasks)
+                        {
+                            <article class="dq-task-card">
+                                <div class="dq-task-card__header">
+                                    <div>
+                                        <h3 class="dq-task-card__title">@task.PrepItemName</h3>
+                                        <p class="dq-task-card__subtitle">@task.PrepStationName station</p>
+                                    </div>
+                                    <span class="status-pill status-pill--warning">@task.Status</span>
+                                </div>
+
+                                <div class="dq-task-card__stats">
+                                    <div class="dq-stat-box">
+                                        <span class="dq-stat-box__label">Assigned to</span>
+                                        <span class="dq-stat-box__value">@task.AssignedRole</span>
+                                    </div>
+                                    <div class="dq-stat-box">
+                                        <span class="dq-stat-box__label">Need</span>
+                                        <span class="dq-stat-box__value">@task.QuantityRecommended balls</span>
+                                    </div>
+                                    <div class="dq-stat-box">
+                                        <span class="dq-stat-box__label">Done</span>
+                                        <span class="dq-stat-box__value">@task.QuantityCompleted balls</span>
+                                    </div>
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(task.Notes))
+                                {
+                                    <p class="dq-task-card__notes">@task.Notes</p>
+                                }
+
+                                <div class="dq-task-complete">
+                                    @if (task.CanComplete)
+                                    {
+                                        <form asp-action="CompleteTask"
+                                              asp-controller="Prep"
+                                              method="post"
+                                              class="task-complete-form"
+                                              hx-post="@Url.Action("CompleteTask", "Prep")"
+                                              hx-target="#dough-prep-workspace"
+                                              hx-swap="outerHTML"
+                                              data-dough-quantity-form
+                                              data-dough-quantity-preview-mode="completed"
+                                              data-swal-confirm
+                                              data-confirm-title="Complete dough task?"
+                                              data-confirm-text="This will mark the dough task as completed for the current date.">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="PrepTaskId" value="@task.PrepTaskId" />
+                                            <input type="hidden" name="TargetDate" value="@task.TaskDate.ToString("yyyy-MM-dd")" />
+                                            <input type="hidden" name="HistoricalWeeksToUse" value="@task.HistoricalWeeksToUse" />
+                                            <div class="task-form-grid">
+                                                <select name="CompletionType"
+                                                        class="form-select"
+                                                        data-dough-quantity-unit
+                                                        aria-label="Completion type">
+                                                    <option value="Balls">Dough Balls</option>
+                                                    <option value="Cases">Cases</option>
+                                                    <option value="FullLoads">Full Loads</option>
+                                                </select>
+                                                <input name="QuantityValue"
+                                                       type="number"
+                                                       min="1"
+                                                       value="@(Math.Max(task.QuantityRecommended - task.QuantityCompleted, 1))"
+                                                       class="form-control"
+                                                       data-dough-quantity-value
+                                                       placeholder="Quantity done"
+                                                       aria-label="Completed quantity" />
+                                                <input name="Notes"
+                                                       type="text"
+                                                       maxlength="500"
+                                                       class="form-control"
+                                                       placeholder="Optional kitchen note" />
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="fa-solid fa-check me-2"></i>
+                                                    Mark Done
+                                                </button>
+                                            </div>
+                                            <div class="inline-hint task-form-help mt-2">
+                                                <i class="fa-solid fa-circle-info"></i>
+                                                <span data-dough-quantity-preview>@task.CompletionPreviewText</span>
+                                            </div>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span class="inline-hint dq-inline-note">Nothing else needs to be finished on this task.</span>
+                                    }
+                                </div>
+                            </article>
+                        }
+                    </div>
+                }
+            </section>
+
+            <section class="dq-task-group dq-task-group--done">
+                <div class="dq-task-group__title">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>Already completed</span>
+                </div>
+
+                @if (completedTasks.Length == 0)
+                {
+                    <div class="empty-state dq-task-empty">
+                        <i class="fa-regular fa-clock"></i>
+                        <span>No dough tasks are marked completed yet.</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="dq-task-grid">
+                        @foreach (var task in completedTasks)
+                        {
+                            <article class="dq-task-card">
+                                <div class="dq-task-card__header">
+                                    <div>
+                                        <h3 class="dq-task-card__title">@task.PrepItemName</h3>
+                                        <p class="dq-task-card__subtitle">@task.PrepStationName station</p>
+                                    </div>
+                                    <span class="status-pill status-pill--success">@task.Status</span>
+                                </div>
+
+                                <div class="dq-task-card__stats">
+                                    <div class="dq-stat-box">
+                                        <span class="dq-stat-box__label">Assigned to</span>
+                                        <span class="dq-stat-box__value">@task.AssignedRole</span>
+                                    </div>
+                                    <div class="dq-stat-box">
+                                        <span class="dq-stat-box__label">Need</span>
+                                        <span class="dq-stat-box__value">@task.QuantityRecommended balls</span>
+                                    </div>
+                                    <div class="dq-stat-box">
+                                        <span class="dq-stat-box__label">Done</span>
+                                        <span class="dq-stat-box__value">@task.QuantityCompleted balls</span>
+                                    </div>
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(task.CompletedByUserName) || task.CompletedAtUtc.HasValue)
+                                {
+                                    <p class="dq-task-card__notes">
+                                        @if (!string.IsNullOrWhiteSpace(task.CompletedByUserName))
+                                        {
+                                            <strong>@task.CompletedByUserName</strong>
+                                        }
+                                        @if (task.CompletedAtUtc.HasValue)
+                                        {
+                                            <span> finished this on @task.CompletedAtUtc.Value.ToLocalTime().ToString("MMM d, h:mm tt")</span>
+                                        }
+                                    </p>
+                                }
+                            </article>
+                        }
+                    </div>
+                }
+            </section>
         </div>
     }
 </section>
