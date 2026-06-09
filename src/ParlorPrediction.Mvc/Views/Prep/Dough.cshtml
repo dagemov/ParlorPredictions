@@ -7,35 +7,17 @@
 <section class="space-y-gutter">
     <section class="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-            <p class="text-on-secondary-fixed-variant font-label-caps text-label-caps mb-1">Operational Overview</p>
-            <h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Dough for Today</h1>
-            <p class="text-on-surface-variant font-body-lg mt-2 max-w-4xl">Start with one clear daily dough picture: what service needs, what the kitchen already has, what still needs action, and which dough tasks the team should touch next.</p>
+            <p class="text-on-secondary-fixed-variant font-label-caps text-label-caps mb-1">Kitchen Workflow</p>
+            <h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Dough Prep</h1>
+            <p class="text-on-surface-variant font-body-lg mt-2 max-w-4xl">Use one operating screen for the day: ready dough, weekly goal, today&apos;s tasks, older dough review, and manager guidance.</p>
         </div>
         <div class="flex flex-wrap gap-3">
-            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
-            {
-                <a asp-action="Index"
-                   asp-controller="WeeklyClosing"
-                   asp-route-referenceDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
-                   class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border-2 border-outline-variant text-on-surface font-bold hover:bg-surface-container transition-colors no-underline">
-                    <span class="material-symbols-outlined">assignment</span>
-                    Weekly Closing
-                </a>
-            }
-            <a asp-action="KitchenSheet"
-               asp-controller="Prep"
-               asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
-               asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse"
-               class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border-2 border-outline-variant text-on-surface font-bold hover:bg-surface-container transition-colors no-underline">
-                <span class="material-symbols-outlined">print</span>
-                Print Kitchen Sheet
-            </a>
             <a asp-action="Index"
-               asp-controller="PrepTasks"
-               asp-route-taskDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
-               class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl bg-primary text-on-primary font-bold hover:opacity-90 transition-opacity no-underline">
-                <span class="material-symbols-outlined">checklist</span>
-                Open Task Board
+               asp-controller="Home"
+               asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
+               class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border-2 border-outline-variant text-on-surface font-bold hover:bg-surface-container transition-colors no-underline">
+                <span class="material-symbols-outlined">home</span>
+                Back To Home
             </a>
         </div>
     </section>

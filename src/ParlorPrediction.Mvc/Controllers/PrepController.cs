@@ -461,16 +461,19 @@ public sealed class PrepController : Controller
 
         var qualitySummary = new Models.DoughQuality.DoughQualitySummaryViewModel();
         IReadOnlyList<DoughKitchenAttentionItemViewModel> attentionItems = Array.Empty<DoughKitchenAttentionItemViewModel>();
+        IReadOnlyList<Models.DoughQuality.DoughQualityReviewCandidateViewModel> olderDoughCandidates = Array.Empty<Models.DoughQuality.DoughQualityReviewCandidateViewModel>();
 
         try
         {
             qualitySummary = await BuildDoughQualitySummaryAsync(cancellationToken);
             attentionItems = await BuildKitchenAttentionItemsAsync(targetDate, cancellationToken);
+            olderDoughCandidates = await BuildOlderDoughCandidatesAsync(targetDate, cancellationToken);
         }
         catch (Exception exception) when (IsRecoverableDoughQualityException(exception))
         {
             qualitySummary = new Models.DoughQuality.DoughQualitySummaryViewModel();
             attentionItems = Array.Empty<DoughKitchenAttentionItemViewModel>();
+            olderDoughCandidates = Array.Empty<Models.DoughQuality.DoughQualityReviewCandidateViewModel>();
         }
 
         return new DoughPrepPageViewModel
@@ -482,6 +485,7 @@ public sealed class PrepController : Controller
             WeeklyGoal = MapWeeklyGoal(weeklyCalendar),
             QualitySummary = qualitySummary,
             AttentionItems = attentionItems,
+            OlderDoughCandidates = olderDoughCandidates,
             Tasks = taskViewModels,
             CanManageRecommendations = CanManageRecommendations()
         };
@@ -624,6 +628,32 @@ public sealed class PrepController : Controller
         }
 
         return items;
+    }
+
+    private async Task<IReadOnlyList<Models.DoughQuality.DoughQualityReviewCandidateViewModel>> BuildOlderDoughCandidatesAsync(
+        DateOnly targetDate,
+        CancellationToken cancellationToken)
+    {
+        var candidates = await _doughQualityReadService.EvaluateAttentionCandidatesAsync(
+            new EvaluateDoughAttentionCandidatesRequest
+            {
+                ReferenceDate = targetDate
+            },
+            cancellationToken);
+
+        return candidates
+            .OrderBy(item => item.CreatedOrBalledAt)
+            .Select(candidate => new Models.DoughQuality.DoughQualityReviewCandidateViewModel
+            {
+                DoughBatchQualityRecordId = candidate.DoughBatchQualityRecordId,
+                SourceDate = candidate.SourceDate,
+                CreatedOrBalledAt = candidate.CreatedOrBalledAt,
+                QuantityBalls = candidate.QuantityBalls,
+                CurrentStatus = candidate.CurrentStatus,
+                AgeDays = candidate.AgeDays,
+                CandidateReason = candidate.CandidateReason
+            })
+            .ToArray();
     }
 
     private IActionResult RenderDoughResult(DoughPrepPageViewModel pageModel)
