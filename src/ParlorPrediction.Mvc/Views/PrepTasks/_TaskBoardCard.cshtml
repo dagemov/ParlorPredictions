@@ -1,0 +1,129 @@
+@model DoughTaskViewModel
+
+<article class="bg-white border border-outline-variant p-6 rounded-xl shadow-sm flex flex-col gap-4 relative overflow-hidden">
+    <div class="absolute top-0 left-0 w-full h-2 @(Model.NeedsAttentionNow ? "bg-error" : Model.IsLoadTask ? "bg-secondary-container" : "bg-secondary")"></div>
+
+    <div class="flex justify-between items-start gap-4">
+        <div>
+            <div class="font-label-caps text-label-caps @(Model.NeedsAttentionNow ? "text-error" : "text-secondary")">@Model.TaskTypeDisplayText</div>
+            <h3 class="font-headline-md text-headline-md text-on-surface mt-1">@Model.TaskTitle</h3>
+            <p class="font-body-lg text-on-surface-variant mt-2">@Model.TaskDescription</p>
+        </div>
+        <span class="inline-flex items-center rounded-full px-4 py-2 text-sm font-bold uppercase @(Model.NeedsAttentionNow ? "bg-error-container text-error" : "bg-secondary-fixed text-on-secondary-container")">
+            @Model.Status
+        </span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="rounded-xl bg-surface-container-low p-4">
+            <div class="font-label-caps text-label-caps text-on-surface-variant mb-1">Assigned</div>
+            <div class="font-bold text-on-surface">@Model.AssignedRole</div>
+        </div>
+        <div class="rounded-xl bg-surface-container-low p-4">
+            <div class="font-label-caps text-label-caps text-on-surface-variant mb-1">Need</div>
+            <div class="font-bold text-on-surface">@Model.RecommendedQuantityText</div>
+        </div>
+        <div class="rounded-xl bg-surface-container-low p-4">
+            <div class="font-label-caps text-label-caps text-on-surface-variant mb-1">Done</div>
+            <div class="font-bold text-on-surface">@Model.CompletedQuantityText</div>
+        </div>
+    </div>
+
+    <div class="rounded-xl @(Model.IsLoadTask ? "bg-secondary-fixed/40 text-on-secondary-container" : Model.NeedsAttentionNow ? "bg-error-container/70 text-on-error-container" : "bg-primary-fixed text-primary") p-4">
+        <div class="font-label-caps text-label-caps mb-1">Helper</div>
+        <div class="font-semibold">@Model.TaskHelperText</div>
+        <div class="text-sm opacity-80 mt-1">@Model.SecondaryQuantityText</div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Notes))
+    {
+        <div class="text-on-surface-variant">@Model.Notes</div>
+    }
+
+    <div class="flex flex-wrap gap-3">
+        <a asp-action="Details" asp-controller="PrepTasks" asp-route-id="@Model.PrepTaskId" class="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest no-underline">
+            <span class="material-symbols-outlined">visibility</span>
+            Details
+        </a>
+        @if (Model.CanManage)
+        {
+            <a asp-action="Edit" asp-controller="PrepTasks" asp-route-id="@Model.PrepTaskId" class="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest no-underline">
+                <span class="material-symbols-outlined">edit</span>
+                Edit
+            </a>
+            <form asp-action="Delete"
+                  asp-controller="PrepTasks"
+                  asp-route-id="@Model.PrepTaskId"
+                  method="post"
+                  data-swal-confirm
+                  data-confirm-title="Delete dough task?"
+                  data-confirm-text="This will remove the dough task from the board.">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-xl border border-error text-error font-bold hover:bg-error-container">
+                    <span class="material-symbols-outlined">delete</span>
+                    Delete
+                </button>
+            </form>
+        }
+    </div>
+
+    @if (Model.CanComplete)
+    {
+        <form asp-action="Complete"
+              asp-controller="PrepTasks"
+              method="post"
+              class="space-y-3"
+              data-dough-quantity-form
+              data-dough-quantity-preview-mode="completed"
+              data-swal-confirm
+              data-confirm-title="Complete dough task?"
+              data-confirm-text="This will count the finished dough against the task.">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="PrepTaskId" value="@Model.PrepTaskId" />
+            <input type="hidden" name="TargetDate" value="@Model.TaskDate.ToString("yyyy-MM-dd")" />
+            <input type="hidden" value="@Model.TaskType" data-dough-task-type />
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                @if (Model.RestrictCompletionUnit)
+                {
+                    <input type="hidden" name="CompletionType" value="@Model.DefaultCompletionUnit" data-dough-quantity-unit />
+                    <div class="rounded-xl border border-outline-variant bg-surface-container-low p-4 flex items-center justify-center font-label-caps text-label-caps text-on-surface-variant">
+                        @Model.DefaultCompletionUnit
+                    </div>
+                }
+                else
+                {
+                    <select name="CompletionType"
+                            class="h-touch-target-min rounded-xl border border-outline-variant bg-white px-4"
+                            data-dough-quantity-unit>
+                        <option value="Balls">Dough Balls</option>
+                        <option value="Cases">Cases</option>
+                        <option value="FullLoads">Full Loads</option>
+                    </select>
+                }
+
+                <input name="QuantityValue"
+                       type="number"
+                       min="1"
+                       value="@Model.SuggestedCompletionQuantityValue"
+                       class="h-touch-target-min rounded-xl border border-outline-variant bg-white px-4"
+                       data-dough-quantity-value
+                       placeholder="Quantity done" />
+
+                <input name="Notes"
+                       type="text"
+                       maxlength="500"
+                       class="h-touch-target-min rounded-xl border border-outline-variant bg-white px-4 md:col-span-2"
+                       placeholder="Optional kitchen note" />
+            </div>
+
+            <div class="flex flex-col md:flex-row md:items-center gap-3">
+                <button type="submit" class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl bg-primary text-on-primary font-bold hover:opacity-90 transition-opacity">
+                    <span class="material-symbols-outlined">task_alt</span>
+                    Complete
+                </button>
+                <div class="text-on-surface-variant" data-dough-quantity-preview>@Model.CompletionPreviewText</div>
+            </div>
+        </form>
+    }
+</article>

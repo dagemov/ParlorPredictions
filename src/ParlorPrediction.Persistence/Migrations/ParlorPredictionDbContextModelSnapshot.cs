@@ -155,6 +155,77 @@ namespace ParlorPrediction.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.DailyDoughClosing", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("ActualUsedBalls")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ClosedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClosedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateOnly>("ClosingDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("CorrectedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CorrectedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("CorrectionNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int>("ForecastNeededBalls")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<DateOnly>("WeekStartDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClosedAtUtc");
+
+                    b.HasIndex("ClosedByUserId");
+
+                    b.HasIndex("ClosingDate")
+                        .IsUnique();
+
+                    b.HasIndex("CorrectedByUserId");
+
+                    b.HasIndex("WeekStartDate");
+
+                    b.ToTable("DailyDoughClosings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_DailyDoughClosings_ActualUsedBalls_NonNegative", "[ActualUsedBalls] >= 0");
+
+                            t.HasCheckConstraint("CK_DailyDoughClosings_ForecastNeededBalls_NonNegative", "[ForecastNeededBalls] >= 0");
+                        });
+                });
+
             modelBuilder.Entity("ParlorPrediction.Domain.Entities.DoughBatch", b =>
                 {
                     b.Property<Guid>("Id")
@@ -217,6 +288,104 @@ namespace ParlorPrediction.Persistence.Migrations
                             t.HasCheckConstraint("CK_DoughBatches_TotalBalls_Positive", "[TotalBalls] > 0");
 
                             t.HasCheckConstraint("CK_DoughBatches_TotalCases_Positive", "[TotalCases] > 0");
+                        });
+                });
+
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.DoughBatchQualityRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("AttentionMarkedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedOrBalledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CurrentStatus")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("DiscardReason")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTime?>("DiscardedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ManagerNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateOnly?>("MustUseByDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("OriginalDoughTaskId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("QuantityBalls")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ReballedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateOnly>("SourceDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("StatusReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("CreatedOrBalledAt");
+
+                    b.HasIndex("CurrentStatus");
+
+                    b.HasIndex("MustUseByDate");
+
+                    b.HasIndex("OriginalDoughTaskId");
+
+                    b.HasIndex("ReballedAt");
+
+                    b.HasIndex("SourceDate");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("DoughBatchQualityRecords", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_DoughBatchQualityRecords_AttentionState", "([CurrentStatus] <> 'Attention' OR [AttentionMarkedAt] IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_DoughBatchQualityRecords_DiscardState", "([CurrentStatus] <> 'Discarded' OR ([DiscardedAt] IS NOT NULL AND [DiscardReason] IS NOT NULL))");
+
+                            t.HasCheckConstraint("CK_DoughBatchQualityRecords_MustUseState", "([CurrentStatus] <> 'MustUseNextDay' OR [MustUseByDate] IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_DoughBatchQualityRecords_QuantityBalls_Positive", "[QuantityBalls] > 0");
+
+                            t.HasCheckConstraint("CK_DoughBatchQualityRecords_ReballedState", "([CurrentStatus] NOT IN ('Reballed', 'MustUseNextDay') OR [ReballedAt] IS NOT NULL)");
                         });
                 });
 
@@ -436,6 +605,55 @@ namespace ParlorPrediction.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.DoughLossRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<Guid>("DoughBatchQualityRecordId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("LossDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("LossReason")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("ManagerNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("QuantityLostBalls")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("DoughBatchQualityRecordId");
+
+                    b.HasIndex("LossDate");
+
+                    b.HasIndex("LossReason");
+
+                    b.ToTable("DoughLossRecords", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_DoughLossRecords_QuantityLostBalls_Positive", "[QuantityLostBalls] > 0");
+                        });
+                });
+
             modelBuilder.Entity("ParlorPrediction.Domain.Entities.DoughPrepRecommendation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -508,6 +726,74 @@ namespace ParlorPrediction.Persistence.Migrations
                             t.HasCheckConstraint("CK_DoughPrepRecommendations_RecommendedLoads_NonNegative", "[RecommendedLoads] >= 0");
 
                             t.HasCheckConstraint("CK_DoughPrepRecommendations_RequiredBalls_NonNegative", "[RequiredBalls] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.DoughReballRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<Guid>("DoughBatchQualityRecordId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ManagerNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateOnly?>("MustUseByDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("QuantityBeforeReball")
+                        .HasColumnType("int");
+
+                    b.Property<int>("QuantityLostBalls")
+                        .HasColumnType("int");
+
+                    b.Property<int>("QuantityRecoveredBalls")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("ReballDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Result")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("DoughBatchQualityRecordId");
+
+                    b.HasIndex("ReballDate");
+
+                    b.HasIndex("Result");
+
+                    b.ToTable("DoughReballRecords", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_DoughReballRecords_LossMath", "[QuantityLostBalls] = [QuantityBeforeReball] - [QuantityRecoveredBalls]");
+
+                            t.HasCheckConstraint("CK_DoughReballRecords_MustUseByDate", "([Result] <> 'PartialRecovered' OR [MustUseByDate] IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_DoughReballRecords_QuantityBeforeReball_Positive", "[QuantityBeforeReball] > 0");
+
+                            t.HasCheckConstraint("CK_DoughReballRecords_QuantityLostBalls_NonNegative", "[QuantityLostBalls] >= 0");
+
+                            t.HasCheckConstraint("CK_DoughReballRecords_QuantityRecoveredBalls_NonNegative", "[QuantityRecoveredBalls] >= 0");
+
+                            t.HasCheckConstraint("CK_DoughReballRecords_RecoveredNotGreaterThanBefore", "[QuantityBeforeReball] >= [QuantityRecoveredBalls]");
                         });
                 });
 
@@ -764,6 +1050,17 @@ namespace ParlorPrediction.Persistence.Migrations
                     b.Property<int>("QuantityRecommended")
                         .HasColumnType("int");
 
+                    b.Property<string>("QuantityUnit")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid?>("SourceDoughBatchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("SourcePrepTaskId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -771,6 +1068,11 @@ namespace ParlorPrediction.Persistence.Migrations
 
                     b.Property<DateOnly>("TaskDate")
                         .HasColumnType("date");
+
+                    b.Property<string>("TaskType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .ValueGeneratedOnAdd()
@@ -791,9 +1093,15 @@ namespace ParlorPrediction.Persistence.Migrations
 
                     b.HasIndex("PrepStationId");
 
+                    b.HasIndex("SourceDoughBatchId");
+
+                    b.HasIndex("SourcePrepTaskId");
+
                     b.HasIndex("Status");
 
                     b.HasIndex("TaskDate");
+
+                    b.HasIndex("TaskType");
 
                     b.ToTable("PrepTasks", null, t =>
                         {
@@ -802,6 +1110,8 @@ namespace ParlorPrediction.Persistence.Migrations
                             t.HasCheckConstraint("CK_PrepTasks_QuantityCompleted_NonNegative", "[QuantityCompleted] >= 0");
 
                             t.HasCheckConstraint("CK_PrepTasks_QuantityRecommended_NonNegative", "[QuantityRecommended] >= 0");
+
+                            t.HasCheckConstraint("CK_PrepTasks_TaskTypeUnit", "([TaskType] = 'GenericDough' AND [QuantityUnit] = 'Balls') OR ([TaskType] = 'MakeDoughLoad' AND [QuantityUnit] = 'FullLoads') OR ([TaskType] = 'BallDough' AND [QuantityUnit] = 'Balls')");
                         });
                 });
 
@@ -1048,6 +1358,102 @@ namespace ParlorPrediction.Persistence.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.WeeklyDoughClosing", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ClosedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClosedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("CorrectedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CorrectedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("CorrectionNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int>("LeftoverAttentionBalls")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LeftoverMixedLoads")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LeftoverReadyBalls")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LostBalls")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NeededBalls")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("ProducedBalls")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int>("UsedBalls")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("WeekEndDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("WeekStartDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClosedAtUtc");
+
+                    b.HasIndex("ClosedByUserId");
+
+                    b.HasIndex("CorrectedByUserId");
+
+                    b.HasIndex("WeekStartDate")
+                        .IsUnique();
+
+                    b.ToTable("WeeklyDoughClosings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_WeeklyDoughClosings_LeftoverAttentionBalls_NonNegative", "[LeftoverAttentionBalls] >= 0");
+
+                            t.HasCheckConstraint("CK_WeeklyDoughClosings_LeftoverMixedLoads_NonNegative", "[LeftoverMixedLoads] >= 0");
+
+                            t.HasCheckConstraint("CK_WeeklyDoughClosings_LeftoverReadyBalls_NonNegative", "[LeftoverReadyBalls] >= 0");
+
+                            t.HasCheckConstraint("CK_WeeklyDoughClosings_LostBalls_NonNegative", "[LostBalls] >= 0");
+
+                            t.HasCheckConstraint("CK_WeeklyDoughClosings_NeededBalls_NonNegative", "[NeededBalls] >= 0");
+
+                            t.HasCheckConstraint("CK_WeeklyDoughClosings_ProducedBalls_NonNegative", "[ProducedBalls] >= 0");
+
+                            t.HasCheckConstraint("CK_WeeklyDoughClosings_UsedBalls_NonNegative", "[UsedBalls] >= 0");
+
+                            t.HasCheckConstraint("CK_WeeklyDoughClosings_WeekWindow", "DATEDIFF(day, [WeekStartDate], [WeekEndDate]) = 5");
+                        });
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -1097,6 +1503,88 @@ namespace ParlorPrediction.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.DailyDoughClosing", b =>
+                {
+                    b.HasOne("ParlorPrediction.Domain.Entities.User", "ClosedByUser")
+                        .WithMany()
+                        .HasForeignKey("ClosedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ParlorPrediction.Domain.Entities.User", "CorrectedByUser")
+                        .WithMany()
+                        .HasForeignKey("CorrectedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ClosedByUser");
+
+                    b.Navigation("CorrectedByUser");
+                });
+
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.DoughBatchQualityRecord", b =>
+                {
+                    b.HasOne("ParlorPrediction.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ParlorPrediction.Domain.Entities.PrepTask", "OriginalDoughTask")
+                        .WithMany()
+                        .HasForeignKey("OriginalDoughTaskId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ParlorPrediction.Domain.Entities.User", "UpdatedByUser")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("OriginalDoughTask");
+
+                    b.Navigation("UpdatedByUser");
+                });
+
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.DoughLossRecord", b =>
+                {
+                    b.HasOne("ParlorPrediction.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ParlorPrediction.Domain.Entities.DoughBatchQualityRecord", "DoughBatchQualityRecord")
+                        .WithMany("LossRecords")
+                        .HasForeignKey("DoughBatchQualityRecordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("DoughBatchQualityRecord");
+                });
+
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.DoughReballRecord", b =>
+                {
+                    b.HasOne("ParlorPrediction.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ParlorPrediction.Domain.Entities.DoughBatchQualityRecord", "DoughBatchQualityRecord")
+                        .WithMany("ReballRecords")
+                        .HasForeignKey("DoughBatchQualityRecordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("DoughBatchQualityRecord");
                 });
 
             modelBuilder.Entity("ParlorPrediction.Domain.Entities.ManagerPrepRecommendation", b =>
@@ -1153,6 +1641,16 @@ namespace ParlorPrediction.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("ParlorPrediction.Domain.Entities.DoughBatch", "SourceDoughBatch")
+                        .WithMany()
+                        .HasForeignKey("SourceDoughBatchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ParlorPrediction.Domain.Entities.PrepTask", "SourcePrepTask")
+                        .WithMany()
+                        .HasForeignKey("SourcePrepTaskId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("CompletedByUser");
 
                     b.Navigation("DoughPrepRecommendation");
@@ -1160,6 +1658,10 @@ namespace ParlorPrediction.Persistence.Migrations
                     b.Navigation("PrepItem");
 
                     b.Navigation("PrepStation");
+
+                    b.Navigation("SourceDoughBatch");
+
+                    b.Navigation("SourcePrepTask");
                 });
 
             modelBuilder.Entity("ParlorPrediction.Domain.Entities.RefreshToken", b =>
@@ -1171,6 +1673,31 @@ namespace ParlorPrediction.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.WeeklyDoughClosing", b =>
+                {
+                    b.HasOne("ParlorPrediction.Domain.Entities.User", "ClosedByUser")
+                        .WithMany()
+                        .HasForeignKey("ClosedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ParlorPrediction.Domain.Entities.User", "CorrectedByUser")
+                        .WithMany()
+                        .HasForeignKey("CorrectedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ClosedByUser");
+
+                    b.Navigation("CorrectedByUser");
+                });
+
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.DoughBatchQualityRecord", b =>
+                {
+                    b.Navigation("LossRecords");
+
+                    b.Navigation("ReballRecords");
                 });
 
             modelBuilder.Entity("ParlorPrediction.Domain.Entities.PrepStation", b =>

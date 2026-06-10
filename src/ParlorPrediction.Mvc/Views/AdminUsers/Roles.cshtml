@@ -7,7 +7,7 @@
     <div>
         <span class="eyebrow">Admin</span>
         <h1>Manage Role</h1>
-        <p class="page-copy">Change the kitchen role only when the user’s day-to-day responsibilities have actually changed.</p>
+        <p class="page-copy">Change the kitchen role only when the user&apos;s day-to-day responsibilities have actually changed.</p>
     </div>
 </section>
 
@@ -42,7 +42,7 @@
 
     <form asp-action="Roles" asp-controller="AdminUsers" asp-route-id="@Model.Id" method="post" class="row g-3">
         @Html.AntiForgeryToken()
-        <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded-4"></div>
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
 
         <div class="col-md-6">
             <label asp-for="Role" class="form-label">New role</label>
@@ -50,7 +50,7 @@
             <span asp-validation-for="Role" class="text-danger small"></span>
         </div>
 
-        <div class="col-12 d-flex flex-wrap gap-2">
+        <div class="col-12 pp-toolbar-actions">
             <button type="submit" class="btn btn-primary">
                 <i class="fa-solid fa-user-gear me-2"></i>
                 Save Role

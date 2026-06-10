@@ -16,6 +16,9 @@ public sealed class PrepTaskConfiguration : IEntityTypeConfiguration<PrepTask>
             table.HasCheckConstraint(
                 "CK_PrepTasks_CompletionState",
                 "([Status] <> 'Completed' AND [CompletedAtUtc] IS NULL AND [CompletedByUserId] IS NULL) OR ([Status] = 'Completed' AND [CompletedAtUtc] IS NOT NULL AND [CompletedByUserId] IS NOT NULL AND [QuantityCompleted] > 0)");
+            table.HasCheckConstraint(
+                "CK_PrepTasks_TaskTypeUnit",
+                "([TaskType] = 'GenericDough' AND [QuantityUnit] = 'Balls') OR ([TaskType] = 'MakeDoughLoad' AND [QuantityUnit] = 'FullLoads') OR ([TaskType] = 'BallDough' AND [QuantityUnit] = 'Balls')");
         });
 
         builder.HasKey(task => task.Id);
@@ -40,11 +43,25 @@ public sealed class PrepTaskConfiguration : IEntityTypeConfiguration<PrepTask>
             .HasConversion<string>()
             .HasMaxLength(30);
 
+        builder.Property(task => task.TaskType)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasMaxLength(30);
+
+        builder.Property(task => task.QuantityUnit)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
         builder.Property(task => task.QuantityRecommended)
             .IsRequired();
 
         builder.Property(task => task.QuantityCompleted)
             .IsRequired();
+
+        builder.Property(task => task.SourcePrepTaskId);
+
+        builder.Property(task => task.SourceDoughBatchId);
 
         builder.Property(task => task.Status)
             .IsRequired()
@@ -83,9 +100,22 @@ public sealed class PrepTaskConfiguration : IEntityTypeConfiguration<PrepTask>
             .HasForeignKey(task => task.CompletedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(task => task.SourcePrepTask)
+            .WithMany()
+            .HasForeignKey(task => task.SourcePrepTaskId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(task => task.SourceDoughBatch)
+            .WithMany()
+            .HasForeignKey(task => task.SourceDoughBatchId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasIndex(task => task.TaskDate);
         builder.HasIndex(task => task.Status);
         builder.HasIndex(task => task.AssignedRole);
+        builder.HasIndex(task => task.TaskType);
+        builder.HasIndex(task => task.SourcePrepTaskId);
+        builder.HasIndex(task => task.SourceDoughBatchId);
 
         builder.HasIndex(task => task.DoughPrepRecommendationId)
             .IsUnique()

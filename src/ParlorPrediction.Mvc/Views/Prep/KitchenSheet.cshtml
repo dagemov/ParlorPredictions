@@ -1,0 +1,437 @@
+@model DoughKitchenSheetPageViewModel
+@{
+    ViewData["Title"] = "Kitchen Sheet";
+    ViewData["DoughNav"] = "dough";
+    var printedAt = DateTime.Now;
+    var canReviewOlderDough = User.IsInRole("Admin") || User.IsInRole("Manager");
+    var recommendation = Model.Recommendation;
+    var productionPlanning = Model.ProductionPlanning;
+    var upcomingNeeds = productionPlanning?.UpcomingNeeds ?? Array.Empty<DoughNeedByDateViewModel>();
+}
+
+<div class="dq-page dq-page--kitchen-sheet">
+    <section class="page-hero page-hero--compact dq-hero dq-print-hide">
+        <div>
+            <span class="eyebrow">Kitchen Sheet</span>
+            <h1>Print the dough plan for the shift</h1>
+            <p class="page-copy dq-hero-copy">Use one large-print page for today&apos;s need, tracked dough quality, what still needs prep, and which dough needs attention first.</p>
+        </div>
+        <div class="hero-actions dq-action-bar">
+            <a class="btn btn-outline-secondary"
+               asp-action="Dough"
+               asp-controller="Prep"
+               asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
+               asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse">
+                <i class="fa-solid fa-bread-slice me-2"></i>
+                Back to Dough Prep
+            </a>
+            <a class="btn btn-outline-secondary"
+               asp-action="Reball"
+               asp-controller="DoughQuality"
+               asp-route-referenceDate="@Model.TargetDate.ToString("yyyy-MM-dd")">
+                <i class="fa-solid fa-rotate-right me-2"></i>
+                Reball Dough
+            </a>
+            @if (canReviewOlderDough)
+            {
+                <a class="btn btn-outline-secondary"
+                   asp-action="Review"
+                   asp-controller="DoughQuality"
+                   asp-route-referenceDate="@Model.TargetDate.ToString("yyyy-MM-dd")">
+                    <i class="fa-regular fa-flag me-2"></i>
+                    Review Older Dough
+                </a>
+                <a class="btn btn-outline-secondary"
+                   asp-action="Losses"
+                   asp-controller="DoughQuality">
+                    <i class="fa-solid fa-chart-column me-2"></i>
+                    View Dough Losses
+                </a>
+            }
+            <button type="button" class="btn btn-primary" data-dq-print>
+                <i class="fa-solid fa-print me-2"></i>
+                Print This Sheet
+            </button>
+        </div>
+    </section>
+
+    @if (Model.HasWarnings)
+    {
+        <section class="content-card content-card--padded dq-sheet-alert">
+            <div class="section-heading">
+                <span class="eyebrow">Before You Print</span>
+                <h2>Some data needs review</h2>
+            </div>
+            <ul class="dq-sheet-warning-list">
+                @foreach (var warning in Model.Warnings)
+                {
+                    <li>@warning</li>
+                }
+            </ul>
+        </section>
+    }
+
+    <section class="content-card content-card--padded dq-sheet-header">
+        <div>
+            <span class="eyebrow">Shift Summary</span>
+            <h2>Dough kitchen sheet for @Model.TargetDate.ToString("dddd, MMMM d, yyyy")</h2>
+            <p class="dq-section-copy">Read the top numbers first. Then work from left to right: use priority dough first, follow the daily action plan, and finish any open prep tasks.</p>
+        </div>
+        <dl class="dq-sheet-meta">
+            <div>
+                <dt>Printed</dt>
+                <dd>@printedAt.ToString("MMM d, yyyy h:mm tt")</dd>
+            </div>
+            <div>
+                <dt>Target date</dt>
+                <dd>@Model.TargetDate.ToString("MMM d, yyyy")</dd>
+            </div>
+            <div>
+                <dt>History window</dt>
+                <dd>@Model.HistoricalWeeksToUse week@(Model.HistoricalWeeksToUse == 1 ? string.Empty : "s")</dd>
+            </div>
+        </dl>
+    </section>
+
+    <section class="content-card content-card--padded dq-sheet-summary">
+        <div class="section-heading">
+            <span class="eyebrow">Big Numbers</span>
+            <h2>Start with the four numbers the kitchen needs most</h2>
+            <p class="dq-section-copy">These cards keep the day simple: what service needs, what tracked dough looks good, what still counts but needs review, and what still needs prep work.</p>
+        </div>
+
+        <div class="dq-summary-grid">
+            <article class="dq-summary-card dq-summary-card--need">
+                <div>
+                    <span class="dq-summary-card__label">Need Today</span>
+                    <p class="dq-summary-card__helper">What service needs on this date</p>
+                </div>
+                <div class="dq-summary-card__value-row">
+                    <span class="dq-summary-card__value">@Model.NeedTodayBalls</span>
+                    <span class="dq-summary-card__unit">balls</span>
+                </div>
+                <div class="dq-summary-card__bar">
+                    <span></span>
+                </div>
+            </article>
+            <article class="dq-summary-card dq-summary-card--available">
+                <div>
+                    <span class="dq-summary-card__label">Good Dough</span>
+                    <p class="dq-summary-card__helper">Tracked dough that counts without review</p>
+                </div>
+                <div class="dq-summary-card__value-row">
+                    <span class="dq-summary-card__value">@Model.GoodDoughBalls</span>
+                    <span class="dq-summary-card__unit">balls</span>
+                </div>
+                <div class="dq-summary-card__bar">
+                    <span></span>
+                </div>
+            </article>
+            <article class="dq-summary-card dq-summary-card--completed">
+                <div>
+                    <span class="dq-summary-card__label">Attention Dough</span>
+                    <p class="dq-summary-card__helper">Still counts, but review it.</p>
+                </div>
+                <div class="dq-summary-card__value-row">
+                    <span class="dq-summary-card__value">@Model.AttentionDoughBalls</span>
+                    <span class="dq-summary-card__unit">balls</span>
+                </div>
+                <div class="dq-summary-card__bar">
+                    <span></span>
+                </div>
+            </article>
+            <article class="dq-summary-card dq-summary-card--missing">
+                <div>
+                    <span class="dq-summary-card__label">Need To Make</span>
+                    <p class="dq-summary-card__helper">Still missing after available dough and finished prep</p>
+                </div>
+                <div class="dq-summary-card__value-row">
+                    <span class="dq-summary-card__value">@Model.NeedToMakeBalls</span>
+                    <span class="dq-summary-card__unit">balls</span>
+                </div>
+                <div class="dq-summary-card__bar">
+                    <span></span>
+                </div>
+            </article>
+        </div>
+
+        <p class="inline-hint dq-sheet-note mb-0">
+            <i class="fa-solid fa-circle-info me-2"></i>
+            Quality totals come from tracked dough batches currently in the system.
+        </p>
+    </section>
+
+    @if (Model.MustUseNextDayBalls > 0)
+    {
+        <section class="content-card content-card--padded dq-sheet-priority">
+            <div>
+                <span class="dq-guidance-banner__eyebrow">Use this first</span>
+                <h2>@Model.MustUseNextDayBalls balls must be used first.</h2>
+                <p>Use this first. Once this dough is spent, move to the rest of the plan.</p>
+            </div>
+        </section>
+    }
+
+    <div class="dq-sheet-grid">
+        <section class="content-card content-card--padded dq-sheet-section">
+            <div class="section-heading">
+                <span class="eyebrow">Manager Recommendation</span>
+                <h2>What the system is saying today</h2>
+            </div>
+
+            @if (recommendation is null)
+            {
+                <div class="empty-state dq-task-empty">
+                    <i class="fa-regular fa-lightbulb"></i>
+                    <span>No dough recommendation is available yet for this date.</span>
+                </div>
+            }
+            else
+            {
+                <div class="dq-pill-row">
+                    <span class="status-pill @(recommendation.IsPersisted ? "status-pill--success" : "status-pill--info")">
+                        @(recommendation.IsPersisted ? "Saved For The Team" : "Live Calculation")
+                    </span>
+                    <span class="status-pill @(recommendation.ShouldMakeDough ? "status-pill--warning" : "status-pill--neutral")">
+                        @(recommendation.ShouldMakeDough ? "Mix Dough Today" : "No New Mixing Needed")
+                    </span>
+                    <span class="status-pill @(recommendation.ShouldBallDough ? "status-pill--warning" : "status-pill--neutral")">
+                        @(recommendation.ShouldBallDough ? "Ball Ready Dough" : "No Extra Balling Right Now")
+                    </span>
+                    @if (recommendation.UsesShortFermentationException)
+                    {
+                        <span class="status-pill status-pill--info">Summer Event Timing In Play</span>
+                    }
+                </div>
+
+                <div class="dq-manager-banner dq-manager-banner--light">
+                    <span class="dq-manager-banner__eyebrow">Readable explanation</span>
+                    <h3>Why the system made this recommendation</h3>
+                    <p>@recommendation.Reason</p>
+                </div>
+
+                @if (recommendation.SavedAtUtc.HasValue)
+                {
+                    <p class="inline-hint dq-sheet-note mb-0">
+                        <i class="fa-regular fa-clock me-2"></i>
+                        Saved @recommendation.SavedAtUtc.Value.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
+                    </p>
+                }
+            }
+        </section>
+
+        <section class="content-card content-card--padded dq-sheet-section">
+            <div class="section-heading">
+                <span class="eyebrow">Mix / Prep Today</span>
+                <h2>What the kitchen should do next</h2>
+            </div>
+
+            @if (recommendation is null)
+            {
+                <div class="empty-state dq-task-empty">
+                    <i class="fa-regular fa-clipboard"></i>
+                    <span>Calculate or save dough guidance first so the kitchen action plan can be printed here.</span>
+                </div>
+            }
+            else
+            {
+                <div class="dq-sheet-kpi-grid">
+                    <article class="dq-stat-box">
+                        <span class="dq-stat-box__label">Cases to mix today</span>
+                        <span class="dq-stat-box__value">@recommendation.RecommendedCases</span>
+                    </article>
+                    <article class="dq-stat-box">
+                        <span class="dq-stat-box__label">Full loads today</span>
+                        <span class="dq-stat-box__value">@recommendation.RecommendedLoads</span>
+                    </article>
+                    <article class="dq-stat-box">
+                        <span class="dq-stat-box__label">Balls to ball today</span>
+                        <span class="dq-stat-box__value">@(productionPlanning?.RecommendedBallsToBallToday ?? 0)</span>
+                    </article>
+                </div>
+
+                <ul class="dq-sheet-list">
+                    @foreach (var step in recommendation.ActionPlanSteps)
+                    {
+                        <li>@step</li>
+                    }
+                </ul>
+            }
+        </section>
+    </div>
+
+    <section class="content-card content-card--padded dq-sheet-section">
+        <div class="section-heading section-heading--split">
+            <div>
+                <span class="eyebrow">Pay Attention Today</span>
+                <h2>Dough that needs extra care</h2>
+                <p class="dq-section-copy">Keep this section visible in the kitchen. Every card explains why the dough needs attention, not only what color it is.</p>
+            </div>
+            @if (canReviewOlderDough)
+            {
+                <a class="btn btn-outline-secondary dq-print-hide"
+                   asp-action="Review"
+                   asp-controller="DoughQuality"
+                   asp-route-referenceDate="@Model.TargetDate.ToString("yyyy-MM-dd")">
+                    <i class="fa-regular fa-flag me-2"></i>
+                    Open Review Board
+                </a>
+            }
+        </div>
+
+        @if (!Model.HasAttentionItems)
+        {
+            <div class="empty-state dq-task-empty">
+                <i class="fa-regular fa-circle-check"></i>
+                <span>No tracked dough needs extra review right now.</span>
+            </div>
+        }
+        else
+        {
+            <div class="dq-review-grid">
+                @foreach (var item in Model.AttentionItems)
+                {
+                    <article class="dq-review-card @(item.IsMustUsePriority ? "dq-review-card--candidate" : string.Empty)">
+                        <div class="dq-review-card__header">
+                            <div>
+                                <span class="dq-summary-card__label">Attention item</span>
+                                <h3 class="dq-review-card__title">@item.Title</h3>
+                            </div>
+                            <span class="status-pill @(item.IsMustUsePriority ? "status-pill--warning" : "status-pill--info")">@item.StatusText</span>
+                        </div>
+
+                        <div class="dq-review-card__stats">
+                            <div class="dq-stat-box">
+                                <span class="dq-stat-box__label">Quantity</span>
+                                <span class="dq-stat-box__value">@item.QuantityBalls balls</span>
+                            </div>
+                        </div>
+
+                        <dl class="dq-review-card__details">
+                            <div>
+                                <dt>What to do</dt>
+                                <dd>@item.Detail</dd>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(item.SecondaryDetail))
+                            {
+                                <div>
+                                    <dt>More detail</dt>
+                                    <dd>@item.SecondaryDetail</dd>
+                                </div>
+                            }
+                        </dl>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="content-card content-card--padded dq-sheet-section">
+        <div class="section-heading section-heading--split">
+            <div>
+                <span class="eyebrow">Open Dough Tasks</span>
+                <h2>What the team still needs to finish</h2>
+                <p class="dq-section-copy">These are the open dough tasks still visible for this date. Print this so the team can match the dough plan to the task board.</p>
+            </div>
+            <a class="btn btn-outline-secondary dq-print-hide"
+               asp-action="Index"
+               asp-controller="PrepTasks"
+               asp-route-taskDate="@Model.TargetDate.ToString("yyyy-MM-dd")">
+                <i class="fa-solid fa-list-check me-2"></i>
+                Open Task Board
+            </a>
+        </div>
+
+        @if (!Model.HasOpenTasks)
+        {
+            <div class="empty-state dq-task-empty">
+                <i class="fa-regular fa-circle-check"></i>
+                <span>No open dough tasks are left for this date.</span>
+            </div>
+        }
+        else
+        {
+            <div class="dq-review-grid">
+                @foreach (var task in Model.OpenTasks)
+                {
+                    <article class="dq-review-card">
+                        <div class="dq-review-card__header">
+                            <div>
+                                <span class="dq-summary-card__label">Open task</span>
+                                <h3 class="dq-review-card__title">@task.PrepItemName</h3>
+                            </div>
+                            <span class="status-pill status-pill--warning">@task.Status</span>
+                        </div>
+
+                        <div class="dq-review-card__stats">
+                            <div class="dq-stat-box">
+                                <span class="dq-stat-box__label">Assigned to</span>
+                                <span class="dq-stat-box__value">@task.AssignedRole</span>
+                            </div>
+                            <div class="dq-stat-box">
+                                <span class="dq-stat-box__label">Need</span>
+                                <span class="dq-stat-box__value">@task.RecommendedQuantityText</span>
+                            </div>
+                            <div class="dq-stat-box">
+                                <span class="dq-stat-box__label">Done</span>
+                                <span class="dq-stat-box__value">@task.CompletedQuantityText</span>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(task.Notes))
+                        {
+                            <p class="dq-task-card__notes">@task.Notes</p>
+                        }
+                    </article>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="content-card content-card--padded dq-sheet-section">
+        <div class="section-heading">
+            <span class="eyebrow">Demand Coming Up</span>
+            <h2>What the next few days look like</h2>
+            <p class="dq-section-copy">Use this section to understand how today&apos;s prep supports the next dates already visible in the planning window.</p>
+        </div>
+
+        @if (upcomingNeeds.Count == 0)
+        {
+            <div class="empty-state dq-task-empty">
+                <i class="fa-regular fa-calendar"></i>
+                <span>No upcoming dough needs are loaded for the current planning window.</span>
+            </div>
+        }
+        else
+        {
+            <div class="dq-week-grid">
+                @foreach (var need in upcomingNeeds)
+                {
+                    <article class="dq-week-card">
+                        <span class="dq-summary-card__label">@need.NeedDate.ToString("ddd, MMM d")</span>
+                        <strong>@need.TotalRequiredBalls</strong>
+                        <p class="dq-sheet-week-note">total balls needed</p>
+                        <dl class="dq-sheet-mini-details">
+                            <div>
+                                <dt>Restaurant</dt>
+                                <dd>@need.RestaurantBaselineBalls balls</dd>
+                            </div>
+                            <div>
+                                <dt>Events</dt>
+                                <dd>@need.EventBalls balls</dd>
+                            </div>
+                            <div>
+                                <dt>Make on</dt>
+                                <dd>@need.RecommendedMakeDate.ToString("MMM d")</dd>
+                            </div>
+                        </dl>
+                        @if (need.UsesShortFermentation)
+                        {
+                            <p class="inline-hint dq-sheet-note mb-0">Short fermentation timing applies.</p>
+                        }
+                    </article>
+                }
+            </div>
+        }
+    </section>
+</div>

@@ -1,0 +1,291 @@
+@model WeeklyDoughClosingIndexViewModel
+@{
+    ViewData["Title"] = "Weekly Closing";
+    ViewData["DoughNav"] = "closing";
+    var statusType = TempData["WeeklyClosingStatusType"] as string;
+    var statusMessage = TempData["WeeklyClosingStatusMessage"] as string;
+}
+
+<section class="page-hero page-hero--compact">
+    <div>
+        <span class="eyebrow">Dough Recorrido</span>
+        <h1>Weekly Dough Closing</h1>
+        <p class="page-copy">Close one real kitchen week at a time so the next Tuesday starts with actual carryover, not a reset to zero.</p>
+    </div>
+
+    <div class="hero-actions">
+        <a class="btn btn-primary" asp-action="Create" asp-controller="WeeklyClosing">
+            <i class="fa-solid fa-clipboard-check me-2"></i>
+            Close A Week
+        </a>
+        <a class="btn btn-outline-secondary" asp-action="Dough" asp-controller="Prep" asp-route-targetDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")">
+            <i class="fa-solid fa-bread-slice me-2"></i>
+            Back To Dough Prep
+        </a>
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(statusMessage))
+{
+    <div class="alert @(string.Equals(statusType, "success", StringComparison.OrdinalIgnoreCase) ? "alert-success" : "alert-danger") mt-4" role="alert">
+        @statusMessage
+    </div>
+}
+
+<section class="content-card content-card--padded mt-4">
+    <div class="section-heading">
+        <span class="eyebrow">Carryover Preview</span>
+        <h2>What this week starts with</h2>
+        <p>Reference date: @Model.ReferenceDate.ToString("dddd, MMM d, yyyy"). This preview shows whether a prior weekly closing is feeding the current operational week.</p>
+    </div>
+
+    @if (Model.CarryoverPreview.HasClosingCarryover)
+    {
+        <div class="recommendation-note mb-4">
+            <h3>Closing found for @Model.CarryoverPreview.SourceWeekStartDate?.ToString("MMM d") - @Model.CarryoverPreview.SourceWeekEndDate?.ToString("MMM d")</h3>
+            <p>
+                Carryover available = @Model.CarryoverPreview.CarryoverAvailableBalls balls.
+                Mixed but not balled = @Model.CarryoverPreview.MixedButNotBalledLoads load@(Model.CarryoverPreview.MixedButNotBalledLoads == 1 ? string.Empty : "s")
+                or @Model.CarryoverPreview.MixedButNotBalledPotentialBalls potential balls. Those loads do not count as available until Ball Dough is completed.
+            </p>
+            @if (!string.IsNullOrWhiteSpace(Model.CarryoverPreview.ClosingNotes))
+            {
+                <p class="mt-2"><strong>Closing note:</strong> @Model.CarryoverPreview.ClosingNotes</p>
+            }
+        </div>
+
+        <div class="metric-grid">
+            <article class="metric-card">
+                <span class="metric-card__label">Carryover Ready Balls</span>
+                <strong>@Model.CarryoverPreview.CarryoverReadyBalls</strong>
+                <small>Still usable from the previous week.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Carryover Attention Balls</span>
+                <strong>@Model.CarryoverPreview.CarryoverAttentionBalls</strong>
+                <small>Still available, but review them.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Carryover Available</span>
+                <strong>@Model.CarryoverPreview.CarryoverAvailableBalls</strong>
+                <small>@Model.CarryoverPreview.CarryoverAvailableLoads full load@(Model.CarryoverPreview.CarryoverAvailableLoads == 1 ? string.Empty : "s") start this week already usable.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Mixed But Not Balled</span>
+                <strong>@Model.CarryoverPreview.MixedButNotBalledPotentialBalls</strong>
+                <small>@Model.CarryoverPreview.MixedButNotBalledLoads load@(Model.CarryoverPreview.MixedButNotBalledLoads == 1 ? string.Empty : "s") pending balling. Potential only.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Previous Week Produced</span>
+                <strong>@Model.CarryoverPreview.PreviousWeekProducedBalls</strong>
+                <small>Historical only, not current ready inventory.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Previous Week Used / Finished</span>
+                <strong>@Model.CarryoverPreview.PreviousWeekUsedBalls</strong>
+                <small>This number is not counted as available for this week.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Previous Week Lost</span>
+                <strong>@Model.CarryoverPreview.PreviousWeekLostBalls</strong>
+                <small>Losses do not carry into available dough.</small>
+            </article>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <i class="fa-regular fa-calendar"></i>
+            <span>No weekly closing was found for the week before @Model.CarryoverPreview.TargetWeekStartDate.ToString("MMM d").</span>
+        </div>
+    }
+</section>
+
+<section class="content-card content-card--padded mt-4">
+    <div class="section-heading">
+        <span class="eyebrow">Daily Closing Summary</span>
+        <h2>Consumption tracked this operational week</h2>
+        <p>Daily closing feeds weekly closing. These totals come from recorded daily usage, not from inventory or production counts.</p>
+    </div>
+
+    @if (Model.DailyClosingSummary.HasDailyClosings)
+    {
+        <div class="metric-grid">
+            <article class="metric-card">
+                <span class="metric-card__label">Total Forecast</span>
+                <strong>@Model.DailyClosingSummary.TotalForecastBalls</strong>
+                <small>Full week forecast (Tue-Sun).</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Total Actual Used</span>
+                <strong>@Model.DailyClosingSummary.TotalActualUsedBalls</strong>
+                <small>@Model.DailyClosingSummary.ClosedDaysCount day@(Model.DailyClosingSummary.ClosedDaysCount == 1 ? string.Empty : "s") closed.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Accumulated Variance</span>
+                <strong class="@(Model.DailyClosingSummary.AccumulatedVariance > 0 ? "text-success" : Model.DailyClosingSummary.AccumulatedVariance < 0 ? "text-danger" : string.Empty)">
+                    @(Model.DailyClosingSummary.AccumulatedVariance > 0 ? $"+{Model.DailyClosingSummary.AccumulatedVariance}" : Model.DailyClosingSummary.AccumulatedVariance.ToString())
+                </strong>
+                <small>Forecast minus actual across closed days.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Accumulated Surplus</span>
+                <strong>@Model.DailyClosingSummary.AccumulatedSurplus</strong>
+                <small>Days below forecast.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Accumulated Shortage</span>
+                <strong>@Model.DailyClosingSummary.AccumulatedShortage</strong>
+                <small>Days above forecast.</small>
+            </article>
+        </div>
+
+        <div class="mt-3">
+            <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="DailyClosing" asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")">
+                <i class="fa-solid fa-calendar-day me-2"></i>
+                Review Daily Closings
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <i class="fa-regular fa-calendar-check"></i>
+            <span>No daily closings recorded for @Model.DailyClosingSummary.WeekStartDate.ToString("MMM d") - @Model.DailyClosingSummary.WeekEndDate.ToString("MMM d") yet.</span>
+        </div>
+        <a class="btn btn-primary mt-3" asp-action="Index" asp-controller="DailyClosing" asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")">
+            <i class="fa-solid fa-clipboard-check me-2"></i>
+            Start Daily Closing
+        </a>
+    }
+</section>
+
+<section class="content-card content-card--padded mt-4">
+    <div class="section-heading">
+        <span class="eyebrow">Find Weeks</span>
+        <h2>Review saved closings</h2>
+        <p>Filter by operational Tuesday start dates when you need to review or correct a saved week.</p>
+    </div>
+
+    <form asp-action="Index" asp-controller="WeeklyClosing" method="get" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label" for="referenceDate">Reference date</label>
+            <input id="referenceDate" name="referenceDate" type="date" value="@Model.ReferenceDate.ToString("yyyy-MM-dd")" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="fromWeekStartDate">From week start</label>
+            <input id="fromWeekStartDate" name="fromWeekStartDate" type="date" value="@Model.FromWeekStartDate?.ToString("yyyy-MM-dd")" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="toWeekStartDate">To week start</label>
+            <input id="toWeekStartDate" name="toWeekStartDate" type="date" value="@Model.ToWeekStartDate?.ToString("yyyy-MM-dd")" class="form-control" />
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-outline-secondary w-100">
+                <i class="fa-solid fa-filter me-2"></i>
+                Load
+            </button>
+        </div>
+    </form>
+</section>
+
+<section class="mt-4">
+    <div class="section-heading mb-3">
+        <span class="eyebrow">History</span>
+        <h2>Saved weekly closings</h2>
+        <p>Use these cards to review what the team said was needed, used, lost, and left over.</p>
+    </div>
+
+    @if (Model.Closings.Count == 0)
+    {
+        <div class="content-card content-card--padded">
+            <div class="empty-state">
+                <i class="fa-regular fa-folder-open"></i>
+                <span>No weekly closings match the current filter.</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var closing in Model.Closings)
+            {
+                <div class="col-12">
+                    <article class="content-card content-card--padded">
+                        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-3">
+                            <div>
+                                <span class="eyebrow">Week @closing.WeekStartDate.ToString("MMM d") - @closing.WeekEndDate.ToString("MMM d")</span>
+                                <h3 class="h4 mb-1">Carryover available: @closing.CarryoverAvailableBalls balls</h3>
+                                <p class="mb-0 text-muted">
+                                    Closed by @closing.ClosedByUserId on @closing.ClosedAtUtc.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
+                                    @if (closing.WasCorrected && closing.CorrectedAtUtc.HasValue)
+                                    {
+                                        <span> | Corrected on @closing.CorrectedAtUtc.Value.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</span>
+                                    }
+                                </p>
+                            </div>
+                            <div>
+                                <a class="btn btn-outline-secondary" asp-action="Edit" asp-controller="WeeklyClosing" asp-route-id="@closing.Id">
+                                    <i class="fa-solid fa-pen-to-square me-2"></i>
+                                    Correct Closing
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="metric-grid">
+                            <article class="metric-card">
+                                <span class="metric-card__label">Needed</span>
+                                <strong>@closing.NeededBalls</strong>
+                                <small>@closing.NeededLoads full load@(closing.NeededLoads == 1 ? string.Empty : "s").</small>
+                            </article>
+                            <article class="metric-card">
+                                <span class="metric-card__label">Produced</span>
+                                <strong>@closing.ProducedBalls</strong>
+                                <small>@closing.ProducedLoads full load@(closing.ProducedLoads == 1 ? string.Empty : "s").</small>
+                            </article>
+                            <article class="metric-card">
+                                <span class="metric-card__label">Used</span>
+                                <strong>@closing.UsedBalls</strong>
+                                <small>@closing.UsedLoads full load@(closing.UsedLoads == 1 ? string.Empty : "s").</small>
+                            </article>
+                            <article class="metric-card">
+                                <span class="metric-card__label">Lost</span>
+                                <strong>@closing.LostBalls</strong>
+                                <small>@closing.LostLoads full load@(closing.LostLoads == 1 ? string.Empty : "s").</small>
+                            </article>
+                            <article class="metric-card">
+                                <span class="metric-card__label">Leftover Ready</span>
+                                <strong>@closing.LeftoverReadyBalls</strong>
+                                <small>Available next week right away.</small>
+                            </article>
+                            <article class="metric-card">
+                                <span class="metric-card__label">Leftover Attention</span>
+                                <strong>@closing.LeftoverAttentionBalls</strong>
+                                <small>Still available, but review them.</small>
+                            </article>
+                            <article class="metric-card">
+                                <span class="metric-card__label">Leftover Mixed Loads</span>
+                                <strong>@closing.LeftoverMixedPotentialBalls</strong>
+                                <small>@closing.LeftoverMixedLoads load@(closing.LeftoverMixedLoads == 1 ? string.Empty : "s"). Potential only, not available yet.</small>
+                            </article>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(closing.Notes) || !string.IsNullOrWhiteSpace(closing.CorrectionNote))
+                        {
+                            <div class="recommendation-note mt-3">
+                                @if (!string.IsNullOrWhiteSpace(closing.Notes))
+                                {
+                                    <p class="mb-2"><strong>Notes:</strong> @closing.Notes</p>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(closing.CorrectionNote))
+                                {
+                                    <p class="mb-0"><strong>Correction note:</strong> @closing.CorrectionNote</p>
+                                }
+                            </div>
+                        }
+                    </article>
+                </div>
+            }
+        </div>
+    }
+</section>

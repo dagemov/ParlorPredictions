@@ -1,0 +1,63 @@
+@model DoughQualitySummaryViewModel
+
+<div class="dq-summary-grid dq-summary-grid--quality">
+    <article class="dq-summary-card dq-summary-card--need">
+        <div>
+            <span class="dq-summary-card__label">Available Now</span>
+            <p class="dq-summary-card__helper">Everything that still counts for kitchen planning today.</p>
+        </div>
+        <div class="dq-summary-card__value-row">
+            <span class="dq-summary-card__value">@Model.TotalAvailableBalls</span>
+            <span class="dq-summary-card__unit">balls</span>
+        </div>
+        <div class="dq-summary-card__bar"><span></span></div>
+    </article>
+
+    <article class="dq-summary-card dq-summary-card--available">
+        <div>
+            <span class="dq-summary-card__label">Good Dough</span>
+            <p class="dq-summary-card__helper">Ready dough with no quality flag.</p>
+        </div>
+        <div class="dq-summary-card__value-row">
+            <span class="dq-summary-card__value">@Model.GoodBalls</span>
+            <span class="dq-summary-card__unit">balls</span>
+        </div>
+        <div class="dq-summary-card__bar"><span></span></div>
+    </article>
+
+    <article class="dq-summary-card dq-summary-card--missing">
+        <div>
+            <span class="dq-summary-card__label">Attention Dough</span>
+            <p class="dq-summary-card__helper">Still counts, but review it.</p>
+        </div>
+        <div class="dq-summary-card__value-row">
+            <span class="dq-summary-card__value">@Model.AttentionBalls</span>
+            <span class="dq-summary-card__unit">balls</span>
+        </div>
+        <div class="dq-summary-card__bar"><span></span></div>
+    </article>
+
+    <article class="dq-summary-card dq-summary-card--completed">
+        <div>
+            <span class="dq-summary-card__label">Must Use Next Day</span>
+            <p class="dq-summary-card__helper">Use this first after a partial reball.</p>
+        </div>
+        <div class="dq-summary-card__value-row">
+            <span class="dq-summary-card__value">@Model.MustUseNextDayBalls</span>
+            <span class="dq-summary-card__unit">balls</span>
+        </div>
+        <div class="dq-summary-card__bar"><span></span></div>
+    </article>
+
+    <article class="dq-summary-card dq-summary-card--discarded">
+        <div>
+            <span class="dq-summary-card__label">Discarded Dough</span>
+            <p class="dq-summary-card__helper">No longer counts as available.</p>
+        </div>
+        <div class="dq-summary-card__value-row">
+            <span class="dq-summary-card__value">@Model.DiscardedBalls</span>
+            <span class="dq-summary-card__unit">balls</span>
+        </div>
+        <div class="dq-summary-card__bar"><span></span></div>
+    </article>
+</div>

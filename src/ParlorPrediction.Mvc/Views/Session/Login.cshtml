@@ -5,12 +5,20 @@
     var statusMessage = TempData["SessionStatusMessage"] as string;
 }
 
-<section class="auth-shell">
+<section class="auth-shell pp-auth-shell">
     <div class="auth-card">
+        <div class="pp-auth-brand">
+            <span class="pp-auth-brand__mark">PP</span>
+            <div class="pp-auth-brand__copy">
+                <strong>Parlor Prediction</strong>
+                <small>Kitchen workflow access</small>
+            </div>
+        </div>
+
         <div class="section-heading">
             <span class="eyebrow">Parlor Prep Access</span>
             <h1>Sign in to continue</h1>
-            <p>Use your Parlor account to open Prep, review dough recommendations, and track task completion.</p>
+            <p>Use your Parlor account to open Dough Prep, review recommendations, and complete kitchen tasks.</p>
         </div>
 
         @if (!string.IsNullOrWhiteSpace(statusMessage))
@@ -26,14 +34,14 @@
 
             <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
-            <div class="form-floating">
+            <div>
+                <label asp-for="Email" class="form-label"></label>
                 <input asp-for="Email" class="form-control" placeholder="name@example.com" />
-                <label asp-for="Email"></label>
             </div>
 
-            <div class="form-floating">
+            <div>
+                <label asp-for="Password" class="form-label"></label>
                 <input asp-for="Password" class="form-control" placeholder="Password" />
-                <label asp-for="Password"></label>
             </div>
 
             <button type="submit" class="btn btn-primary btn-lg w-100">
@@ -42,8 +50,8 @@
             </button>
         </form>
 
-        <p class="auth-footer-copy">
-            Don't have an account?
+        <p class="pp-auth-footer">
+            Don&apos;t have an account?
             <a asp-action="Register" asp-controller="Session">Register here.</a>
         </p>
     </div>

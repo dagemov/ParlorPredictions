@@ -8,8 +8,8 @@
         </div>
     </td>
     <td>@Model.AssignedRole</td>
-    <td>@Model.QuantityRecommended balls</td>
-    <td>@Model.QuantityCompleted balls</td>
+    <td>@Model.RecommendedQuantityText</td>
+    <td>@Model.CompletedQuantityText</td>
     <td>
         <span class="status-pill @(Model.Status == "Completed" ? "status-pill--success" : "status-pill--neutral")">
             @Model.Status
@@ -38,19 +38,31 @@
                 <input type="hidden" name="PrepTaskId" value="@Model.PrepTaskId" />
                 <input type="hidden" name="TargetDate" value="@Model.TaskDate.ToString("yyyy-MM-dd")" />
                 <input type="hidden" name="HistoricalWeeksToUse" value="@Model.HistoricalWeeksToUse" />
+                <input type="hidden" value="@Model.TaskType" data-dough-task-type />
                 <div class="task-form-grid">
-                    <select name="CompletionType"
-                            class="form-select form-select-sm"
-                            data-dough-quantity-unit
-                            aria-label="Completion type">
-                        <option value="Balls">Dough Balls</option>
-                        <option value="Cases">Cases</option>
-                        <option value="FullLoads">Full Loads</option>
-                    </select>
+                    @if (Model.RestrictCompletionUnit)
+                    {
+                        <input type="hidden" name="CompletionType" value="@Model.DefaultCompletionUnit" data-dough-quantity-unit />
+                        <input type="text"
+                               value="@Model.DefaultCompletionUnit"
+                               class="form-control form-control-sm"
+                               readonly />
+                    }
+                    else
+                    {
+                        <select name="CompletionType"
+                                class="form-select form-select-sm"
+                                data-dough-quantity-unit
+                                aria-label="Completion type">
+                            <option value="Balls">Dough Balls</option>
+                            <option value="Cases">Cases</option>
+                            <option value="FullLoads">Full Loads</option>
+                        </select>
+                    }
                     <input name="QuantityValue"
                            type="number"
                            min="1"
-                           value="@(Math.Max(Model.QuantityRecommended - Model.QuantityCompleted, 1))"
+                           value="@Model.SuggestedCompletionQuantityValue"
                            class="form-control form-control-sm"
                            data-dough-quantity-value
                            placeholder="Quantity done"

@@ -33,7 +33,7 @@
                 <p>Everything the manager needs to verify before assigning prep responsibilities.</p>
             </div>
 
-            <div class="d-flex flex-wrap gap-2">
+            <div class="pp-toolbar-actions">
                 <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="AdminUsers">
                     <i class="fa-solid fa-arrow-left me-2"></i>
                     Back to Users
@@ -91,7 +91,7 @@
         <section class="recommendation-note">
             <h3>Support actions</h3>
             <p>Use these actions when a teammate is blocked, unconfirmed, or needs a quick status change.</p>
-            <div class="d-flex flex-wrap gap-2 mt-3">
+            <div class="pp-toolbar-actions mt-3">
                 @if (Model.CanResendConfirmation)
                 {
                     <form asp-action="ResendConfirmation" asp-controller="AdminUsers" asp-route-id="@Model.Id" method="post" class="d-inline">

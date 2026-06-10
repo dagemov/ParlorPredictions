@@ -1,74 +1,86 @@
 @model PrepTaskDetailsViewModel
 @{
     ViewData["Title"] = "Dough Task Details";
+    ViewData["DoughNav"] = "tasks";
 }
 
-<section class="page-hero page-hero--compact">
-    <div>
-        <span class="eyebrow">Dough Task Details</span>
-        <h1>@Model.Task.PrepItemName for @Model.Task.TaskDate.ToString("dddd, MMM d")</h1>
-        <p class="page-copy">Use this page to confirm who owns the task, what it covers, and whether the team already finished the dough work.</p>
-    </div>
-
-    <div class="hero-actions">
-        <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="PrepTasks" asp-route-taskDate="@Model.Task.TaskDate.ToString("yyyy-MM-dd")">
-            <i class="fa-solid fa-arrow-left me-2"></i>
-            Back To Task Board
-        </a>
-        @if (Model.CanManageTasks)
-        {
-            <a class="btn btn-primary" asp-action="Edit" asp-controller="PrepTasks" asp-route-id="@Model.Task.PrepTaskId">
-                <i class="fa-regular fa-pen-to-square me-2"></i>
-                Edit Task
+<section class="space-y-gutter max-w-5xl">
+    <header class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+            <p class="text-on-secondary-fixed-variant font-label-caps text-label-caps mb-1">Dough Task Details</p>
+            <h1 class="font-headline-lg text-headline-lg text-on-surface">@Model.Task.TaskTitle</h1>
+            <p class="font-body-lg text-on-surface-variant mt-2">@Model.Task.TaskDescription</p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+            <a asp-action="Index" asp-controller="PrepTasks" asp-route-taskDate="@Model.Task.TaskDate.ToString("yyyy-MM-dd")" class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest no-underline">
+                <span class="material-symbols-outlined">arrow_back</span>
+                Back To Task Board
             </a>
-        }
-    </div>
-</section>
+            @if (Model.CanManageTasks)
+            {
+                <a asp-action="Edit" asp-controller="PrepTasks" asp-route-id="@Model.Task.PrepTaskId" class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl bg-primary text-on-primary font-bold hover:opacity-90 transition-opacity no-underline">
+                    <span class="material-symbols-outlined">edit</span>
+                    Edit Task
+                </a>
+            }
+        </div>
+    </header>
 
-<section class="content-card content-card--padded">
-    <div class="metric-grid">
-        <article class="metric-card">
-            <span class="metric-card__label">Needed</span>
-            <strong>@Model.Task.QuantityRecommended</strong>
-            <small>Dough balls planned for this task.</small>
+    <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-gutter">
+        <article class="bg-white border border-outline-variant rounded-xl p-6">
+            <div class="font-label-caps text-label-caps text-on-surface-variant mb-2">Needed</div>
+            <div class="font-status-lg text-status-lg text-primary">@Model.Task.RecommendedQuantityText</div>
+            <div class="text-on-surface-variant mt-2">@Model.Task.SecondaryQuantityText</div>
         </article>
-        <article class="metric-card">
-            <span class="metric-card__label">Finished</span>
-            <strong>@Model.Task.QuantityCompleted</strong>
-            <small>Dough balls already counted as completed.</small>
+        <article class="bg-white border border-outline-variant rounded-xl p-6">
+            <div class="font-label-caps text-label-caps text-on-surface-variant mb-2">Finished</div>
+            <div class="font-status-lg text-status-lg text-primary">@Model.Task.CompletedQuantityText</div>
+            <div class="text-on-surface-variant mt-2">@Model.Task.TaskHelperText</div>
         </article>
-        <article class="metric-card">
-            <span class="metric-card__label">Assigned Role</span>
-            <strong>@Model.Task.AssignedRole</strong>
-            <small>The team role expected to finish this task.</small>
+        <article class="bg-white border border-outline-variant rounded-xl p-6">
+            <div class="font-label-caps text-label-caps text-on-surface-variant mb-2">Assigned Role</div>
+            <div class="font-status-lg text-status-lg text-primary">@Model.Task.AssignedRole</div>
+            <div class="text-on-surface-variant mt-2">The team role expected to finish this task.</div>
         </article>
-        <article class="metric-card">
-            <span class="metric-card__label">Status</span>
-            <strong>@Model.Task.Status</strong>
-            <small>@(Model.Task.IsManualTask ? "Manual task" : "Created from saved dough guidance")</small>
+        <article class="bg-white border border-outline-variant rounded-xl p-6">
+            <div class="font-label-caps text-label-caps text-on-surface-variant mb-2">Status</div>
+            <div class="font-status-lg text-status-lg @(Model.Task.NeedsAttentionNow ? "text-error" : "text-primary")">@Model.Task.Status</div>
+            <div class="text-on-surface-variant mt-2">@Model.Task.StatusDetailText</div>
         </article>
-    </div>
+    </section>
 
-    <div class="detail-grid mt-4">
-        <div>
-            <h3 class="h6">Prep item</h3>
-            <p>@Model.Task.PrepItemName (@Model.Task.PrepStationName)</p>
+    <section class="bg-surface-container-low rounded-2xl border border-outline-variant p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <div class="font-label-caps text-label-caps text-on-surface-variant mb-2">Prep Item</div>
+                <div class="text-on-surface">@Model.Task.PrepItemName (@Model.Task.PrepStationName)</div>
+            </div>
+            <div>
+                <div class="font-label-caps text-label-caps text-on-surface-variant mb-2">Task Type</div>
+                <div class="text-on-surface">@Model.Task.TaskTypeDisplayText</div>
+            </div>
+            <div>
+                <div class="font-label-caps text-label-caps text-on-surface-variant mb-2">Completed by</div>
+                <div class="text-on-surface">@(Model.Task.CompletedByUserName ?? "Not finished yet")</div>
+            </div>
+            <div>
+                <div class="font-label-caps text-label-caps text-on-surface-variant mb-2">Completed at</div>
+                <div class="text-on-surface">@(Model.Task.CompletedAtUtc?.ToLocalTime().ToString("MMM d, yyyy h:mm tt") ?? "Not finished yet")</div>
+            </div>
+            <div>
+                <div class="font-label-caps text-label-caps text-on-surface-variant mb-2">Task source</div>
+                <div class="text-on-surface">@(Model.Task.IsManualTask ? "Manual dough task" : "Saved dough recommendation")</div>
+            </div>
+            <div>
+                <div class="font-label-caps text-label-caps text-on-surface-variant mb-2">Counts as available after complete</div>
+                <div class="text-on-surface">@(Model.Task.CountsAsAvailableBallsWhenCompleted ? "Yes" : "No")</div>
+            </div>
+            <div class="md:col-span-2">
+                <div class="font-label-caps text-label-caps text-on-surface-variant mb-2">Kitchen note</div>
+                <div class="rounded-xl bg-white border border-outline-variant p-4 text-on-surface">
+                    @(string.IsNullOrWhiteSpace(Model.Task.Notes) ? "No note saved." : Model.Task.Notes)
+                </div>
+            </div>
         </div>
-        <div>
-            <h3 class="h6">Completed by</h3>
-            <p>@(Model.Task.CompletedByUserName ?? "Not finished yet")</p>
-        </div>
-        <div>
-            <h3 class="h6">Completed at</h3>
-            <p>@(Model.Task.CompletedAtUtc?.ToLocalTime().ToString("MMM d, yyyy h:mm tt") ?? "Not finished yet")</p>
-        </div>
-        <div>
-            <h3 class="h6">Task source</h3>
-            <p>@(Model.Task.IsManualTask ? "Manual dough task" : "Saved dough recommendation")</p>
-        </div>
-        <div class="detail-grid__wide">
-            <h3 class="h6">Kitchen note</h3>
-            <p>@(string.IsNullOrWhiteSpace(Model.Task.Notes) ? "No note saved." : Model.Task.Notes)</p>
-        </div>
-    </div>
+    </section>
 </section>

@@ -16,7 +16,13 @@ public sealed class CreatePrepTaskFromRecommendationResponse
 
     public string AssignedRole { get; set; } = string.Empty;
 
+    public string TaskType { get; set; } = string.Empty;
+
+    public string QuantityUnit { get; set; } = string.Empty;
+
     public int QuantityRecommended { get; set; }
+
+    public int QuantityRecommendedBallsEquivalent { get; set; }
 
     public string Status { get; set; } = string.Empty;
 

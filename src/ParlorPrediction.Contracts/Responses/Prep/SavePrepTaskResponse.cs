@@ -12,7 +12,13 @@ public sealed class SavePrepTaskResponse
 
     public string AssignedRole { get; init; } = string.Empty;
 
+    public string TaskType { get; init; } = string.Empty;
+
+    public string QuantityUnit { get; init; } = string.Empty;
+
     public int QuantityRecommended { get; init; }
+
+    public int QuantityRecommendedBallsEquivalent { get; init; }
 
     public string Status { get; init; } = string.Empty;
 

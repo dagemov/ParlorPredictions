@@ -1,0 +1,87 @@
+@model AdminPanelPageViewModel
+@{
+    ViewData["Title"] = "Admin Panel";
+}
+
+<section class="space-y-gutter">
+    <header class="rounded-[28px] border border-outline-variant bg-white p-8 shadow-sm">
+        <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Admin Panel</p>
+        <h1 class="mt-3 text-4xl font-black tracking-[-0.05em] text-primary lg:text-6xl">Advanced tools stay here, not in the kitchen flow.</h1>
+        <p class="mt-4 max-w-4xl text-xl leading-9 text-on-surface-variant">
+            Use this area for user management, weekly closing, deeper dough quality work, and data maintenance.
+            The kitchen should not need to browse these screens during normal prep.
+        </p>
+    </header>
+
+    <section class="space-y-5">
+        <div class="section-heading">
+            <span class="eyebrow">Weekly Control</span>
+            <h2>Operations and review</h2>
+            <p>These tools affect carryover, quality decisions, and loss reporting.</p>
+        </div>
+
+        <div class="grid gap-5 lg:grid-cols-3">
+            @foreach (var link in Model.OperationsLinks)
+            {
+                <a class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm no-underline transition hover:-translate-y-1 hover:border-primary-fixed-dim hover:shadow-md"
+                   asp-controller="@link.Controller"
+                   asp-action="@link.Action">
+                    <div class="flex items-start justify-between gap-4">
+                        <i class="@link.IconClass text-3xl text-primary"></i>
+                        <span class="inline-flex rounded-full bg-primary-fixed px-3 py-1 text-sm font-bold uppercase tracking-[0.08em] text-primary">Open</span>
+                    </div>
+                    <h3 class="mt-6 text-2xl font-bold tracking-[-0.03em] text-on-surface">@link.Title</h3>
+                    <p class="mt-3 mb-0 text-lg leading-8 text-on-surface-variant">@link.Description</p>
+                </a>
+            }
+        </div>
+    </section>
+
+    <section class="space-y-5">
+        <div class="section-heading">
+            <span class="eyebrow">Planning Data</span>
+            <h2>Events, demand, and overrides</h2>
+            <p>Maintain the demand inputs that drive dough planning without crowding the day-to-day prep screen.</p>
+        </div>
+
+        <div class="grid gap-5 lg:grid-cols-3">
+            @foreach (var link in Model.DataLinks)
+            {
+                <a class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm no-underline transition hover:-translate-y-1 hover:border-primary-fixed-dim hover:shadow-md"
+                   asp-controller="@link.Controller"
+                   asp-action="@link.Action">
+                    <div class="flex items-start justify-between gap-4">
+                        <i class="@link.IconClass text-3xl text-primary"></i>
+                        <span class="inline-flex rounded-full bg-primary-fixed px-3 py-1 text-sm font-bold uppercase tracking-[0.08em] text-primary">Open</span>
+                    </div>
+                    <h3 class="mt-6 text-2xl font-bold tracking-[-0.03em] text-on-surface">@link.Title</h3>
+                    <p class="mt-3 mb-0 text-lg leading-8 text-on-surface-variant">@link.Description</p>
+                </a>
+            }
+        </div>
+    </section>
+
+    <section class="space-y-5">
+        <div class="section-heading">
+            <span class="eyebrow">Team Access</span>
+            <h2>People and approvals</h2>
+            <p>Keep role and account work separate from the kitchen workflow.</p>
+        </div>
+
+        <div class="grid gap-5 lg:grid-cols-3">
+            @foreach (var link in Model.TeamLinks)
+            {
+                <a class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm no-underline transition hover:-translate-y-1 hover:border-primary-fixed-dim hover:shadow-md"
+                   asp-controller="@link.Controller"
+                   asp-action="@link.Action">
+                    <div class="flex items-start justify-between gap-4">
+                        <i class="@link.IconClass text-3xl text-primary"></i>
+                        <span class="inline-flex rounded-full bg-primary-fixed px-3 py-1 text-sm font-bold uppercase tracking-[0.08em] text-primary">Open</span>
+                    </div>
+                    <h3 class="mt-6 text-2xl font-bold tracking-[-0.03em] text-on-surface">@link.Title</h3>
+                    <p class="mt-3 mb-0 text-lg leading-8 text-on-surface-variant">@link.Description</p>
+                </a>
+            }
+        </div>
+    </section>
+</section>

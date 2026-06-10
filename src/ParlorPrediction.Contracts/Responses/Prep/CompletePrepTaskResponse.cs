@@ -6,7 +6,13 @@ public sealed class CompletePrepTaskResponse
 
     public string Status { get; set; } = string.Empty;
 
+    public string TaskType { get; set; } = string.Empty;
+
+    public string QuantityUnit { get; set; } = string.Empty;
+
     public int QuantityCompleted { get; set; }
+
+    public int QuantityCompletedBallsEquivalent { get; set; }
 
     public DateTime CompletedAtUtc { get; set; }
 

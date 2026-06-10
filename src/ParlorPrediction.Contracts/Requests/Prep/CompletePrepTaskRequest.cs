@@ -9,8 +9,11 @@ public sealed class CompletePrepTaskRequest
     [Required]
     public string CompletedByUserId { get; set; } = string.Empty;
 
+    [Required]
+    public string QuantityUnit { get; set; } = string.Empty;
+
     [Range(1, int.MaxValue)]
-    public int QuantityCompleted { get; set; }
+    public int QuantityValue { get; set; }
 
     [StringLength(500)]
     public string? Notes { get; set; }

@@ -1,0 +1,261 @@
+@model DoughLossAnalyticsPageViewModel
+@{
+    ViewData["Title"] = "Dough Losses";
+    ViewData["DoughNav"] = "analytics";
+    var statusType = TempData["DoughQualityStatusType"] as string;
+    var statusMessage = TempData["DoughQualityStatusMessage"] as string;
+    var anchorDate = Model.Filter.ToDate ?? Model.Filter.FromDate ?? DateOnly.FromDateTime(DateTime.Today);
+}
+
+<div class="dq-page dq-page--losses">
+    <section class="page-hero page-hero--compact dq-hero">
+        <div>
+            <span class="eyebrow">Loss Analytics Preview</span>
+            <h1>Dough Losses</h1>
+            <p class="page-copy dq-hero-copy">Use one simple manager view to understand what was lost, which reasons appear most often, and which days deserve a closer planning review.</p>
+        </div>
+        <div class="hero-actions dq-action-bar">
+            <a class="btn btn-primary"
+               asp-controller="Prep"
+               asp-action="Dough"
+               asp-route-targetDate="@anchorDate.ToString("yyyy-MM-dd")">
+                <i class="fa-solid fa-bread-slice me-2"></i>
+                Back to Dough
+            </a>
+            <a class="btn btn-outline-secondary"
+               asp-controller="DoughQuality"
+               asp-action="Review"
+               asp-route-referenceDate="@anchorDate.ToString("yyyy-MM-dd")">
+                <i class="fa-regular fa-flag me-2"></i>
+                Review Older Dough
+            </a>
+            <a class="btn btn-outline-secondary"
+               asp-controller="Prep"
+               asp-action="KitchenSheet"
+               asp-route-targetDate="@anchorDate.ToString("yyyy-MM-dd")">
+                <i class="fa-solid fa-print me-2"></i>
+                Kitchen Sheet
+            </a>
+        </div>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(statusMessage))
+    {
+        <div class="alert alert-@statusType" role="alert">
+            @statusMessage
+        </div>
+    }
+
+    <section class="content-card content-card--padded dq-toolbar-card">
+        <div class="section-heading">
+            <span class="eyebrow">Filters</span>
+            <h2>Choose the date range you want to review</h2>
+            <p class="dq-section-copy">Start with this week, then narrow by reason only if you are investigating one loss pattern at a time.</p>
+        </div>
+
+        <form asp-action="Losses" asp-controller="DoughQuality" method="get" class="row g-3 align-items-end dq-toolbar-grid">
+            <div class="col-md-4">
+                <label class="form-label" asp-for="Filter.FromDate">From date</label>
+                <input asp-for="Filter.FromDate" type="date" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" asp-for="Filter.ToDate">To date</label>
+                <input asp-for="Filter.ToDate" type="date" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" asp-for="Filter.LossReason">Reason</label>
+                <select asp-for="Filter.LossReason" asp-items="Model.LossReasonOptions" class="form-select"></select>
+            </div>
+            <div class="col-12">
+                <div class="dq-action-bar">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-filter me-2"></i>
+                        Change Dates
+                    </button>
+                    <a class="btn btn-outline-secondary" asp-action="Losses" asp-controller="DoughQuality">
+                        Reset Filters
+                    </a>
+                </div>
+            </div>
+        </form>
+    </section>
+
+    <section class="content-card content-card--padded dq-recommendation-card">
+        <div class="section-heading">
+            <span class="eyebrow">Selected Range</span>
+            <h2>@Model.RangeSummary</h2>
+            <p class="dq-section-copy">This page is a reporting preview for managers. It does not change dough records or trigger AI behavior.</p>
+        </div>
+
+        <div class="dq-summary-grid">
+            <article class="dq-summary-card dq-summary-card--discarded">
+                <div>
+                    <span class="dq-summary-card__label">Total Dough Lost</span>
+                    <p class="dq-summary-card__helper">All grouped losses in the selected range</p>
+                </div>
+                <div class="dq-summary-card__value-row">
+                    <span class="dq-summary-card__value">@Model.TotalLostBalls</span>
+                    <span class="dq-summary-card__unit">balls</span>
+                </div>
+                <div class="dq-summary-card__bar"><span></span></div>
+            </article>
+
+            <article class="dq-summary-card dq-summary-card--missing">
+                <div>
+                    <span class="dq-summary-card__label">Most Common Reason</span>
+                    <p class="dq-summary-card__helper">@Model.MostCommonReasonLabel</p>
+                </div>
+                <div class="dq-summary-card__value-row">
+                    <span class="dq-summary-card__value">@Model.MostCommonReasonBalls</span>
+                    <span class="dq-summary-card__unit">balls</span>
+                </div>
+                <div class="dq-summary-card__bar"><span></span></div>
+            </article>
+
+            <article class="dq-summary-card dq-summary-card--need">
+                <div>
+                    <span class="dq-summary-card__label">Highest Loss Day</span>
+                    <p class="dq-summary-card__helper">@Model.HighestLossDayLabel</p>
+                </div>
+                <div class="dq-summary-card__value-row">
+                    <span class="dq-summary-card__value">@Model.HighestLossDayBalls</span>
+                    <span class="dq-summary-card__unit">balls</span>
+                </div>
+                <div class="dq-summary-card__bar"><span></span></div>
+            </article>
+
+            <article class="dq-summary-card dq-summary-card--completed">
+                <div>
+                    <span class="dq-summary-card__label">Loss Days</span>
+                    <p class="dq-summary-card__helper">How many dates had recorded loss</p>
+                </div>
+                <div class="dq-summary-card__value-row">
+                    <span class="dq-summary-card__value">@Model.TotalLossDays</span>
+                    <span class="dq-summary-card__unit">days</span>
+                </div>
+                <div class="dq-summary-card__bar"><span></span></div>
+            </article>
+        </div>
+    </section>
+
+    <section class="dq-loss-insight-grid">
+        <article class="content-card content-card--padded dq-manager-banner dq-manager-banner--light">
+            <span class="dq-manager-banner__eyebrow">Primary insight</span>
+            <h3>@Model.PrimaryInsight</h3>
+            <p>Use this first to decide where next week&apos;s planning conversation should start.</p>
+        </article>
+        <article class="content-card content-card--padded dq-manager-banner dq-manager-banner--light">
+            <span class="dq-manager-banner__eyebrow">Secondary insight</span>
+            <h3>@Model.SecondaryInsight</h3>
+            <p>@Model.FutureFacingNote</p>
+        </article>
+    </section>
+
+    @if (!Model.HasData)
+    {
+        <section class="content-card content-card--padded dq-tasks-card">
+            <div class="empty-state dq-task-empty">
+                <i class="fa-regular fa-circle-check"></i>
+                <span>No dough losses were recorded in this range.</span>
+            </div>
+        </section>
+    }
+    else
+    {
+        <section class="content-card content-card--padded dq-tasks-card">
+            <div class="section-heading">
+                <span class="eyebrow">Most Common Reasons</span>
+                <h2>Where losses are coming from</h2>
+                <p class="dq-section-copy">These cards show which reasons created the most waste so the manager can focus on the biggest pattern first.</p>
+            </div>
+
+            <div class="dq-review-grid">
+                @foreach (var reason in Model.ReasonBreakdown)
+                {
+                    <article class="dq-review-card">
+                        <div class="dq-review-card__header">
+                            <div>
+                                <span class="dq-summary-card__label">Loss reason</span>
+                                <h3 class="dq-review-card__title">@reason.DisplayReason</h3>
+                            </div>
+                            <span class="status-pill status-pill--warning">@reason.SharePercent%</span>
+                        </div>
+
+                        <div class="dq-review-card__stats">
+                            <div class="dq-stat-box">
+                                <span class="dq-stat-box__label">Lost</span>
+                                <span class="dq-stat-box__value">@reason.QuantityLostBalls balls</span>
+                            </div>
+                            <div class="dq-stat-box">
+                                <span class="dq-stat-box__label">Days impacted</span>
+                                <span class="dq-stat-box__value">@reason.LossDaysCount</span>
+                            </div>
+                        </div>
+
+                        <div class="dq-loss-bar" aria-hidden="true">
+                            <span style="width: @(Math.Clamp(reason.SharePercent, 0, 100))%;"></span>
+                        </div>
+
+                        <p class="dq-task-card__notes mb-0">@reason.SharePercent% of all lost dough in the selected range came from this reason.</p>
+                    </article>
+                }
+            </div>
+        </section>
+
+        <section class="content-card content-card--padded dq-production-card">
+            <div class="section-heading">
+                <span class="eyebrow">Losses By Day</span>
+                <h2>Which days had the biggest waste</h2>
+                <p class="dq-section-copy">Use this section to spot weekend spikes, event fallout, or repeated storage issues across the week.</p>
+            </div>
+
+            <div class="dq-week-grid">
+                @foreach (var day in Model.DayBreakdown)
+                {
+                    <article class="dq-week-card">
+                        <span class="dq-summary-card__label">@day.LossDate.ToString("ddd, MMM d")</span>
+                        <strong>@day.QuantityLostBalls</strong>
+                        <p class="dq-sheet-week-note">lost balls on this day</p>
+                        <dl class="dq-sheet-mini-details">
+                            <div>
+                                <dt>Top reason</dt>
+                                <dd>@day.DisplayTopReason</dd>
+                            </div>
+                            <div>
+                                <dt>Reasons logged</dt>
+                                <dd>@day.ReasonsCount</dd>
+                            </div>
+                        </dl>
+                    </article>
+                }
+            </div>
+        </section>
+
+        <section class="content-card content-card--padded dq-recommendation-card">
+            <details class="dq-detail-toggle">
+                <summary>See grouped loss events</summary>
+                <div class="table-responsive">
+                    <table class="table prep-table align-middle">
+                        <thead>
+                            <tr>
+                                <th scope="col">Date</th>
+                                <th scope="col">Reason</th>
+                                <th scope="col">Lost</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.Items)
+                            {
+                                <tr>
+                                    <td>@item.LossDate.ToString("ddd, MMM d, yyyy")</td>
+                                    <td>@item.DisplayReason</td>
+                                    <td>@item.QuantityLostBalls balls</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+        </section>
+    }
+</div>

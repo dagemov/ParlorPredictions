@@ -1,86 +1,93 @@
 @model PrepTaskFormViewModel
 @{
     ViewData["Title"] = Model.IsEditMode ? "Edit Dough Task" : "Create Dough Task";
+    ViewData["DoughNav"] = "tasks";
 }
 
-<section class="page-hero page-hero--compact">
-    <div>
-        <span class="eyebrow">Dough Task</span>
-        <h1>@(Model.IsEditMode ? "Update the dough task" : "Create a manual dough task")</h1>
-        <p class="page-copy">Use clear kitchen quantities so the task reads the same way the team talks on the line.</p>
-    </div>
-
-    <div class="hero-actions">
-        <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="PrepTasks" asp-route-taskDate="@Model.TaskDate.ToString("yyyy-MM-dd")">
-            <i class="fa-solid fa-arrow-left me-2"></i>
+<section class="space-y-gutter max-w-5xl">
+    <header class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+            <p class="text-on-secondary-fixed-variant font-label-caps text-label-caps mb-1">Dough Task</p>
+            <h1 class="font-headline-lg text-headline-lg text-on-surface">@(Model.IsEditMode ? "Update the dough task" : "Create a manual dough task")</h1>
+            <p class="font-body-lg text-on-surface-variant mt-2">Use clear kitchen quantities so the task reads the same way the team talks on the line.</p>
+        </div>
+        <a asp-action="Index" asp-controller="PrepTasks" asp-route-taskDate="@Model.TaskDate.ToString("yyyy-MM-dd")" class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest no-underline">
+            <span class="material-symbols-outlined">arrow_back</span>
             Back To Task Board
         </a>
-    </div>
-</section>
+    </header>
 
-<section class="content-card content-card--padded">
-    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+    <section class="bg-surface-container-low rounded-2xl border border-outline-variant p-6">
+        <div asp-validation-summary="ModelOnly" class="rounded-xl border border-error bg-error-container text-on-error-container px-4 py-3 mb-6"></div>
 
-    <form asp-action="@(Model.IsEditMode ? "Edit" : "Create")"
-          asp-controller="PrepTasks"
-          asp-route-id="@Model.Id"
-          method="post"
-          class="stack-lg"
-          data-dough-quantity-form
-          data-dough-quantity-preview-mode="planned">
-        @Html.AntiForgeryToken()
+        <form asp-action="@(Model.IsEditMode ? "Edit" : "Create")"
+              asp-controller="PrepTasks"
+              asp-route-id="@Model.Id"
+              method="post"
+              class="space-y-6"
+              data-dough-quantity-form
+              data-dough-quantity-preview-mode="planned">
+            @Html.AntiForgeryToken()
 
-        <div class="row g-3">
-            <div class="col-md-4">
-                <label asp-for="TaskDate" class="form-label"></label>
-                <input asp-for="TaskDate" type="date" class="form-control" />
-                <span asp-validation-for="TaskDate" class="text-danger"></span>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div>
+                    <label asp-for="TaskDate" class="block text-on-surface-variant font-label-caps text-label-caps mb-2"></label>
+                    <input asp-for="TaskDate" type="date" class="w-full h-touch-target-min rounded-xl border border-outline-variant bg-white px-4" />
+                    <span asp-validation-for="TaskDate" class="text-error text-sm"></span>
+                </div>
+                <div>
+                    <label asp-for="PrepItemId" class="block text-on-surface-variant font-label-caps text-label-caps mb-2">Prep Item</label>
+                    <select asp-for="PrepItemId" asp-items="Model.PrepItemOptions" class="w-full h-touch-target-min rounded-xl border border-outline-variant bg-white px-4"></select>
+                    <span asp-validation-for="PrepItemId" class="text-error text-sm"></span>
+                </div>
+                <div>
+                    <label asp-for="PrepStationId" class="block text-on-surface-variant font-label-caps text-label-caps mb-2">Prep Station</label>
+                    <select asp-for="PrepStationId" asp-items="Model.PrepStationOptions" class="w-full h-touch-target-min rounded-xl border border-outline-variant bg-white px-4"></select>
+                    <span asp-validation-for="PrepStationId" class="text-error text-sm"></span>
+                </div>
+                <div>
+                    <label asp-for="AssignedRole" class="block text-on-surface-variant font-label-caps text-label-caps mb-2">Assigned Role</label>
+                    <select asp-for="AssignedRole" asp-items="Model.AssignedRoleOptions" class="w-full h-touch-target-min rounded-xl border border-outline-variant bg-white px-4"></select>
+                    <span asp-validation-for="AssignedRole" class="text-error text-sm"></span>
+                </div>
+                <div>
+                    <label asp-for="TaskType" class="block text-on-surface-variant font-label-caps text-label-caps mb-2">Task Type</label>
+                    <select asp-for="TaskType" asp-items="Model.TaskTypeOptions" class="w-full h-touch-target-min rounded-xl border border-outline-variant bg-white px-4" data-dough-task-type></select>
+                    <span asp-validation-for="TaskType" class="text-error text-sm"></span>
+                </div>
+                <div>
+                    <label asp-for="QuantityUnit" class="block text-on-surface-variant font-label-caps text-label-caps mb-2">Quantity Type</label>
+                    <select asp-for="QuantityUnit" asp-items="Model.QuantityUnitOptions" class="w-full h-touch-target-min rounded-xl border border-outline-variant bg-white px-4" data-dough-quantity-unit></select>
+                    <span asp-validation-for="QuantityUnit" class="text-error text-sm"></span>
+                </div>
+                <div class="xl:col-span-1">
+                    <label asp-for="QuantityValue" class="block text-on-surface-variant font-label-caps text-label-caps mb-2">Quantity</label>
+                    <input asp-for="QuantityValue" type="number" min="1" class="w-full h-touch-target-min rounded-xl border border-outline-variant bg-white px-4" data-dough-quantity-value />
+                    <span asp-validation-for="QuantityValue" class="text-error text-sm"></span>
+                </div>
+                <div class="md:col-span-2 xl:col-span-2">
+                    <label asp-for="Notes" class="block text-on-surface-variant font-label-caps text-label-caps mb-2"></label>
+                    <textarea asp-for="Notes" rows="4" class="w-full rounded-xl border border-outline-variant bg-white px-4 py-3" placeholder="Optional kitchen note"></textarea>
+                    <span asp-validation-for="Notes" class="text-error text-sm"></span>
+                </div>
             </div>
-            <div class="col-md-4">
-                <label asp-for="PrepItemId" class="form-label">Prep Item</label>
-                <select asp-for="PrepItemId" asp-items="Model.PrepItemOptions" class="form-select"></select>
-                <span asp-validation-for="PrepItemId" class="text-danger"></span>
-            </div>
-            <div class="col-md-4">
-                <label asp-for="PrepStationId" class="form-label">Prep Station</label>
-                <select asp-for="PrepStationId" asp-items="Model.PrepStationOptions" class="form-select"></select>
-                <span asp-validation-for="PrepStationId" class="text-danger"></span>
-            </div>
-            <div class="col-md-4">
-                <label asp-for="AssignedRole" class="form-label">Assigned Role</label>
-                <select asp-for="AssignedRole" asp-items="Model.AssignedRoleOptions" class="form-select"></select>
-                <span asp-validation-for="AssignedRole" class="text-danger"></span>
-            </div>
-            <div class="col-md-4">
-                <label asp-for="QuantityUnit" class="form-label">Quantity Type</label>
-                <select asp-for="QuantityUnit" asp-items="Model.QuantityUnitOptions" class="form-select" data-dough-quantity-unit></select>
-                <span asp-validation-for="QuantityUnit" class="text-danger"></span>
-            </div>
-            <div class="col-md-4">
-                <label asp-for="QuantityValue" class="form-label">Quantity</label>
-                <input asp-for="QuantityValue" type="number" min="1" class="form-control" data-dough-quantity-value />
-                <span asp-validation-for="QuantityValue" class="text-danger"></span>
-            </div>
-            <div class="col-12">
-                <label asp-for="Notes" class="form-label"></label>
-                <textarea asp-for="Notes" rows="3" class="form-control" placeholder="Optional kitchen note"></textarea>
-                <span asp-validation-for="Notes" class="text-danger"></span>
-            </div>
-        </div>
 
-        <div class="recommendation-note">
-            <h3>Quantity Preview</h3>
-            <p data-dough-quantity-preview>@Model.QuantityPreviewText</p>
-        </div>
+            <div class="rounded-2xl bg-primary-container text-white p-6">
+                <div class="font-label-caps text-label-caps text-white/70 mb-2">Quantity Preview</div>
+                <p data-dough-quantity-preview>@Model.QuantityPreviewText</p>
+            </div>
 
-        <div class="d-flex flex-wrap gap-2">
-            <button type="submit" class="btn btn-primary">
-                <i class="fa-regular fa-floppy-disk me-2"></i>
-                @(Model.IsEditMode ? "Save Dough Task" : "Create Dough Task")
-            </button>
-            <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="PrepTasks" asp-route-taskDate="@Model.TaskDate.ToString("yyyy-MM-dd")">Cancel</a>
-        </div>
-    </form>
+            <div class="flex flex-wrap gap-3">
+                <button type="submit" class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl bg-primary text-on-primary font-bold hover:opacity-90 transition-opacity">
+                    <span class="material-symbols-outlined">save</span>
+                    @(Model.IsEditMode ? "Save Dough Task" : "Create Dough Task")
+                </button>
+                <a asp-action="Index" asp-controller="PrepTasks" asp-route-taskDate="@Model.TaskDate.ToString("yyyy-MM-dd")" class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest no-underline">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </section>
 </section>
 
 @section Scripts {

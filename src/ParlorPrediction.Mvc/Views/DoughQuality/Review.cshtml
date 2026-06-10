@@ -1,0 +1,312 @@
+@model DoughQualityReviewPageViewModel
+@{
+    ViewData["Title"] = "Review Older Dough";
+    ViewData["DoughNav"] = "reviews";
+    var statusType = TempData["DoughQualityStatusType"] as string;
+    var statusMessage = TempData["DoughQualityStatusMessage"] as string;
+}
+
+<div class="dq-page dq-page--review">
+    <section class="page-hero page-hero--compact dq-hero">
+        <div>
+            <span class="eyebrow">Dough Quality Review</span>
+            <h1>Review Older Dough</h1>
+            <p class="page-copy dq-hero-copy">Use one clear review board to see older dough, spot attention candidates, and decide what still counts safely for the kitchen.</p>
+        </div>
+        <div class="hero-actions dq-action-bar">
+            <a class="btn btn-primary"
+               asp-controller="Prep"
+               asp-action="Dough"
+               asp-route-targetDate="@Model.Filter.ReferenceDate.ToString("yyyy-MM-dd")">
+                <i class="fa-solid fa-bread-slice me-2"></i>
+                Back to Dough for Today
+            </a>
+            <a class="btn btn-outline-secondary"
+               asp-controller="Prep"
+               asp-action="KitchenSheet"
+               asp-route-targetDate="@Model.Filter.ReferenceDate.ToString("yyyy-MM-dd")">
+                <i class="fa-solid fa-print me-2"></i>
+                Print Kitchen Sheet
+            </a>
+            <a class="btn btn-outline-secondary"
+               asp-controller="DoughQuality"
+               asp-action="Losses">
+                <i class="fa-solid fa-chart-column me-2"></i>
+                View Dough Losses
+            </a>
+        </div>
+    </section>
+
+@if (!string.IsNullOrWhiteSpace(statusMessage))
+    {
+        <div class="alert alert-@statusType" role="alert">
+            @statusMessage
+        </div>
+    }
+
+    <section class="content-card content-card--padded dq-toolbar-card">
+        <div class="section-heading">
+            <span class="eyebrow">Live Dough Quality</span>
+            <h2>Quality numbers at a glance</h2>
+            <p class="dq-section-copy">Start with the totals, then move into review, reball, discard, or admin correction.</p>
+        </div>
+
+        <partial name="_SummaryCards" model="Model.Summary" />
+    </section>
+
+    <section class="content-card content-card--padded dq-toolbar-card">
+        <div class="section-heading">
+            <span class="eyebrow">Filters</span>
+            <h2>Find older dough that needs review</h2>
+            <p class="dq-section-copy">Review by reference date first, then narrow the list by created or balled date, reballed date, or current status.</p>
+        </div>
+
+        <form asp-action="Review" asp-controller="DoughQuality" method="get" class="row g-3 align-items-end dq-toolbar-grid">
+            <div class="col-md-3">
+                <label class="form-label" asp-for="Filter.ReferenceDate">Reference date</label>
+                <input asp-for="Filter.ReferenceDate" type="date" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" asp-for="Filter.CreatedOrBalledFromDate">Show dough from</label>
+                <input asp-for="Filter.CreatedOrBalledFromDate" type="date" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" asp-for="Filter.CreatedOrBalledToDate">To</label>
+                <input asp-for="Filter.CreatedOrBalledToDate" type="date" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" asp-for="Filter.CurrentStatus">Status</label>
+                <select asp-for="Filter.CurrentStatus" asp-items="Model.StatusOptions" class="form-select"></select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" asp-for="Filter.ReballedFromDate">Reballed on</label>
+                <input asp-for="Filter.ReballedFromDate" type="date" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" asp-for="Filter.ReballedToDate">Reballed to</label>
+                <input asp-for="Filter.ReballedToDate" type="date" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <div class="dq-action-bar">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-filter me-2"></i>
+                        Review Dough
+                    </button>
+                    <a class="btn btn-outline-secondary" asp-action="Review" asp-controller="DoughQuality">
+                        Clear Filters
+                    </a>
+                </div>
+            </div>
+        </form>
+    </section>
+
+    <section class="content-card content-card--padded dq-recommendation-card">
+        <div class="section-heading">
+            <span class="eyebrow">Needs Review</span>
+            <h2>Attention candidates</h2>
+            <p class="dq-section-copy">These dough groups are old enough, or missed a must-use window, and should be reviewed by a manager.</p>
+        </div>
+
+        @if (Model.AttentionCandidates.Count == 0)
+        {
+            <div class="empty-state dq-task-empty">
+                <i class="fa-regular fa-circle-check"></i>
+                <span>No older dough needs review today. You can go back and print the kitchen sheet when ready.</span>
+            </div>
+        }
+        else
+        {
+            <div class="dq-review-grid">
+                @foreach (var candidate in Model.AttentionCandidates)
+                {
+                    <article class="dq-review-card dq-review-card--candidate">
+                        <div class="dq-review-card__header">
+                            <div>
+                                <span class="dq-summary-card__label">Needs review</span>
+                                <h3 class="dq-review-card__title">@candidate.Title</h3>
+                            </div>
+                            <span class="status-pill status-pill--warning">@candidate.DisplayStatus</span>
+                        </div>
+
+                        <div class="dq-review-card__stats">
+                            <div class="dq-stat-box">
+                                <span class="dq-stat-box__label">Quantity</span>
+                                <span class="dq-stat-box__value">@candidate.QuantityBalls balls</span>
+                            </div>
+                            <div class="dq-stat-box">
+                                <span class="dq-stat-box__label">Created</span>
+                                <span class="dq-stat-box__value">@candidate.CreatedOrBalledAt.ToLocalTime().ToString("MMM d")</span>
+                            </div>
+                            <div class="dq-stat-box">
+                                <span class="dq-stat-box__label">Age</span>
+                                <span class="dq-stat-box__value">@candidate.AgeDays days</span>
+                            </div>
+                        </div>
+
+                        <div class="dq-manager-banner dq-manager-banner--light">
+                            <span class="dq-manager-banner__eyebrow">Why it needs review</span>
+                            <h3>@candidate.CandidateReason</h3>
+                            <p>@candidate.AvailabilityText</p>
+                        </div>
+
+                        <form asp-action="MarkAttention" asp-controller="DoughQuality" method="post" class="dq-action-stack">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="DoughBatchQualityRecordId" value="@candidate.DoughBatchQualityRecordId" />
+                            <input type="hidden" name="StatusReason" value="@candidate.CandidateReason" />
+                            <input type="hidden" name="ReferenceDate" value="@Model.Filter.ReferenceDate.ToString("yyyy-MM-dd")" />
+                            <input type="hidden" name="CreatedOrBalledFromDate" value="@Model.Filter.CreatedOrBalledFromDate?.ToString("yyyy-MM-dd")" />
+                            <input type="hidden" name="CreatedOrBalledToDate" value="@Model.Filter.CreatedOrBalledToDate?.ToString("yyyy-MM-dd")" />
+                            <input type="hidden" name="ReballedFromDate" value="@Model.Filter.ReballedFromDate?.ToString("yyyy-MM-dd")" />
+                            <input type="hidden" name="ReballedToDate" value="@Model.Filter.ReballedToDate?.ToString("yyyy-MM-dd")" />
+                            <input type="hidden" name="CurrentStatus" value="@Model.Filter.CurrentStatus" />
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa-solid fa-triangle-exclamation me-2"></i>
+                                Mark Attention
+                            </button>
+                            <a class="btn btn-outline-secondary"
+                               asp-action="Reball"
+                               asp-controller="DoughQuality"
+                               asp-route-recordId="@candidate.DoughBatchQualityRecordId"
+                               asp-route-referenceDate="@Model.Filter.ReferenceDate.ToString("yyyy-MM-dd")">
+                                <i class="fa-solid fa-rotate-right me-2"></i>
+                                Open Reball
+                            </a>
+                        </form>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="content-card content-card--padded dq-tasks-card">
+        <div class="section-heading">
+            <span class="eyebrow">Filtered Records</span>
+            <h2>Older dough in view</h2>
+            <p class="dq-section-copy">This section shows the real tracked dough records that match the current filters. From here the team can open reball, discard, or status correction without losing the review context.</p>
+        </div>
+
+        @if (Model.Records.Count == 0)
+        {
+            <div class="empty-state dq-task-empty">
+                <i class="fa-regular fa-folder-open"></i>
+                <span>No dough records matched the current filters.</span>
+            </div>
+        }
+        else
+        {
+            <div class="dq-review-grid">
+                @foreach (var record in Model.Records)
+                {
+                    <article class="dq-review-card">
+                        <div class="dq-review-card__header">
+                            <div>
+                                <span class="dq-summary-card__label">Tracked dough</span>
+                                <h3 class="dq-review-card__title">@record.Title</h3>
+                            </div>
+                            <span class="status-pill @(record.CountsAsAvailable ? "status-pill--success" : "status-pill--danger")">@record.DisplayStatus</span>
+                        </div>
+
+                        <div class="dq-review-card__stats">
+                            <div class="dq-stat-box">
+                                <span class="dq-stat-box__label">Quantity</span>
+                                <span class="dq-stat-box__value">@record.QuantityBalls balls</span>
+                            </div>
+                            <div class="dq-stat-box">
+                                <span class="dq-stat-box__label">Created</span>
+                                <span class="dq-stat-box__value">@record.CreatedOrBalledAt.ToLocalTime().ToString("MMM d")</span>
+                            </div>
+                            <div class="dq-stat-box">
+                                <span class="dq-stat-box__label">Available</span>
+                                <span class="dq-stat-box__value">@(record.CountsAsAvailable ? "Yes" : "No")</span>
+                            </div>
+                        </div>
+
+                        <dl class="dq-review-card__details">
+                            <div>
+                                <dt>Status meaning</dt>
+                                <dd>@record.AvailabilityText</dd>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(record.StatusReason))
+                            {
+                                <div>
+                                    <dt>Status reason</dt>
+                                    <dd>@record.StatusReason</dd>
+                                </div>
+                            }
+                            @if (record.MustUseByDate.HasValue)
+                            {
+                                <div>
+                                    <dt>Must use by</dt>
+                                    <dd>@record.MustUseByDate.Value.ToString("MMM d, yyyy")</dd>
+                                </div>
+                            }
+                            @if (record.ReballedAt.HasValue)
+                            {
+                                <div>
+                                    <dt>Reballed at</dt>
+                                    <dd>@record.ReballedAt.Value.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</dd>
+                                </div>
+                            }
+                            @if (record.DiscardedAt.HasValue)
+                            {
+                                <div>
+                                    <dt>Discarded at</dt>
+                                    <dd>@record.DiscardedAt.Value.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</dd>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(record.DiscardReason))
+                            {
+                                <div>
+                                    <dt>Discard reason</dt>
+                                    <dd>@record.DisplayDiscardReason</dd>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(record.ManagerNote))
+                            {
+                                <div>
+                                    <dt>Manager note</dt>
+                                    <dd>@record.ManagerNote</dd>
+                                </div>
+                            }
+                        </dl>
+
+                        <div class="dq-review-card__footer">
+                            <div class="dq-action-bar dq-action-bar--compact">
+                                @if (!string.Equals(record.CurrentStatus, "Discarded", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <a class="btn btn-primary"
+                                       asp-action="Reball"
+                                       asp-controller="DoughQuality"
+                                       asp-route-recordId="@record.Id"
+                                       asp-route-referenceDate="@Model.Filter.ReferenceDate.ToString("yyyy-MM-dd")">
+                                        <i class="fa-solid fa-rotate-right me-2"></i>
+                                        Reball Dough
+                                    </a>
+                                    <a class="btn btn-outline-danger"
+                                       asp-action="Discard"
+                                       asp-controller="DoughQuality"
+                                       asp-route-recordId="@record.Id"
+                                       asp-route-referenceDate="@Model.Filter.ReferenceDate.ToString("yyyy-MM-dd")">
+                                        <i class="fa-regular fa-trash-can me-2"></i>
+                                        Discard Dough
+                                    </a>
+                                }
+                                @if (Model.CanCorrectStatus)
+                                {
+                                    <a class="btn btn-outline-secondary"
+                                       asp-action="CorrectStatus"
+                                       asp-controller="DoughQuality"
+                                       asp-route-recordId="@record.Id"
+                                       asp-route-referenceDate="@Model.Filter.ReferenceDate.ToString("yyyy-MM-dd")">
+                                        <i class="fa-regular fa-pen-to-square me-2"></i>
+                                        Correct Status
+                                    </a>
+                                }
+                            </div>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+</div>
