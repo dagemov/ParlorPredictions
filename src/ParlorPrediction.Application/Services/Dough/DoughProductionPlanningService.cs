@@ -75,7 +75,7 @@ public sealed class DoughProductionPlanningService : IDoughProductionPlanningSer
             ?? 0;
 
         var liveFermentingBalls = doughBatches
-            .Where(batch => batch.FermentationReadyDate > request.ProductionDate)
+            .Where(batch => batch.IsBalled && batch.FermentationReadyDate > request.ProductionDate)
             .Sum(batch => batch.TotalBalls);
 
         var liveUnballedBalls = doughBatches
@@ -94,14 +94,13 @@ public sealed class DoughProductionPlanningService : IDoughProductionPlanningSer
 
         var fermentingBallsReadyInWindow = doughBatches
             .Where(batch =>
+                batch.IsBalled &&
                 batch.FermentationReadyDate > request.ProductionDate &&
                 batch.FermentationReadyDate <= coverageWindowEndDate)
             .Sum(batch => batch.TotalBalls);
 
         var liveReadyUnballedBalls = doughBatches
-            .Where(batch =>
-                !batch.IsBalled &&
-                batch.FermentationReadyDate <= coverageWindowEndDate)
+            .Where(batch => !batch.IsBalled)
             .Sum(batch => batch.TotalBalls);
         var readyUnballedBalls = liveReadyUnballedBalls + carryoverUnballedBalls;
 

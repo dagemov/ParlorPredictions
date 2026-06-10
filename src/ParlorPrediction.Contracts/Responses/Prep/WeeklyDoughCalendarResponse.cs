@@ -36,11 +36,21 @@ public sealed class WeeklyDoughCalendarResponse
 
     public int MixedButNotBalledBalls { get; set; }
 
+    public int MixedButNotBalledLoads { get; set; }
+
+    public int FutureBalls { get; set; }
+
     public int FinishedThisWeekBalls { get; set; }
+
+    public int ProducedThisWeekBalls { get; set; }
 
     public int PreviousWeekFinishedBalls { get; set; }
 
     public int StillMissingThisWeekBalls { get; set; }
+
+    public int ActualUsedBallsThisWeek { get; set; }
+
+    public int AccumulatedDailyVariance { get; set; }
 
     public int UpcomingEventBalls { get; set; }
 

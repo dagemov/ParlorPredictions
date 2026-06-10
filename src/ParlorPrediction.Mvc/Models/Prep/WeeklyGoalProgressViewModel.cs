@@ -38,11 +38,21 @@ public sealed class WeeklyGoalProgressViewModel
 
     public int MixedButNotBalledBalls { get; set; }
 
+    public int MixedButNotBalledLoadCount { get; set; }
+
+    public int FutureBalls { get; set; }
+
     public int FinishedThisWeekBalls { get; set; }
+
+    public int ProducedThisWeekBalls { get; set; }
 
     public int PreviousWeekFinishedBalls { get; set; }
 
     public int DoughStillMissingThisWeekBalls { get; set; }
+
+    public int ActualUsedBallsThisWeek { get; set; }
+
+    public int AccumulatedDailyVariance { get; set; }
 
     public int DoughNeededLoads => ToLoads(DoughNeededBalls);
 
@@ -50,7 +60,13 @@ public sealed class WeeklyGoalProgressViewModel
 
     public int StillFermentingLoads => ToLoads(StillFermentingBalls);
 
-    public int MixedButNotBalledLoads => ToLoads(MixedButNotBalledBalls);
+    public int MixedButNotBalledLoads => MixedButNotBalledLoadCount > 0
+        ? MixedButNotBalledLoadCount
+        : ToLoads(MixedButNotBalledBalls);
+
+    public int FutureBallsLoads => ToLoads(FutureBalls);
+
+    public int ProducedThisWeekLoads => ToLoads(ProducedThisWeekBalls);
 
     public int FinishedThisWeekLoads => ToLoads(FinishedThisWeekBalls);
 

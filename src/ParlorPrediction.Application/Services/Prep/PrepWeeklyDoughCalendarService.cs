@@ -1,5 +1,6 @@
 using ParlorPrediction.Application.Interfaces.Dough;
 using ParlorPrediction.Application.Interfaces.Prep;
+using ParlorPrediction.Application.Services.Dough;
 using ParlorPrediction.Contracts.Requests.Dough;
 using ParlorPrediction.Contracts.Responses.Dough;
 using ParlorPrediction.Contracts.Responses.Prep;
@@ -16,6 +17,7 @@ public sealed class PrepWeeklyDoughCalendarService : IPrepWeeklyDoughCalendarSer
     private readonly IDoughPrepCalculationService _doughPrepCalculationService;
     private readonly IDoughBatchReadRepository _doughBatchReadRepository;
     private readonly IDoughInventoryReadRepository _doughInventoryReadRepository;
+    private readonly IDailyDoughClosingRepository _dailyDoughClosingRepository;
     private readonly IPrepTaskRepository _prepTaskRepository;
     private readonly IWeeklyDoughClosingReadService _weeklyDoughClosingReadService;
 
@@ -23,12 +25,14 @@ public sealed class PrepWeeklyDoughCalendarService : IPrepWeeklyDoughCalendarSer
         IDoughPrepCalculationService doughPrepCalculationService,
         IDoughBatchReadRepository doughBatchReadRepository,
         IDoughInventoryReadRepository doughInventoryReadRepository,
+        IDailyDoughClosingRepository dailyDoughClosingRepository,
         IPrepTaskRepository prepTaskRepository,
         IWeeklyDoughClosingReadService weeklyDoughClosingReadService)
     {
         _doughPrepCalculationService = doughPrepCalculationService;
         _doughBatchReadRepository = doughBatchReadRepository;
         _doughInventoryReadRepository = doughInventoryReadRepository;
+        _dailyDoughClosingRepository = dailyDoughClosingRepository;
         _prepTaskRepository = prepTaskRepository;
         _weeklyDoughClosingReadService = weeklyDoughClosingReadService;
     }
@@ -97,24 +101,38 @@ public sealed class PrepWeeklyDoughCalendarService : IPrepWeeklyDoughCalendarSer
             previousReferenceStartDate,
             previousReferenceEndDate,
             cancellationToken);
+        var dailyClosings = await _dailyDoughClosingRepository.ListByWeekStartDateAsync(weekStartDate, cancellationToken);
+        var closedDailyClosings = dailyClosings
+            .Where(closing => closing.ClosingDate <= referenceDate)
+            .ToArray();
+        var actualUsedBallsThisWeek = closedDailyClosings.Sum(closing => closing.ActualUsedBalls);
+        var accumulatedDailyVariance = closedDailyClosings.Sum(closing => closing.DailyVariance);
 
-        var readyNowBalls = applyCarryoverFallback
+        var producedThisWeekBalls = SumProducedBallsWithinWindow(
+            currentWeekTasks,
+            weekStartDate,
+            referenceDate);
+
+        var snapshotReadyBalls = applyCarryoverFallback
             ? carryover!.CarryoverAvailableBalls
             : latestInventorySnapshot?.AvailableBalls ?? 0;
-        var stillFermentingBalls = doughBatches
-            .Where(batch =>
-                batch.FermentationReadyDate > referenceDate &&
-                batch.FermentationReadyDate <= weekEndDate)
-            .Sum(batch => batch.TotalBalls);
-        var liveMixedButNotBalledBalls = doughBatches
-            .Where(batch =>
-                !batch.IsBalled &&
-                batch.FermentationReadyDate <= referenceDate)
-            .Sum(batch => batch.TotalBalls);
-        var carryoverMixedButNotBalledBalls = applyCarryoverFallback && liveMixedButNotBalledBalls == 0
-            ? carryover?.MixedButNotBalledLoads * DoughRules.StandardBatchBalls ?? 0
-            : 0;
-        var mixedButNotBalledBalls = liveMixedButNotBalledBalls + carryoverMixedButNotBalledBalls;
+
+        var readyNowBalls = DoughWeeklyInventoryCalculator.ResolveCarryoverAnchoredReadyBalls(
+            snapshotReadyBalls,
+            carryover?.CarryoverAvailableBalls ?? 0,
+            carryover?.HasClosingCarryover ?? false,
+            hasCurrentWeekSnapshot,
+            producedThisWeekBalls,
+            actualUsedBallsThisWeek);
+
+        var inventoryBreakdown = DoughWeeklyInventoryCalculator.Calculate(
+            referenceDate,
+            weekEndDate,
+            readyNowBalls,
+            doughBatches,
+            carryover?.MixedButNotBalledLoads ?? 0,
+            applyCarryoverFallback);
+
         var finishedThisWeekBalls = SumFinishedBallsWithinWindow(
             currentWeekTasks,
             weekStartDate,
@@ -125,9 +143,14 @@ public sealed class PrepWeeklyDoughCalendarService : IPrepWeeklyDoughCalendarSer
                 previousReferenceTasks,
                 previousReferenceStartDate,
                 previousReferenceEndDate);
-        var stillMissingThisWeekBalls = Math.Max(
-            weekTotalNeededBalls - readyNowBalls - stillFermentingBalls - mixedButNotBalledBalls,
-            0);
+        var stillMissingThisWeekBalls = DoughWeeklyInventoryCalculator.CalculateStillMissingThisWeek(
+            weekTotalNeededBalls,
+            inventoryBreakdown,
+            actualUsedBallsThisWeek);
+        var stillFermentingBalls = DoughWeeklyInventoryCalculator.ResolveStillFermentingForDisplay(
+            inventoryBreakdown.StillFermentingBalls,
+            producedThisWeekBalls);
+        var futureBalls = inventoryBreakdown.MixedButNotBalledBalls + stillFermentingBalls;
 
         return new WeeklyDoughCalendarResponse
         {
@@ -145,12 +168,17 @@ public sealed class PrepWeeklyDoughCalendarService : IPrepWeeklyDoughCalendarSer
             PreviousWeekLostBalls = carryover?.PreviousWeekLostBalls ?? 0,
             CarryoverClosingNotes = carryover?.ClosingNotes,
             WeekTotalNeededBalls = weekTotalNeededBalls,
-            ReadyNowBalls = readyNowBalls,
+            ReadyNowBalls = inventoryBreakdown.ReadyNowBalls,
             StillFermentingBalls = stillFermentingBalls,
-            MixedButNotBalledBalls = mixedButNotBalledBalls,
+            MixedButNotBalledBalls = inventoryBreakdown.MixedButNotBalledBalls,
+            MixedButNotBalledLoads = inventoryBreakdown.MixedButNotBalledLoads,
+            FutureBalls = futureBalls,
             FinishedThisWeekBalls = finishedThisWeekBalls,
+            ProducedThisWeekBalls = producedThisWeekBalls,
             PreviousWeekFinishedBalls = previousWeekFinishedBalls,
             StillMissingThisWeekBalls = stillMissingThisWeekBalls,
+            ActualUsedBallsThisWeek = actualUsedBallsThisWeek,
+            AccumulatedDailyVariance = accumulatedDailyVariance,
             UpcomingEventBalls = days.Sum(day => day.EventDoughBalls),
             Days = days
         };
@@ -188,6 +216,24 @@ public sealed class PrepWeeklyDoughCalendarService : IPrepWeeklyDoughCalendarSer
             .Where(task =>
                 task.Status == PrepTaskStatus.Completed &&
                 task.CountsAsAvailableBallsWhenCompleted &&
+                task.CompletedAtUtc.HasValue)
+            .Where(task =>
+            {
+                var completedLocalDate = DateOnly.FromDateTime(task.CompletedAtUtc!.Value.ToLocalTime());
+                return completedLocalDate >= windowStart && completedLocalDate <= windowEnd;
+            })
+            .Sum(task => task.CompletedBallsEquivalent);
+    }
+
+    private static int SumProducedBallsWithinWindow(
+        IReadOnlyList<PrepTask> tasks,
+        DateOnly windowStart,
+        DateOnly windowEnd)
+    {
+        return tasks
+            .Where(task =>
+                task.Status == PrepTaskStatus.Completed &&
+                task.TaskType == PrepTaskType.BallDough &&
                 task.CompletedAtUtc.HasValue)
             .Where(task =>
             {

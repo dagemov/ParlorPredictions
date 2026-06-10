@@ -28,6 +28,14 @@ public sealed class AdminPanelController : Controller
                 },
                 new()
                 {
+                    Title = "Daily Closing",
+                    Description = "Record daily dough usage against forecast to spot slow weeks and accumulating dough.",
+                    IconClass = "fa-solid fa-calendar-day",
+                    Controller = "DailyClosing",
+                    Action = "Index"
+                },
+                new()
+                {
                     Title = "Losses",
                     Description = "Review dough loss by date and reason without opening the kitchen workflow.",
                     IconClass = "fa-solid fa-chart-pie",

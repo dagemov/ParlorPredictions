@@ -61,13 +61,19 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
             : CalculateHistoricalAverageBalls(historicalSales);
         var eventEstimatedBalls = events.Sum(restaurantEvent => restaurantEvent.EstimatedDoughBalls);
         var requiredBalls = checked(historicalAverageBalls + eventEstimatedBalls);
+        var weekStartDate = GetOperationalWeekStart(request.TargetDate);
+        var usingLiveInventory = DoughWeeklyInventoryCalculator.UsesLiveInventorySnapshot(
+            latestInventorySnapshot,
+            weekStartDate);
         var availableBalls = carryover?.CarryoverAvailableBalls
             ?? latestInventorySnapshot?.AvailableBalls
             ?? 0;
         var completedBalls = prepTasks
             .Where(task => task.Status == PrepTaskStatus.Completed && task.CountsAsAvailableBallsWhenCompleted)
             .Sum(task => task.CompletedBallsEquivalent);
-        var missingBalls = Math.Max(requiredBalls - availableBalls - completedBalls, 0);
+        var missingBalls = usingLiveInventory
+            ? Math.Max(requiredBalls - availableBalls, 0)
+            : Math.Max(requiredBalls - availableBalls - completedBalls, 0);
         var recommendedCases = CalculateRoundedUpUnits(missingBalls, DoughRules.BallsPerCase);
         var recommendedLoads = CalculateRoundedUpUnits(recommendedCases, DoughRules.StandardBatchCases);
         var shouldMakeDough = missingBalls > 0;
@@ -105,7 +111,8 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
                 missingBalls,
                 recommendedCases,
                 recommendedLoads,
-                usesShortFermentationException)
+                usesShortFermentationException,
+                usingLiveInventory)
         };
     }
 
@@ -164,7 +171,8 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
         int missingBalls,
         int recommendedCases,
         int recommendedLoads,
-        bool usesShortFermentationException)
+        bool usesShortFermentationException,
+        bool usingLiveInventory)
     {
         var reasonBuilder = new StringBuilder();
 
@@ -196,9 +204,13 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
 
         reasonBuilder.Append($" You currently have {availableBalls} dough balls available.");
 
-        if (completedBalls > 0)
+        if (completedBalls > 0 && !usingLiveInventory)
         {
             reasonBuilder.Append($" The team has already finished {completedBalls} dough balls for this day.");
+        }
+        else if (usingLiveInventory && completedBalls > 0)
+        {
+            reasonBuilder.Append(" Completed balling work is already reflected in ready dough inventory.");
         }
 
         reasonBuilder.Append($" That leaves {missingBalls} dough balls still missing.");

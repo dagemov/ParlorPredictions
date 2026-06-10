@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using ParlorPrediction.Application.Interfaces.Dough;
 using ParlorPrediction.Application.Interfaces.Prep;
 using ParlorPrediction.Contracts.Requests.Dough;
+using ParlorPrediction.Contracts.Requests.DoughClosing;
 using ParlorPrediction.Contracts.Requests.DoughQuality;
 using ParlorPrediction.Contracts.Requests.Prep;
 using ParlorPrediction.Contracts.Responses.Dough;
@@ -13,6 +14,7 @@ using ParlorPrediction.Contracts.Responses.Prep;
 using ParlorPrediction.Domain.Enums;
 using ParlorPrediction.Domain.Rules;
 using ParlorPrediction.Mvc.Helpers;
+using ParlorPrediction.Mvc.Models.Home;
 using ParlorPrediction.Mvc.Models.Prep;
 
 namespace ParlorPrediction.Mvc.Controllers;
@@ -24,6 +26,7 @@ public sealed class PrepController : Controller
     private const int DefaultHistoricalWeeksToUse = 8;
     private const int DefaultPlanningDaysAhead = 7;
 
+    private readonly IDailyDoughClosingReadService _dailyDoughClosingReadService;
     private readonly IDoughPrepCalculationService _doughPrepCalculationService;
     private readonly IDoughQualityReadService _doughQualityReadService;
     private readonly IDoughProductionPlanningService _doughProductionPlanningService;
@@ -34,6 +37,7 @@ public sealed class PrepController : Controller
     private readonly IPrepTaskService _prepTaskService;
 
     public PrepController(
+        IDailyDoughClosingReadService dailyDoughClosingReadService,
         IDoughPrepCalculationService doughPrepCalculationService,
         IDoughQualityReadService doughQualityReadService,
         IDoughProductionPlanningService doughProductionPlanningService,
@@ -43,6 +47,7 @@ public sealed class PrepController : Controller
         IPrepTaskReadService prepTaskReadService,
         IPrepTaskService prepTaskService)
     {
+        _dailyDoughClosingReadService = dailyDoughClosingReadService;
         _doughPrepCalculationService = doughPrepCalculationService;
         _doughQualityReadService = doughQualityReadService;
         _doughProductionPlanningService = doughProductionPlanningService;
@@ -444,9 +449,14 @@ public sealed class PrepController : Controller
                     string.Equals(task.Status, nameof(PrepTaskStatus.Completed), StringComparison.OrdinalIgnoreCase) &&
                     task.CountsAsAvailableBallsWhenCompleted)
                 .Sum(task => task.QuantityCompletedBallsEquivalent);
-            recommendation.MissingBalls = Math.Max(
-                recommendation.RequiredBalls - recommendation.AvailableBalls - recommendation.CompletedBalls,
-                0);
+            var weekStartDate = GetOperationalWeekStart(targetDate);
+            var usesLiveInventory = recommendation.AvailableBalls > 0 &&
+                targetDate >= weekStartDate;
+            recommendation.MissingBalls = usesLiveInventory
+                ? Math.Max(recommendation.RequiredBalls - recommendation.AvailableBalls, 0)
+                : Math.Max(
+                    recommendation.RequiredBalls - recommendation.AvailableBalls - recommendation.CompletedBalls,
+                    0);
             recommendation.CanSaveRecommendation = CanManageRecommendations() && !recommendation.IsPersisted;
 
             var taskAlreadyExists = recommendation.RecommendationId.HasValue &&
@@ -476,6 +486,27 @@ public sealed class PrepController : Controller
             olderDoughCandidates = Array.Empty<Models.DoughQuality.DoughQualityReviewCandidateViewModel>();
         }
 
+        DailyClosingOperationalInsightsViewModel? dailyClosingInsights = null;
+        if (CanManageRecommendations())
+        {
+            try
+            {
+                var insights = await _dailyDoughClosingReadService.GetOperationalInsightsAsync(
+                    new GetDailyClosingWeekSummaryRequest
+                    {
+                        ReferenceDate = targetDate,
+                        HistoricalWeeksToUse = NormalizeHistoricalWeeks(historicalWeeksToUse)
+                    },
+                    cancellationToken);
+
+                dailyClosingInsights = MapDailyClosingInsights(insights);
+            }
+            catch (Exception exception) when (IsRecoverableDoughQualityException(exception))
+            {
+                dailyClosingInsights = null;
+            }
+        }
+
         return new DoughPrepPageViewModel
         {
             TargetDate = targetDate,
@@ -487,7 +518,8 @@ public sealed class PrepController : Controller
             AttentionItems = attentionItems,
             OlderDoughCandidates = olderDoughCandidates,
             Tasks = taskViewModels,
-            CanManageRecommendations = CanManageRecommendations()
+            CanManageRecommendations = CanManageRecommendations(),
+            DailyClosingInsights = dailyClosingInsights
         };
     }
 
@@ -872,9 +904,37 @@ public sealed class PrepController : Controller
             ReadyNowBalls = weeklyCalendar.ReadyNowBalls,
             StillFermentingBalls = weeklyCalendar.StillFermentingBalls,
             MixedButNotBalledBalls = weeklyCalendar.MixedButNotBalledBalls,
+            MixedButNotBalledLoadCount = weeklyCalendar.MixedButNotBalledLoads,
+            FutureBalls = weeklyCalendar.FutureBalls,
             FinishedThisWeekBalls = weeklyCalendar.FinishedThisWeekBalls,
+            ProducedThisWeekBalls = weeklyCalendar.ProducedThisWeekBalls,
             PreviousWeekFinishedBalls = weeklyCalendar.PreviousWeekFinishedBalls,
-            DoughStillMissingThisWeekBalls = weeklyCalendar.StillMissingThisWeekBalls
+            DoughStillMissingThisWeekBalls = weeklyCalendar.StillMissingThisWeekBalls,
+            ActualUsedBallsThisWeek = weeklyCalendar.ActualUsedBallsThisWeek,
+            AccumulatedDailyVariance = weeklyCalendar.AccumulatedDailyVariance
+        };
+    }
+
+    private static DailyClosingOperationalInsightsViewModel MapDailyClosingInsights(
+        Contracts.Responses.DoughClosing.DailyClosingOperationalInsightsResponse insights)
+    {
+        return new DailyClosingOperationalInsightsViewModel
+        {
+            AccumulatedVariance = insights.AccumulatedVariance,
+            AccumulatedSurplus = insights.AccumulatedSurplus,
+            AccumulatedShortage = insights.AccumulatedShortage,
+            TotalActualUsedBalls = insights.TotalActualUsedBalls,
+            ClosedDaysCount = insights.ClosedDaysCount,
+            CurrentAvailableBalls = insights.CurrentAvailableBalls,
+            StillFermentingBalls = insights.StillFermentingBalls,
+            MixedButNotBalledBalls = insights.MixedButNotBalledBalls,
+            RemainingForecastNeed = insights.RemainingForecastNeed,
+            AdjustedRemainingForecastNeed = insights.AdjustedRemainingForecastNeed,
+            DailyClosingVarianceApplied = insights.DailyClosingVarianceApplied,
+            ProjectedSurplus = insights.ProjectedSurplus,
+            HasSurplusWarning = insights.HasSurplusWarning,
+            HasShortageWarning = insights.HasShortageWarning,
+            Recommendation = insights.Recommendation
         };
     }
 
@@ -983,5 +1043,11 @@ public sealed class PrepController : Controller
         }
 
         return steps;
+    }
+
+    private static DateOnly GetOperationalWeekStart(DateOnly referenceDate)
+    {
+        var diff = ((int)referenceDate.DayOfWeek - (int)DayOfWeek.Tuesday + 7) % 7;
+        return referenceDate.AddDays(-diff);
     }
 }

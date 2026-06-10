@@ -17,13 +17,16 @@ public sealed class WeeklyClosingController : Controller
     private const string StatusTypeKey = "WeeklyClosingStatusType";
     private const string StatusMessageKey = "WeeklyClosingStatusMessage";
 
+    private readonly IDailyDoughClosingReadService _dailyDoughClosingReadService;
     private readonly IWeeklyDoughClosingManagementService _weeklyDoughClosingManagementService;
     private readonly IWeeklyDoughClosingReadService _weeklyDoughClosingReadService;
 
     public WeeklyClosingController(
+        IDailyDoughClosingReadService dailyDoughClosingReadService,
         IWeeklyDoughClosingManagementService weeklyDoughClosingManagementService,
         IWeeklyDoughClosingReadService weeklyDoughClosingReadService)
     {
+        _dailyDoughClosingReadService = dailyDoughClosingReadService;
         _weeklyDoughClosingManagementService = weeklyDoughClosingManagementService;
         _weeklyDoughClosingReadService = weeklyDoughClosingReadService;
     }
@@ -208,6 +211,15 @@ public sealed class WeeklyClosingController : Controller
             },
             cancellationToken);
 
+        var weekStart = NormalizeOperationalWeekStart(referenceDate);
+        var dailySummary = await _dailyDoughClosingReadService.GetWeekSummaryAsync(
+            new GetDailyClosingWeekSummaryRequest
+            {
+                ReferenceDate = referenceDate,
+                HistoricalWeeksToUse = 8
+            },
+            cancellationToken);
+
         return new WeeklyDoughClosingIndexViewModel
         {
             ReferenceDate = referenceDate,
@@ -230,6 +242,17 @@ public sealed class WeeklyClosingController : Controller
                 PreviousWeekUsedBalls = carryover.PreviousWeekUsedBalls,
                 PreviousWeekLostBalls = carryover.PreviousWeekLostBalls,
                 ClosingNotes = carryover.ClosingNotes
+            },
+            DailyClosingSummary = new WeeklyDailyClosingSummaryViewModel
+            {
+                WeekStartDate = weekStart,
+                WeekEndDate = weekStart.AddDays(5),
+                TotalForecastBalls = dailySummary.TotalForecastBalls,
+                TotalActualUsedBalls = dailySummary.TotalActualUsedBalls,
+                AccumulatedVariance = dailySummary.AccumulatedVariance,
+                AccumulatedSurplus = dailySummary.AccumulatedSurplus,
+                AccumulatedShortage = dailySummary.AccumulatedShortage,
+                ClosedDaysCount = dailySummary.ClosedDaysCount
             },
             Closings = closings
                 .Select(MapListItem)

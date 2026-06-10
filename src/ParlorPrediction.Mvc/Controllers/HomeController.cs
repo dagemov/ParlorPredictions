@@ -4,6 +4,7 @@ using Microsoft.Data.SqlClient;
 using ParlorPrediction.Application.Interfaces.Dough;
 using ParlorPrediction.Application.Interfaces.Prep;
 using ParlorPrediction.Contracts.Requests.Dough;
+using ParlorPrediction.Contracts.Requests.DoughClosing;
 using ParlorPrediction.Mvc.Models;
 using ParlorPrediction.Mvc.Models.DoughQuality;
 using ParlorPrediction.Mvc.Models.Home;
@@ -16,17 +17,20 @@ public class HomeController : Controller
     private const int DefaultHistoricalWeeksToUse = 8;
     private const int DefaultPlanningDaysAhead = 7;
 
+    private readonly IDailyDoughClosingReadService _dailyDoughClosingReadService;
     private readonly IDoughProductionPlanningService _doughProductionPlanningService;
     private readonly IDoughQualityReadService _doughQualityReadService;
     private readonly IPrepWeeklyDoughCalendarService _prepWeeklyDoughCalendarService;
     private readonly IRestaurantEventReadRepository _restaurantEventReadRepository;
 
     public HomeController(
+        IDailyDoughClosingReadService dailyDoughClosingReadService,
         IDoughProductionPlanningService doughProductionPlanningService,
         IDoughQualityReadService doughQualityReadService,
         IPrepWeeklyDoughCalendarService prepWeeklyDoughCalendarService,
         IRestaurantEventReadRepository restaurantEventReadRepository)
     {
+        _dailyDoughClosingReadService = dailyDoughClosingReadService;
         _doughProductionPlanningService = doughProductionPlanningService;
         _doughQualityReadService = doughQualityReadService;
         _prepWeeklyDoughCalendarService = prepWeeklyDoughCalendarService;
@@ -93,6 +97,22 @@ public class HomeController : Controller
             weeklyCalendar.WeekEndDate,
             cancellationToken);
 
+        var dailyClosingInsights = new DailyClosingOperationalInsightsViewModel();
+        try
+        {
+            dailyClosingInsights = MapDailyClosingInsights(await _dailyDoughClosingReadService.GetOperationalInsightsAsync(
+                new GetDailyClosingWeekSummaryRequest
+                {
+                    ReferenceDate = selectedDate,
+                    HistoricalWeeksToUse = normalizedHistoricalWeeks
+                },
+                cancellationToken));
+        }
+        catch (Exception exception) when (IsRecoverableDoughQualityException(exception))
+        {
+            dailyClosingInsights = new DailyClosingOperationalInsightsViewModel();
+        }
+
         return View(new OperationalHomePageViewModel
         {
             IsAuthenticatedExperience = true,
@@ -128,7 +148,8 @@ public class HomeController : Controller
                     AllowShortFermentation = item.AllowShortFermentation,
                     Notes = item.Notes
                 })
-                .ToArray()
+                .ToArray(),
+            DailyClosingInsights = dailyClosingInsights
         });
     }
 
@@ -193,9 +214,37 @@ public class HomeController : Controller
             ReadyNowBalls = weeklyCalendar.ReadyNowBalls,
             StillFermentingBalls = weeklyCalendar.StillFermentingBalls,
             MixedButNotBalledBalls = weeklyCalendar.MixedButNotBalledBalls,
+            MixedButNotBalledLoadCount = weeklyCalendar.MixedButNotBalledLoads,
+            FutureBalls = weeklyCalendar.FutureBalls,
             FinishedThisWeekBalls = weeklyCalendar.FinishedThisWeekBalls,
+            ProducedThisWeekBalls = weeklyCalendar.ProducedThisWeekBalls,
             PreviousWeekFinishedBalls = weeklyCalendar.PreviousWeekFinishedBalls,
-            DoughStillMissingThisWeekBalls = weeklyCalendar.StillMissingThisWeekBalls
+            DoughStillMissingThisWeekBalls = weeklyCalendar.StillMissingThisWeekBalls,
+            ActualUsedBallsThisWeek = weeklyCalendar.ActualUsedBallsThisWeek,
+            AccumulatedDailyVariance = weeklyCalendar.AccumulatedDailyVariance
+        };
+    }
+
+    private static DailyClosingOperationalInsightsViewModel MapDailyClosingInsights(
+        Contracts.Responses.DoughClosing.DailyClosingOperationalInsightsResponse insights)
+    {
+        return new DailyClosingOperationalInsightsViewModel
+        {
+            AccumulatedVariance = insights.AccumulatedVariance,
+            AccumulatedSurplus = insights.AccumulatedSurplus,
+            AccumulatedShortage = insights.AccumulatedShortage,
+            TotalActualUsedBalls = insights.TotalActualUsedBalls,
+            ClosedDaysCount = insights.ClosedDaysCount,
+            CurrentAvailableBalls = insights.CurrentAvailableBalls,
+            StillFermentingBalls = insights.StillFermentingBalls,
+            MixedButNotBalledBalls = insights.MixedButNotBalledBalls,
+            RemainingForecastNeed = insights.RemainingForecastNeed,
+            AdjustedRemainingForecastNeed = insights.AdjustedRemainingForecastNeed,
+            DailyClosingVarianceApplied = insights.DailyClosingVarianceApplied,
+            ProjectedSurplus = insights.ProjectedSurplus,
+            HasSurplusWarning = insights.HasSurplusWarning,
+            HasShortageWarning = insights.HasShortageWarning,
+            Recommendation = insights.Recommendation
         };
     }
 

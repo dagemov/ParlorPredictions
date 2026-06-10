@@ -89,6 +89,13 @@
                     <span class="material-symbols-outlined">event_note</span>
                     View Events
                 </a>
+                <a asp-controller="DailyClosing"
+                   asp-action="Index"
+                   asp-route-referenceDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
+                   class="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest no-underline">
+                    <span class="material-symbols-outlined">edit_note</span>
+                    Daily Closing
+                </a>
                 <a asp-controller="WeeklyClosing"
                    asp-action="Index"
                    asp-route-referenceDate="@Model.TargetDate.ToString("yyyy-MM-dd")"

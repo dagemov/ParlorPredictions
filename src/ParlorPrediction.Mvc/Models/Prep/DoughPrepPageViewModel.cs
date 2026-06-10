@@ -1,4 +1,5 @@
 using ParlorPrediction.Mvc.Models.DoughQuality;
+using ParlorPrediction.Mvc.Models.Home;
 
 namespace ParlorPrediction.Mvc.Models.Prep;
 
@@ -23,4 +24,6 @@ public sealed class DoughPrepPageViewModel
     public IReadOnlyList<DoughQualityReviewCandidateViewModel> OlderDoughCandidates { get; set; } = Array.Empty<DoughQualityReviewCandidateViewModel>();
 
     public IReadOnlyList<DoughTaskViewModel> Tasks { get; set; } = Array.Empty<DoughTaskViewModel>();
+
+    public DailyClosingOperationalInsightsViewModel? DailyClosingInsights { get; set; }
 }

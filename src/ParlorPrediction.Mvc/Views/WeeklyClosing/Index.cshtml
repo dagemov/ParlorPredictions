@@ -103,6 +103,65 @@
 
 <section class="content-card content-card--padded mt-4">
     <div class="section-heading">
+        <span class="eyebrow">Daily Closing Summary</span>
+        <h2>Consumption tracked this operational week</h2>
+        <p>Daily closing feeds weekly closing. These totals come from recorded daily usage, not from inventory or production counts.</p>
+    </div>
+
+    @if (Model.DailyClosingSummary.HasDailyClosings)
+    {
+        <div class="metric-grid">
+            <article class="metric-card">
+                <span class="metric-card__label">Total Forecast</span>
+                <strong>@Model.DailyClosingSummary.TotalForecastBalls</strong>
+                <small>Full week forecast (Tue-Sun).</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Total Actual Used</span>
+                <strong>@Model.DailyClosingSummary.TotalActualUsedBalls</strong>
+                <small>@Model.DailyClosingSummary.ClosedDaysCount day@(Model.DailyClosingSummary.ClosedDaysCount == 1 ? string.Empty : "s") closed.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Accumulated Variance</span>
+                <strong class="@(Model.DailyClosingSummary.AccumulatedVariance > 0 ? "text-success" : Model.DailyClosingSummary.AccumulatedVariance < 0 ? "text-danger" : string.Empty)">
+                    @(Model.DailyClosingSummary.AccumulatedVariance > 0 ? $"+{Model.DailyClosingSummary.AccumulatedVariance}" : Model.DailyClosingSummary.AccumulatedVariance.ToString())
+                </strong>
+                <small>Forecast minus actual across closed days.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Accumulated Surplus</span>
+                <strong>@Model.DailyClosingSummary.AccumulatedSurplus</strong>
+                <small>Days below forecast.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Accumulated Shortage</span>
+                <strong>@Model.DailyClosingSummary.AccumulatedShortage</strong>
+                <small>Days above forecast.</small>
+            </article>
+        </div>
+
+        <div class="mt-3">
+            <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="DailyClosing" asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")">
+                <i class="fa-solid fa-calendar-day me-2"></i>
+                Review Daily Closings
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <i class="fa-regular fa-calendar-check"></i>
+            <span>No daily closings recorded for @Model.DailyClosingSummary.WeekStartDate.ToString("MMM d") - @Model.DailyClosingSummary.WeekEndDate.ToString("MMM d") yet.</span>
+        </div>
+        <a class="btn btn-primary mt-3" asp-action="Index" asp-controller="DailyClosing" asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")">
+            <i class="fa-solid fa-clipboard-check me-2"></i>
+            Start Daily Closing
+        </a>
+    }
+</section>
+
+<section class="content-card content-card--padded mt-4">
+    <div class="section-heading">
         <span class="eyebrow">Find Weeks</span>
         <h2>Review saved closings</h2>
         <p>Filter by operational Tuesday start dates when you need to review or correct a saved week.</p>

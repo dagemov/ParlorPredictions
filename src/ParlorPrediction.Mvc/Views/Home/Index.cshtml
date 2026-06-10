@@ -10,6 +10,7 @@
     var readyNowBalls = weeklyGoal?.ReadyNowBalls ?? planning?.ReadyBalls ?? 0;
     var stillMissingBalls = weeklyGoal?.DoughStillMissingThisWeekBalls ?? planning?.MissingBallsForProductionWindow ?? 0;
     var weeklyGoalBalls = weeklyGoal?.DoughNeededBalls ?? planning?.TotalFutureRequiredBalls ?? 0;
+    var dailyInsights = Model.DailyClosingInsights;
 }
 
 @if (!Model.IsAuthenticatedExperience)
@@ -117,7 +118,7 @@ else
                     <span class="pb-2 text-2xl text-on-surface-variant">balls</span>
                 </div>
                 <p class="mt-5 mb-0 text-lg leading-8 text-[#b46200]">
-                    This subtracts ready dough, fermenting dough, and mixed loads from the weekly need.
+                    Weekly need minus actual used on closed days, Ready Now, and Mixed But Not Balled. Still Fermenting stays visible but is not subtracted twice after Ball Dough.
                 </p>
             </article>
 
@@ -132,6 +133,70 @@ else
                 </p>
             </article>
         </section>
+
+        @if (dailyInsights?.HasSurplusWarning == true || dailyInsights?.HasShortageWarning == true || dailyInsights?.ClosedDaysCount > 0)
+        {
+            <section class="rounded-[28px] border @(dailyInsights?.HasSurplusWarning == true ? "border-[#7db335]" : dailyInsights?.HasShortageWarning == true ? "border-[#e05252]" : "border-outline-variant") bg-white p-7 shadow-sm">
+                <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                    <div class="section-heading mb-0">
+                        <span class="eyebrow">Week Pace</span>
+                        <h2>Daily consumption vs forecast</h2>
+                        <p>Separate from weekly goal and available dough. Tracks how much was really used each day.</p>
+                    </div>
+
+                    @if (Model.CanSeeAdminPanel)
+                    {
+                        <a asp-controller="DailyClosing"
+                           asp-action="Index"
+                           asp-route-referenceDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
+                           class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest no-underline">
+                            <span class="material-symbols-outlined">edit_note</span>
+                            Daily Closing
+                        </a>
+                    }
+                </div>
+
+                <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <div class="rounded-[20px] bg-surface-container-low p-5">
+                        <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Accumulated Variance</p>
+                        <strong class="mt-3 block text-4xl font-black tracking-[-0.05em] @(dailyInsights!.AccumulatedVariance > 0 ? "text-[#2e6e14]" : dailyInsights.AccumulatedVariance < 0 ? "text-error" : "text-on-surface")">
+                            @(dailyInsights.AccumulatedVariance > 0 ? $"+{dailyInsights.AccumulatedVariance}" : dailyInsights.AccumulatedVariance.ToString())
+                        </strong>
+                        <p class="mt-3 mb-0 text-base leading-7 text-on-surface-variant">@dailyInsights.ClosedDaysCount day@(dailyInsights.ClosedDaysCount == 1 ? string.Empty : "s") closed so far.</p>
+                    </div>
+
+                    <div class="rounded-[20px] bg-surface-container-low p-5">
+                        <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Total Used This Week</p>
+                        <strong class="mt-3 block text-4xl font-black tracking-[-0.05em] text-on-surface">@dailyInsights.TotalActualUsedBalls</strong>
+                        <p class="mt-3 mb-0 text-base leading-7 text-on-surface-variant">Actual dough balls consumed on closed days.</p>
+                    </div>
+
+                    <div class="rounded-[20px] bg-surface-container-low p-5">
+                        <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Remaining Forecast Need</p>
+                        <strong class="mt-3 block text-4xl font-black tracking-[-0.05em] text-primary">@dailyInsights.RemainingForecastNeed</strong>
+                        <p class="mt-3 mb-0 text-base leading-7 text-on-surface-variant">From today through Sunday.</p>
+                    </div>
+
+                    <div class="rounded-[20px] bg-surface-container-low p-5">
+                        <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Projected Surplus</p>
+                        <strong class="mt-3 block text-4xl font-black tracking-[-0.05em] @(dailyInsights.ProjectedSurplus > 0 ? "text-[#2e6e14]" : dailyInsights.ProjectedSurplus < 0 ? "text-error" : "text-on-surface")">
+                            @(dailyInsights.ProjectedSurplus > 0 ? $"+{dailyInsights.ProjectedSurplus}" : dailyInsights.ProjectedSurplus.ToString())
+                        </strong>
+                        <p class="mt-3 mb-0 text-base leading-7 text-on-surface-variant">Available + fermenting + mixed minus remaining need.</p>
+                    </div>
+                </div>
+
+                @if (dailyInsights.HasSurplusWarning || dailyInsights.HasShortageWarning)
+                {
+                    <div class="mt-6 rounded-[20px] @(dailyInsights.HasSurplusWarning ? "bg-[#f8fff0] border border-[#7db335]" : "bg-[#fff5f5] border border-error") p-5">
+                        <p class="m-0 text-lg font-bold text-on-surface">
+                            @(dailyInsights.HasSurplusWarning ? $"Potential Dough Surplus: +{dailyInsights.ProjectedSurplus} Balls" : $"Potential Dough Shortage: {dailyInsights.ProjectedSurplus} Balls")
+                        </p>
+                        <p class="mt-2 mb-0 text-lg leading-8 text-on-surface-variant">@dailyInsights.Recommendation</p>
+                    </div>
+                }
+            </section>
+        }
 
         @if (weeklyGoal?.HasClosingCarryover == true)
         {

@@ -1,0 +1,111 @@
+@model DailyDoughClosingFormPageViewModel
+@{
+    ViewData["Title"] = Model.Title;
+    ViewData["DoughNav"] = "daily-closing";
+    var statusType = TempData["DailyClosingStatusType"] as string;
+    var statusMessage = TempData["DailyClosingStatusMessage"] as string;
+}
+
+<section class="page-hero page-hero--compact">
+    <div>
+        <span class="eyebrow">Dough Recorrido</span>
+        <h1>@Model.Title</h1>
+        <p class="page-copy">@Model.Intro</p>
+    </div>
+
+    <div class="hero-actions">
+        <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="DailyClosing" asp-route-referenceDate="@Model.Form.ClosingDate.ToString("yyyy-MM-dd")">
+            <i class="fa-solid fa-arrow-left me-2"></i>
+            Back To Daily Closing
+        </a>
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(statusMessage))
+{
+    <div class="alert @(string.Equals(statusType, "success", StringComparison.OrdinalIgnoreCase) ? "alert-success" : "alert-danger") mt-4" role="alert">
+        @statusMessage
+    </div>
+}
+
+<section class="content-card content-card--padded mt-4">
+    <div class="section-heading">
+        <span class="eyebrow">Daily Closing Form</span>
+        <h2>Record real dough consumption</h2>
+        <p>Forecast needed comes from demand plans and events. Actual used is what the kitchen really consumed that day.</p>
+    </div>
+
+    <form asp-action="@(Model.Form.IsEdit ? "Edit" : "Close")"
+          asp-controller="DailyClosing"
+          asp-route-id="@(Model.Form.DailyDoughClosingId)"
+          method="post"
+          class="row g-4">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="col-md-4">
+            <label asp-for="Form.ClosingDate" class="form-label"></label>
+            @if (Model.Form.IsEdit)
+            {
+                <input asp-for="Form.ClosingDate" type="date" class="form-control" readonly />
+            }
+            else
+            {
+                <input asp-for="Form.ClosingDate" type="date" class="form-control" />
+            }
+            <span asp-validation-for="Form.ClosingDate" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label asp-for="Form.ForecastNeededBalls" class="form-label"></label>
+            <input asp-for="Form.ForecastNeededBalls" class="form-control" />
+            <span asp-validation-for="Form.ForecastNeededBalls" class="text-danger"></span>
+            <small class="text-muted">Snapshot from demand plan and events for this day.</small>
+        </div>
+
+        <div class="col-md-4">
+            <label asp-for="Form.ActualUsedBalls" class="form-label"></label>
+            <input asp-for="Form.ActualUsedBalls" class="form-control" autofocus />
+            <span asp-validation-for="Form.ActualUsedBalls" class="text-danger"></span>
+        </div>
+
+        <div class="col-12">
+            <label asp-for="Form.Notes" class="form-label"></label>
+            <textarea asp-for="Form.Notes" class="form-control" rows="3" placeholder="Optional note about slow day, event, or kitchen context."></textarea>
+            <span asp-validation-for="Form.Notes" class="text-danger"></span>
+        </div>
+
+        @if (Model.Form.IsEdit)
+        {
+            <div class="col-12">
+                <label asp-for="Form.CorrectionNote" class="form-label"></label>
+                <textarea asp-for="Form.CorrectionNote" class="form-control" rows="3" placeholder="Explain what changed and why this closing was corrected."></textarea>
+                <span asp-validation-for="Form.CorrectionNote" class="text-danger"></span>
+            </div>
+        }
+
+        <div class="col-12">
+            <div class="recommendation-note">
+                <h3>Difference = Forecast Needed - Actual Used</h3>
+                <p class="mb-0">
+                    Positive difference means dough was used less than forecast. Negative means more was used than expected.
+                    This does not change inventory — it only tracks consumption against the plan.
+                </p>
+            </div>
+        </div>
+
+        <div class="col-12 d-flex flex-wrap gap-3">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk me-2"></i>
+                @(Model.Form.IsEdit ? "Save Correction" : "Save Daily Closing")
+            </button>
+            <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="DailyClosing" asp-route-referenceDate="@Model.Form.ClosingDate.ToString("yyyy-MM-dd")">
+                Cancel
+            </a>
+        </div>
+    </form>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

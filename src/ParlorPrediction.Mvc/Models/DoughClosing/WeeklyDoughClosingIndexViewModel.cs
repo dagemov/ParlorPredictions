@@ -10,5 +10,7 @@ public sealed class WeeklyDoughClosingIndexViewModel
 
     public WeeklyDoughCarryoverPreviewViewModel CarryoverPreview { get; set; } = new();
 
+    public WeeklyDailyClosingSummaryViewModel DailyClosingSummary { get; set; } = new();
+
     public IReadOnlyList<WeeklyDoughClosingListItemViewModel> Closings { get; set; } = Array.Empty<WeeklyDoughClosingListItemViewModel>();
 }

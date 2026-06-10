@@ -16,6 +16,10 @@
     var previousWeekFinishedBalls = weeklyGoal?.PreviousWeekFinishedBalls ?? 0;
     var needsMixing = todayLoadPlan > 0;
     var needsBalling = todayBallsToBall > 0;
+    var dailyInsights = Model.DailyClosingInsights;
+    var actualUsedThisWeek = weeklyGoal?.ActualUsedBallsThisWeek ?? dailyInsights?.TotalActualUsedBalls ?? 0;
+    var accumulatedDailyVariance = weeklyGoal?.AccumulatedDailyVariance ?? dailyInsights?.AccumulatedVariance ?? 0;
+    var mixedLoadCount = weeklyGoal?.MixedButNotBalledLoads ?? 0;
 
     var statusTitle = !needsMixing && !needsBalling
         ? "No Action Needed"
@@ -70,13 +74,13 @@ else
 
         <section class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             <article class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
-                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Ready Dough Balls</p>
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Ready Now</p>
                 <div class="mt-5 flex items-end gap-3">
                     <strong class="text-6xl font-black leading-none tracking-[-0.06em] text-[#2e6e14]">@readyNowBalls</strong>
                     <span class="pb-2 text-2xl text-on-surface-variant">balls</span>
                 </div>
                 <p class="mt-5 mb-0 text-lg leading-8 text-on-surface-variant">
-                    Ready to use now. Attention dough still counts here if it is not discarded.
+                    Ready/balled dough only. Make Dough Load does not increase this number.
                 </p>
             </article>
 
@@ -98,7 +102,7 @@ else
                     <span class="pb-2 text-2xl text-on-surface-variant">balls</span>
                 </div>
                 <p class="mt-5 mb-0 text-lg leading-8 text-[#b46200]">
-                    Weekly need after ready dough, fermenting dough, and mixed-but-not-balled dough are counted.
+                    Weekly need minus actual used on closed days, Ready Now, and Mixed But Not Balled. Still Fermenting stays visible but is not subtracted twice after Ball Dough.
                 </p>
             </article>
 
@@ -118,14 +122,61 @@ else
             <article class="rounded-[22px] border border-outline-variant bg-white p-5 shadow-sm">
                 <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Still Fermenting</p>
                 <strong class="mt-4 block text-4xl font-black tracking-[-0.05em] text-primary">@stillFermentingBalls</strong>
-                <p class="mt-4 mb-0 text-base leading-7 text-on-surface-variant">Already mixed for this week, but not usable right now.</p>
+                <p class="mt-4 mb-0 text-base leading-7 text-on-surface-variant">Balled dough waiting to become usable this week. Unballed loads belong under Mixed But Not Balled.</p>
             </article>
 
             <article class="rounded-[22px] border border-outline-variant bg-white p-5 shadow-sm">
                 <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Mixed But Not Balled</p>
                 <strong class="mt-4 block text-4xl font-black tracking-[-0.05em] text-[#9b5200]">@mixedButNotBalledBalls</strong>
-                <p class="mt-4 mb-0 text-base leading-7 text-on-surface-variant">Potential only. These balls do not count as available until Ball Dough is completed.</p>
+                <p class="mt-4 mb-0 text-base leading-7 text-on-surface-variant">
+                    @if (mixedLoadCount > 0)
+                    {
+                        @($"{mixedLoadCount} load{(mixedLoadCount == 1 ? string.Empty : "s")} / {mixedButNotBalledBalls} future balls. Potential only until Ball Dough is completed.")
+                    }
+                    else
+                    {
+                        @("No unballed loads waiting. Make Dough Load creates future capacity only.")
+                    }
+                </p>
             </article>
+
+            <article class="rounded-[22px] border border-outline-variant bg-white p-5 shadow-sm">
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Future Balls</p>
+                <strong class="mt-4 block text-4xl font-black tracking-[-0.05em] text-primary">@(weeklyGoal?.FutureBalls ?? mixedButNotBalledBalls + (weeklyGoal?.StillFermentingBalls ?? 0))</strong>
+                <p class="mt-4 mb-0 text-base leading-7 text-on-surface-variant">Mixed not balled plus still fermenting. Not the same as Ready Now.</p>
+            </article>
+
+            <article class="rounded-[22px] border border-outline-variant bg-white p-5 shadow-sm">
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Produced This Week</p>
+                <strong class="mt-4 block text-4xl font-black tracking-[-0.05em] text-primary">@(weeklyGoal?.ProducedThisWeekBalls ?? 0)</strong>
+                <p class="mt-4 mb-0 text-base leading-7 text-on-surface-variant">Balls from completed Ball Dough tasks. Separate from consumed dough.</p>
+            </article>
+
+            @if (actualUsedThisWeek > 0 || accumulatedDailyVariance != 0)
+            {
+                <article class="rounded-[22px] border border-outline-variant bg-white p-5 shadow-sm">
+                    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Actual Used This Week</p>
+                    <strong class="mt-4 block text-4xl font-black tracking-[-0.05em] text-primary">@actualUsedThisWeek</strong>
+                    <p class="mt-4 mb-0 text-base leading-7 text-on-surface-variant">
+                        Closed-day consumption only. Does not create dough or change production counts.
+                        @if (accumulatedDailyVariance != 0)
+                        {
+                            <span>Daily variance so far: @(accumulatedDailyVariance > 0 ? $"+{accumulatedDailyVariance}" : accumulatedDailyVariance.ToString()) balls.</span>
+                        }
+                    </p>
+                </article>
+            }
+
+            @if (Model.DailyClosingInsights?.ClosedDaysCount > 0)
+            {
+                <article class="rounded-[22px] border border-outline-variant bg-white p-5 shadow-sm">
+                    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Daily Surplus / Shortage</p>
+                    <strong class="mt-4 block text-4xl font-black tracking-[-0.05em] @(Model.DailyClosingInsights.AccumulatedVariance > 0 ? "text-[#2e6e14]" : Model.DailyClosingInsights.AccumulatedVariance < 0 ? "text-error" : "text-primary")">
+                        @(Model.DailyClosingInsights.AccumulatedVariance > 0 ? $"+{Model.DailyClosingInsights.AccumulatedVariance}" : Model.DailyClosingInsights.AccumulatedVariance.ToString())
+                    </strong>
+                    <p class="mt-4 mb-0 text-base leading-7 text-on-surface-variant">Consumption variance only. Does not change Ready Now or Produced.</p>
+                </article>
+            }
 
             <article class="rounded-[22px] border border-outline-variant bg-white p-5 shadow-sm">
                 <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Use First</p>
@@ -139,6 +190,24 @@ else
                 <p class="mt-4 mb-0 text-base leading-7 text-on-surface-variant">Historical only. This number is not counted as available for this week.</p>
             </article>
         </section>
+
+        @if (dailyInsights?.HasSurplusWarning == true || dailyInsights?.HasShortageWarning == true)
+        {
+            <section class="rounded-[24px] border @(dailyInsights.HasSurplusWarning ? "border-[#7db335]" : "border-error") bg-white p-6 shadow-sm">
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Week Pace Alert</p>
+                <p class="mt-3 mb-0 text-lg leading-8 text-on-surface">
+                    @(dailyInsights.HasSurplusWarning ? $"Potential Dough Surplus: +{dailyInsights.ProjectedSurplus} balls." : $"Potential Dough Shortage: {dailyInsights.ProjectedSurplus} balls.")
+                    <span class="text-on-surface-variant">@dailyInsights.Recommendation</span>
+                </p>
+                <a asp-controller="DailyClosing"
+                   asp-action="Index"
+                   asp-route-referenceDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
+                   class="mt-4 inline-flex items-center gap-2 text-primary font-bold no-underline">
+                    <span class="material-symbols-outlined">edit_note</span>
+                    Open Daily Closing
+                </a>
+            </section>
+        }
 
         @if (weeklyGoal?.HasClosingCarryover == true)
         {

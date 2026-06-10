@@ -1,0 +1,40 @@
+namespace ParlorPrediction.Contracts.Responses.DoughClosing;
+
+public sealed class DailyClosingOperationalInsightsResponse
+{
+    public DateOnly ReferenceDate { get; set; }
+
+    public DateOnly WeekStartDate { get; set; }
+
+    public DateOnly WeekEndDate { get; set; }
+
+    public int AccumulatedVariance { get; set; }
+
+    public int AccumulatedSurplus { get; set; }
+
+    public int AccumulatedShortage { get; set; }
+
+    public int TotalActualUsedBalls { get; set; }
+
+    public int ClosedDaysCount { get; set; }
+
+    public int CurrentAvailableBalls { get; set; }
+
+    public int StillFermentingBalls { get; set; }
+
+    public int MixedButNotBalledBalls { get; set; }
+
+    public int RemainingForecastNeed { get; set; }
+
+    public int AdjustedRemainingForecastNeed { get; set; }
+
+    public int DailyClosingVarianceApplied { get; set; }
+
+    public int ProjectedSurplus { get; set; }
+
+    public bool HasSurplusWarning { get; set; }
+
+    public bool HasShortageWarning { get; set; }
+
+    public string Recommendation { get; set; } = string.Empty;
+}

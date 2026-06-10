@@ -24,4 +24,6 @@ public sealed class OperationalHomePageViewModel
     public IReadOnlyList<OperationalHomeWeekDayViewModel> WeeklyForecast { get; set; } = Array.Empty<OperationalHomeWeekDayViewModel>();
 
     public IReadOnlyList<OperationalHomeEventViewModel> Events { get; set; } = Array.Empty<OperationalHomeEventViewModel>();
+
+    public DailyClosingOperationalInsightsViewModel? DailyClosingInsights { get; set; }
 }
