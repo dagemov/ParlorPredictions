@@ -3,6 +3,7 @@
 @{
     var toolbarRequestToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
     var canManage = Model.CanManageRecommendations;
+    var canRecordUsage = Context.User.IsInRole("Admin") || Context.User.IsInRole("Manager") || Context.User.IsInRole("PizzaMaker");
 }
 
 <section id="dough-prep-workspace" class="space-y-gutter">
@@ -73,6 +74,24 @@
         </form>
 
         <div class="mt-6 flex flex-wrap gap-3">
+            @if (canRecordUsage)
+            {
+                <a asp-controller="DoughUsage"
+                   asp-action="Create"
+                   asp-route-date="@Model.TargetDate.ToString("yyyy-MM-dd")"
+                   class="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest no-underline">
+                    <span class="material-symbols-outlined">inventory_2</span>
+                    Record Dough Used
+                </a>
+                <a asp-controller="DoughUsage"
+                   asp-action="ReballPlanning"
+                   asp-route-date="@Model.TargetDate.ToString("yyyy-MM-dd")"
+                   class="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest no-underline">
+                    <span class="material-symbols-outlined">assignment_turned_in</span>
+                    Review Reball Plan
+                </a>
+            }
+
             @if (canManage)
             {
                 <a asp-controller="PrepData"
