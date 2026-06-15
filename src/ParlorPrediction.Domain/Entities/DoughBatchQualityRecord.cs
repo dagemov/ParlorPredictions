@@ -87,6 +87,8 @@ public sealed class DoughBatchQualityRecord
 
     public ICollection<DoughReballRecord> ReballRecords { get; private set; } = new List<DoughReballRecord>();
 
+    public ICollection<DoughUsageTrace> UsageTraces { get; private set; } = new List<DoughUsageTrace>();
+
     public bool CountsAsAvailable => DoughQualityRules.CountsAsAvailable(CurrentStatus);
 
     public static DoughBatchQualityRecord Create(

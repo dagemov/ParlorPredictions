@@ -83,6 +83,7 @@ public static class PersistenceLayerServiceCollectionExtensions
         services.AddScoped<IDoughPrepRecommendationReadRepository, DoughPrepRecommendationReadRepository>();
         services.AddScoped<IDoughPrepRecommendationRepository, DoughPrepRecommendationRepository>();
         services.AddScoped<IDoughReballRecordRepository, DoughReballRecordRepository>();
+        services.AddScoped<IDoughUsageTraceRepository, DoughUsageTraceRepository>();
         services.AddScoped<IDailyDoughClosingRepository, DailyDoughClosingRepository>();
         services.AddScoped<IWeeklyDoughClosingRepository, WeeklyDoughClosingRepository>();
         services.AddScoped<IManagerPrepRecommendationRepository, ManagerPrepRecommendationRepository>();

@@ -26,6 +26,8 @@ public sealed class ParlorPredictionDbContext : IdentityDbContext<User>
 
     public DbSet<DoughReballRecord> DoughReballRecords => Set<DoughReballRecord>();
 
+    public DbSet<DoughUsageTrace> DoughUsageTraces => Set<DoughUsageTrace>();
+
     public DbSet<ManagerPrepRecommendation> ManagerPrepRecommendations => Set<ManagerPrepRecommendation>();
 
     public DbSet<PrepTask> PrepTasks => Set<PrepTask>();
