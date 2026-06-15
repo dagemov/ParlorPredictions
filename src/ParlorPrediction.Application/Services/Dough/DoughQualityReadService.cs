@@ -10,13 +10,16 @@ namespace ParlorPrediction.Application.Services.Dough;
 public sealed class DoughQualityReadService : IDoughQualityReadService
 {
     private readonly IDoughBatchQualityRepository _doughBatchQualityRepository;
+    private readonly IDoughSourceProjectionService _doughSourceProjectionService;
     private readonly IDoughLossRecordRepository _doughLossRecordRepository;
 
     public DoughQualityReadService(
         IDoughBatchQualityRepository doughBatchQualityRepository,
+        IDoughSourceProjectionService doughSourceProjectionService,
         IDoughLossRecordRepository doughLossRecordRepository)
     {
         _doughBatchQualityRepository = doughBatchQualityRepository;
+        _doughSourceProjectionService = doughSourceProjectionService;
         _doughLossRecordRepository = doughLossRecordRepository;
     }
 
@@ -52,31 +55,37 @@ public sealed class DoughQualityReadService : IDoughQualityReadService
         }
 
         var records = await _doughBatchQualityRepository.ListAsync(cancellationToken);
+        var remainingBySource = await _doughSourceProjectionService.GetRemainingBySourceAsync(
+            request.ReferenceDate,
+            cancellationToken);
+        var remainingLookup = remainingBySource.ToDictionary(item => item.SourceDoughBatchQualityRecordId);
 
         return records
-            .Where(record => DoughQualityRules.IsAttentionCandidate(
-                record.CurrentStatus,
-                record.CreatedOrBalledAt,
-                request.ReferenceDate,
-                record.MustUseByDate))
+            .Where(record => remainingLookup.TryGetValue(record.Id, out var source) &&
+                source.RemainingBalls > 0 &&
+                (string.Equals(source.RecommendedAction, DoughActionRecommendation.Review.ToString(), StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(source.RecommendedAction, DoughActionRecommendation.Reball.ToString(), StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(source.RecommendedAction, DoughActionRecommendation.Discard.ToString(), StringComparison.OrdinalIgnoreCase)))
             .OrderBy(record => record.SourceDate)
             .ThenBy(record => record.CreatedOrBalledAt)
-            .Select(record => MapCandidate(record, request.ReferenceDate))
+            .Select(record => MapCandidate(record, remainingLookup[record.Id], request.ReferenceDate))
             .ToArray();
     }
 
     public async Task<DoughQualitySummaryResponse> GetSummaryAsync(CancellationToken cancellationToken = default)
     {
         var records = await _doughBatchQualityRepository.ListAsync(cancellationToken);
+        var referenceDate = DateOnly.FromDateTime(DateTime.Today);
+        var remainingBySource = await _doughSourceProjectionService.GetRemainingBySourceAsync(referenceDate, cancellationToken);
 
         return new DoughQualitySummaryResponse
         {
-            GoodBalls = records.Where(record => record.CurrentStatus == DoughQualityStatus.Good).Sum(record => record.QuantityBalls),
-            AttentionBalls = records.Where(record => record.CurrentStatus == DoughQualityStatus.Attention).Sum(record => record.QuantityBalls),
-            ReballedBalls = records.Where(record => record.CurrentStatus == DoughQualityStatus.Reballed).Sum(record => record.QuantityBalls),
-            MustUseNextDayBalls = records.Where(record => record.CurrentStatus == DoughQualityStatus.MustUseNextDay).Sum(record => record.QuantityBalls),
+            GoodBalls = SumRemainingByStatus(remainingBySource, DoughQualityStatus.Good),
+            AttentionBalls = SumRemainingByStatus(remainingBySource, DoughQualityStatus.Attention),
+            ReballedBalls = SumRemainingByStatus(remainingBySource, DoughQualityStatus.Reballed),
+            MustUseNextDayBalls = SumRemainingByStatus(remainingBySource, DoughQualityStatus.MustUseNextDay),
             DiscardedBalls = records.Where(record => record.CurrentStatus == DoughQualityStatus.Discarded).Sum(record => record.QuantityBalls),
-            TotalAvailableBalls = records.Where(record => record.CountsAsAvailable).Sum(record => record.QuantityBalls)
+            TotalAvailableBalls = remainingBySource.Where(record => record.CountsAsAvailable).Sum(record => record.RemainingBalls)
         };
     }
 
@@ -139,27 +148,36 @@ public sealed class DoughQualityReadService : IDoughQualityReadService
 
     private static DoughAttentionCandidateResponse MapCandidate(
         DoughBatchQualityRecord record,
+        Contracts.Responses.DoughUsage.DoughSourceRemainingResponse source,
         DateOnly referenceDate)
     {
         var ageDays = DoughQualityRules.CalculateOperationalAgeDays(record.CreatedOrBalledAt, referenceDate);
-        var candidateReason = record.CurrentStatus == DoughQualityStatus.MustUseNextDay &&
-            record.MustUseByDate.HasValue &&
-            referenceDate > record.MustUseByDate.Value
-            ? "MustUseNextDay deadline has passed."
-            : ageDays <= DoughQualityRules.AttentionCandidatePreferredMaximumDays
-                ? "Dough has reached the attention age window."
-                : "Dough has exceeded the preferred attention age window.";
+        var candidateReason = source.RecommendedAction switch
+        {
+            nameof(DoughActionRecommendation.Discard) => "Remaining dough is now past the safe use window and needs a manager discard decision.",
+            nameof(DoughActionRecommendation.Reball) => "Remaining dough has moved past the preferred attention window and should be reviewed for reball.",
+            _ => "Remaining dough has reached the attention window and needs review."
+        };
 
         return new DoughAttentionCandidateResponse
         {
             DoughBatchQualityRecordId = record.Id,
             SourceDate = record.SourceDate,
             CreatedOrBalledAt = record.CreatedOrBalledAt,
-            QuantityBalls = record.QuantityBalls,
+            QuantityBalls = source.RemainingBalls,
             CurrentStatus = record.CurrentStatus.ToString(),
             AgeDays = ageDays,
             CandidateReason = candidateReason
         };
+    }
+
+    private static int SumRemainingByStatus(
+        IReadOnlyList<Contracts.Responses.DoughUsage.DoughSourceRemainingResponse> remainingBySource,
+        DoughQualityStatus status)
+    {
+        return remainingBySource
+            .Where(record => string.Equals(record.SourceType, status.ToString(), StringComparison.OrdinalIgnoreCase))
+            .Sum(record => record.RemainingBalls);
     }
 
     private static DoughQualityStatus? ParseOptionalStatus(string? value)

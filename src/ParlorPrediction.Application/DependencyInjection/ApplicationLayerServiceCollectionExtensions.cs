@@ -17,10 +17,13 @@ public static class ApplicationLayerServiceCollectionExtensions
         services.AddScoped<IAiPrepRecommendationService, AiPrepRecommendationService>();
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IDoughDemandPlanService, DoughDemandPlanService>();
+        services.AddScoped<IDoughSourceProjectionService, DoughSourceProjectionService>();
         services.AddScoped<IDoughAvailabilityProjectionService, DoughAvailabilityProjectionService>();
         services.AddScoped<IDoughPrepCalculationService, DoughPrepCalculationService>();
         services.AddScoped<IDoughQualityManagementService, DoughQualityManagementService>();
         services.AddScoped<IDoughQualityReadService, DoughQualityReadService>();
+        services.AddScoped<IDoughUsageTraceManagementService, DoughUsageTraceManagementService>();
+        services.AddScoped<IDoughUsageTraceReadService, DoughUsageTraceReadService>();
         services.AddScoped<IDailyDoughClosingManagementService, DailyDoughClosingManagementService>();
         services.AddScoped<IDailyDoughClosingReadService, DailyDoughClosingReadService>();
         services.AddScoped<IWeeklyDoughClosingManagementService, WeeklyDoughClosingManagementService>();
