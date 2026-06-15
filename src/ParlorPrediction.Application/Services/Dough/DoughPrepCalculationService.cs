@@ -11,27 +11,27 @@ namespace ParlorPrediction.Application.Services.Dough;
 
 public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
 {
+    private readonly IDoughAvailabilityProjectionService _doughAvailabilityProjectionService;
     private readonly IDoughDemandPlanReadRepository _doughDemandPlanReadRepository;
     private readonly IDoughInventoryReadRepository _doughInventoryReadRepository;
     private readonly IPrepTaskRepository _prepTaskRepository;
     private readonly IRestaurantEventReadRepository _restaurantEventReadRepository;
     private readonly ISalesHistoryReadRepository _salesHistoryReadRepository;
-    private readonly IWeeklyDoughClosingReadService _weeklyDoughClosingReadService;
 
     public DoughPrepCalculationService(
+        IDoughAvailabilityProjectionService doughAvailabilityProjectionService,
         IDoughDemandPlanReadRepository doughDemandPlanReadRepository,
         IDoughInventoryReadRepository doughInventoryReadRepository,
         IPrepTaskRepository prepTaskRepository,
         IRestaurantEventReadRepository restaurantEventReadRepository,
-        ISalesHistoryReadRepository salesHistoryReadRepository,
-        IWeeklyDoughClosingReadService weeklyDoughClosingReadService)
+        ISalesHistoryReadRepository salesHistoryReadRepository)
     {
+        _doughAvailabilityProjectionService = doughAvailabilityProjectionService;
         _doughDemandPlanReadRepository = doughDemandPlanReadRepository;
         _doughInventoryReadRepository = doughInventoryReadRepository;
         _prepTaskRepository = prepTaskRepository;
         _restaurantEventReadRepository = restaurantEventReadRepository;
         _salesHistoryReadRepository = salesHistoryReadRepository;
-        _weeklyDoughClosingReadService = weeklyDoughClosingReadService;
     }
 
     public async Task<DoughPrepCalculationResult> CalculateAsync(
@@ -54,7 +54,9 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
             request.TargetDate,
             cancellationToken);
         var prepTasks = await _prepTaskRepository.GetDoughTasksByDateAsync(request.TargetDate, cancellationToken);
-        var carryover = await GetCarryoverFallbackAsync(request.TargetDate, latestInventorySnapshot, cancellationToken);
+        var availability = await _doughAvailabilityProjectionService.GetWeeklyAvailabilityAsync(
+            request.TargetDate,
+            cancellationToken);
 
         var historicalAverageBalls = demandPlans.Count > 0
             ? CalculateDemandPlanBaselineBalls(demandPlans)
@@ -62,18 +64,19 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
         var eventEstimatedBalls = events.Sum(restaurantEvent => restaurantEvent.EstimatedDoughBalls);
         var requiredBalls = checked(historicalAverageBalls + eventEstimatedBalls);
         var weekStartDate = GetOperationalWeekStart(request.TargetDate);
-        var usingLiveInventory = DoughWeeklyInventoryCalculator.UsesLiveInventorySnapshot(
-            latestInventorySnapshot,
-            weekStartDate);
-        var availableBalls = carryover?.CarryoverAvailableBalls
-            ?? latestInventorySnapshot?.AvailableBalls
-            ?? 0;
+        var usingLiveInventory = !availability.HasClosingCarryover &&
+            DoughWeeklyInventoryCalculator.UsesLiveInventorySnapshot(
+                latestInventorySnapshot,
+                weekStartDate);
+        var availableBalls = availability.AvailableBalls;
         var completedBalls = prepTasks
             .Where(task => task.Status == PrepTaskStatus.Completed && task.CountsAsAvailableBallsWhenCompleted)
             .Sum(task => task.CompletedBallsEquivalent);
-        var missingBalls = usingLiveInventory
-            ? Math.Max(requiredBalls - availableBalls, 0)
-            : Math.Max(requiredBalls - availableBalls - completedBalls, 0);
+        var completedBallDoughBalls = prepTasks
+            .Where(task => task.Status == PrepTaskStatus.Completed && task.TaskType == PrepTaskType.BallDough)
+            .Sum(task => task.CompletedBallsEquivalent);
+        var supplementalCompletedBalls = Math.Max(completedBalls - completedBallDoughBalls, 0);
+        var missingBalls = Math.Max(requiredBalls - availableBalls - supplementalCompletedBalls, 0);
         var recommendedCases = CalculateRoundedUpUnits(missingBalls, DoughRules.BallsPerCase);
         var recommendedLoads = CalculateRoundedUpUnits(recommendedCases, DoughRules.StandardBatchCases);
         var shouldMakeDough = missingBalls > 0;
@@ -236,32 +239,6 @@ public sealed class DoughPrepCalculationService : IDoughPrepCalculationService
         }
 
         return reasonBuilder.ToString();
-    }
-
-    private async Task<Contracts.Responses.DoughClosing.WeeklyDoughCarryoverResponse?> GetCarryoverFallbackAsync(
-        DateOnly targetDate,
-        DoughInventorySnapshot? latestInventorySnapshot,
-        CancellationToken cancellationToken)
-    {
-        var weekStartDate = GetOperationalWeekStart(targetDate);
-        var hasCurrentWeekSnapshot = latestInventorySnapshot is not null &&
-            latestInventorySnapshot.SnapshotDate >= weekStartDate;
-
-        if (hasCurrentWeekSnapshot)
-        {
-            return null;
-        }
-
-        var carryover = await _weeklyDoughClosingReadService.GetCarryoverForWeekAsync(
-            new Contracts.Requests.DoughClosing.GetWeeklyDoughCarryoverRequest
-            {
-                WeekStartDate = targetDate
-            },
-            cancellationToken);
-
-        return carryover.HasClosingCarryover
-            ? carryover
-            : null;
     }
 
     private static DateOnly GetOperationalWeekStart(DateOnly referenceDate)

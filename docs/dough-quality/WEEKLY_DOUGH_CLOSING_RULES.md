@@ -15,11 +15,30 @@ The goal of this phase is to preserve carryover truth, create auditability, and 
 
 ## Operational Week
 
-- Operational week start: `Tuesday`
-- Operational week end: `Sunday`
-- Week length: `6 days`
+- Weekly closing window start: `Monday`
+- Weekly closing window end: `Sunday`
+- Weekly closing window length: `7 days`
 
-All closings are normalized to the Tuesday-based operational week already used by weekly dough planning.
+Daily service closing and Prep Dough planning still use the active `Tuesday-Sunday` service window.
+
+That means:
+
+- `Weekly Closing` is normalized to `Monday-Sunday`
+- `Daily Closing` still records the service days inside that week
+- carryover for the next planning cycle is still fed into the existing prep experience
+
+This split keeps kitchen planning stable while making weekly closing easier for managers to understand.
+
+## Manager Flow
+
+The preferred manager flow is now:
+
+- open the weekly closing screen
+- review the `Daily Closing Summary`
+- use `Close This Week`
+- confirm the auto-calculated summary
+
+The manual weekly closing form remains available for exceptional corrections or backfill.
 
 ## What Weekly Closing Stores
 

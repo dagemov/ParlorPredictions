@@ -2,9 +2,9 @@ namespace ParlorPrediction.Mvc.Models.DoughClosing;
 
 public sealed class WeeklyDailyClosingSummaryViewModel
 {
-    public DateOnly WeekStartDate { get; set; }
+    public DateOnly ServiceStartDate { get; set; }
 
-    public DateOnly WeekEndDate { get; set; }
+    public DateOnly ServiceEndDate { get; set; }
 
     public int TotalForecastBalls { get; set; }
 

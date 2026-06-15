@@ -4,6 +4,14 @@ public sealed class WeeklyDoughClosingIndexViewModel
 {
     public DateOnly ReferenceDate { get; set; }
 
+    public DateOnly ClosingWeekStartDate { get; set; }
+
+    public DateOnly ClosingWeekEndDate { get; set; }
+
+    public Guid? CurrentWeekClosingId { get; set; }
+
+    public bool CanCloseThisWeek { get; set; }
+
     public DateOnly? FromWeekStartDate { get; set; }
 
     public DateOnly? ToWeekStartDate { get; set; }
@@ -13,4 +21,6 @@ public sealed class WeeklyDoughClosingIndexViewModel
     public WeeklyDailyClosingSummaryViewModel DailyClosingSummary { get; set; } = new();
 
     public IReadOnlyList<WeeklyDoughClosingListItemViewModel> Closings { get; set; } = Array.Empty<WeeklyDoughClosingListItemViewModel>();
+
+    public bool CurrentWeekAlreadyClosed => CurrentWeekClosingId.HasValue;
 }

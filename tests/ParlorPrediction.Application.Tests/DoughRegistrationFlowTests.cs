@@ -198,6 +198,15 @@ public sealed class DoughRegistrationFlowTests
         var tasks = new InMemoryPrepTaskRepository();
         var weeklyClosingRead = new StubWeeklyDoughClosingReadService();
         var dailyClosings = new InMemoryDailyDoughClosingRepository();
+        var qualityRecords = new InMemoryDoughBatchQualityRepository();
+        var lossRecords = new InMemoryDoughLossRecordRepository();
+        var availabilityProjectionService = new DoughAvailabilityProjectionService(
+            dailyClosings,
+            qualityRecords,
+            inventorySnapshots,
+            lossRecords,
+            tasks,
+            weeklyClosingRead);
 
         return new CalendarFixture(
             batches,
@@ -205,13 +214,15 @@ public sealed class DoughRegistrationFlowTests
             tasks,
             weeklyClosingRead,
             dailyClosings,
+            qualityRecords,
+            lossRecords,
             new PrepWeeklyDoughCalendarService(
+                availabilityProjectionService,
                 calculationService,
                 batches,
                 inventorySnapshots,
                 dailyClosings,
-                tasks,
-                weeklyClosingRead));
+                tasks));
     }
 
     private static DoughInventorySnapshot CreateSnapshot(DateOnly snapshotDate, int availableBalls)
@@ -251,6 +262,8 @@ public sealed class DoughRegistrationFlowTests
         InMemoryPrepTaskRepository Tasks,
         StubWeeklyDoughClosingReadService WeeklyClosingRead,
         InMemoryDailyDoughClosingRepository DailyClosings,
+        InMemoryDoughBatchQualityRepository QualityRecords,
+        InMemoryDoughLossRecordRepository LossRecords,
         PrepWeeklyDoughCalendarService Service);
 
     private sealed class CanonicalWeekCalculationService : IDoughPrepCalculationService
@@ -440,6 +453,84 @@ public sealed class DoughRegistrationFlowTests
         public void Remove(PrepTask task)
         {
             Tasks.Remove(task);
+        }
+    }
+
+    private sealed class InMemoryDoughBatchQualityRepository : IDoughBatchQualityRepository
+    {
+        public List<DoughBatchQualityRecord> Records { get; } = [];
+
+        public Task AddAsync(DoughBatchQualityRecord record, CancellationToken cancellationToken = default)
+        {
+            Records.Add(record);
+            return Task.CompletedTask;
+        }
+
+        public Task<DoughBatchQualityRecord?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<DoughBatchQualityRecord?>(Records.FirstOrDefault(record => record.Id == id));
+        }
+
+        public Task<IReadOnlyList<DoughBatchQualityRecord>> ListAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<DoughBatchQualityRecord>>(Records.ToArray());
+        }
+
+        public Task<IReadOnlyList<DoughBatchQualityRecord>> SearchAsync(
+            DateOnly? sourceDateFrom,
+            DateOnly? sourceDateTo,
+            DateOnly? createdOrBalledFromDate,
+            DateOnly? createdOrBalledToDate,
+            DateOnly? reballedFromDate,
+            DateOnly? reballedToDate,
+            DoughQualityStatus? currentStatus,
+            CancellationToken cancellationToken = default)
+        {
+            IEnumerable<DoughBatchQualityRecord> query = Records;
+
+            if (currentStatus.HasValue)
+            {
+                query = query.Where(record => record.CurrentStatus == currentStatus.Value);
+            }
+
+            return Task.FromResult<IReadOnlyList<DoughBatchQualityRecord>>(query.ToArray());
+        }
+    }
+
+    private sealed class InMemoryDoughLossRecordRepository : IDoughLossRecordRepository
+    {
+        public List<DoughLossRecord> Records { get; } = [];
+
+        public Task AddAsync(DoughLossRecord record, CancellationToken cancellationToken = default)
+        {
+            Records.Add(record);
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<DoughLossRecord>> SearchAsync(
+            DateOnly? fromDate,
+            DateOnly? toDate,
+            DoughLossReason? lossReason,
+            CancellationToken cancellationToken = default)
+        {
+            IEnumerable<DoughLossRecord> query = Records;
+
+            if (fromDate.HasValue)
+            {
+                query = query.Where(record => record.LossDate >= fromDate.Value);
+            }
+
+            if (toDate.HasValue)
+            {
+                query = query.Where(record => record.LossDate <= toDate.Value);
+            }
+
+            if (lossReason.HasValue)
+            {
+                query = query.Where(record => record.LossReason == lossReason.Value);
+            }
+
+            return Task.FromResult<IReadOnlyList<DoughLossRecord>>(query.ToArray());
         }
     }
 }

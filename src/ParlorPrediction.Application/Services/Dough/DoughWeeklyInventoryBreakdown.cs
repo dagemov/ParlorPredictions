@@ -81,18 +81,9 @@ public static class DoughWeeklyInventoryCalculator
             return snapshotReadyBalls;
         }
 
-        var transactionReady = Math.Max(
+        return Math.Max(
             0,
             carryoverAvailableBalls + producedThisWeekBalls - actualUsedBallsThisWeek);
-
-        if (!hasCurrentWeekSnapshot)
-        {
-            return transactionReady;
-        }
-
-        // Priority: Weekly Closing carryover + current-week transactions over a low runtime snapshot.
-        // A higher snapshot still wins when inventory was explicitly corrected upward.
-        return Math.Max(transactionReady, snapshotReadyBalls);
     }
 
     public static int ResolveStillFermentingForDisplay(

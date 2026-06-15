@@ -10,13 +10,17 @@
     <div>
         <span class="eyebrow">Dough Recorrido</span>
         <h1>Weekly Dough Closing</h1>
-        <p class="page-copy">Close one real kitchen week at a time so the next Tuesday starts with actual carryover, not a reset to zero.</p>
+        <p class="page-copy">Close one real kitchen week at a time so the next week starts with actual carryover, not a reset to zero.</p>
     </div>
 
     <div class="hero-actions">
-        <a class="btn btn-primary" asp-action="Create" asp-controller="WeeklyClosing">
+        <a class="btn btn-primary" asp-action="CloseThisWeek" asp-controller="WeeklyClosing" asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")">
             <i class="fa-solid fa-clipboard-check me-2"></i>
-            Close A Week
+            Close This Week
+        </a>
+        <a class="btn btn-outline-secondary" asp-action="Create" asp-controller="WeeklyClosing">
+            <i class="fa-solid fa-sliders me-2"></i>
+            Manual Closing Form
         </a>
         <a class="btn btn-outline-secondary" asp-action="Dough" asp-controller="Prep" asp-route-targetDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")">
             <i class="fa-solid fa-bread-slice me-2"></i>
@@ -105,7 +109,7 @@
     <div class="section-heading">
         <span class="eyebrow">Daily Closing Summary</span>
         <h2>Consumption tracked this operational week</h2>
-        <p>Daily closing feeds weekly closing. These totals come from recorded daily usage, not from inventory or production counts.</p>
+        <p>Closing window: @Model.ClosingWeekStartDate.ToString("MMM d") - @Model.ClosingWeekEndDate.ToString("MMM d"). Service days: @Model.DailyClosingSummary.ServiceStartDate.ToString("MMM d") - @Model.DailyClosingSummary.ServiceEndDate.ToString("MMM d"). These totals come from daily usage, not from inventory or production counts.</p>
     </div>
 
     @if (Model.DailyClosingSummary.HasDailyClosings)
@@ -114,7 +118,7 @@
             <article class="metric-card">
                 <span class="metric-card__label">Total Forecast</span>
                 <strong>@Model.DailyClosingSummary.TotalForecastBalls</strong>
-                <small>Full week forecast (Tue-Sun).</small>
+                <small>Service-day forecast for @Model.DailyClosingSummary.ServiceStartDate.ToString("MMM d") - @Model.DailyClosingSummary.ServiceEndDate.ToString("MMM d").</small>
             </article>
             <article class="metric-card">
                 <span class="metric-card__label">Total Actual Used</span>
@@ -145,13 +149,27 @@
                 <i class="fa-solid fa-calendar-day me-2"></i>
                 Review Daily Closings
             </a>
+            @if (Model.CurrentWeekAlreadyClosed)
+            {
+                <a class="btn btn-outline-secondary ms-2" asp-action="Edit" asp-controller="WeeklyClosing" asp-route-id="@Model.CurrentWeekClosingId">
+                    <i class="fa-solid fa-pen-to-square me-2"></i>
+                    Correct Closed Week
+                </a>
+            }
+            else if (Model.CanCloseThisWeek)
+            {
+                <a class="btn btn-primary ms-2" asp-action="CloseThisWeek" asp-controller="WeeklyClosing" asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")">
+                    <i class="fa-solid fa-check-double me-2"></i>
+                    Close This Week
+                </a>
+            }
         </div>
     }
     else
     {
         <div class="empty-state">
             <i class="fa-regular fa-calendar-check"></i>
-            <span>No daily closings recorded for @Model.DailyClosingSummary.WeekStartDate.ToString("MMM d") - @Model.DailyClosingSummary.WeekEndDate.ToString("MMM d") yet.</span>
+            <span>No daily closings recorded for service days @Model.DailyClosingSummary.ServiceStartDate.ToString("MMM d") - @Model.DailyClosingSummary.ServiceEndDate.ToString("MMM d") yet.</span>
         </div>
         <a class="btn btn-primary mt-3" asp-action="Index" asp-controller="DailyClosing" asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")">
             <i class="fa-solid fa-clipboard-check me-2"></i>
@@ -164,7 +182,7 @@
     <div class="section-heading">
         <span class="eyebrow">Find Weeks</span>
         <h2>Review saved closings</h2>
-        <p>Filter by operational Tuesday start dates when you need to review or correct a saved week.</p>
+        <p>Filter by closing week start dates when you need to review or correct a saved Monday-Sunday close.</p>
     </div>
 
     <form asp-action="Index" asp-controller="WeeklyClosing" method="get" class="row g-3 align-items-end">
@@ -193,7 +211,7 @@
     <div class="section-heading mb-3">
         <span class="eyebrow">History</span>
         <h2>Saved weekly closings</h2>
-        <p>Use these cards to review what the team said was needed, used, lost, and left over.</p>
+        <p>Use these cards to review what the team said was needed, used, lost, and left over from Monday through Sunday.</p>
     </div>
 
     @if (Model.Closings.Count == 0)

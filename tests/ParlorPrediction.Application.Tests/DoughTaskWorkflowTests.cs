@@ -260,12 +260,12 @@ public sealed class DoughTaskWorkflowTests
             quantityCompleted: 1));
 
         var service = new DoughPrepCalculationService(
+            new FixedDoughAvailabilityProjectionService(),
             new FixedDemandPlanRepository(new DoughDemandPlan(Guid.NewGuid(), DayOfWeek.Wednesday, "baseline", 100, 100)),
             new InMemoryInventoryReadRepository(),
             taskRepository,
             new EmptyRestaurantEventRepository(),
-            new EmptySalesHistoryRepository(),
-            new EmptyWeeklyDoughClosingReadService());
+            new EmptySalesHistoryRepository());
 
         var result = await service.CalculateAsync(new Contracts.Requests.Dough.CalculateDoughPrepRequest
         {
@@ -382,20 +382,19 @@ public sealed class DoughTaskWorkflowTests
         InMemoryDoughBatchQualityRepository QualityRecords,
         PrepTaskService Service);
 
-    private sealed class EmptyWeeklyDoughClosingReadService : IWeeklyDoughClosingReadService
+    private sealed class FixedDoughAvailabilityProjectionService : IDoughAvailabilityProjectionService
     {
-        public Task<IReadOnlyList<WeeklyDoughClosingResponse>> GetWeeklyClosingsAsync(
-            GetWeeklyClosingsRequest request,
+        public Task<Contracts.Responses.Dough.DoughAvailabilityProjectionResponse> GetWeeklyAvailabilityAsync(
+            DateOnly referenceDate,
             CancellationToken cancellationToken = default)
         {
-            return Task.FromResult<IReadOnlyList<WeeklyDoughClosingResponse>>(Array.Empty<WeeklyDoughClosingResponse>());
-        }
-
-        public Task<WeeklyDoughCarryoverResponse> GetCarryoverForWeekAsync(
-            GetWeeklyDoughCarryoverRequest request,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(new WeeklyDoughCarryoverResponse());
+            return Task.FromResult(new Contracts.Responses.Dough.DoughAvailabilityProjectionResponse
+            {
+                ReferenceDate = referenceDate,
+                WeekStartDate = referenceDate,
+                WeekEndDate = referenceDate,
+                AvailableBalls = 0
+            });
         }
     }
 

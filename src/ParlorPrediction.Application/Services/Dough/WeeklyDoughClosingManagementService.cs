@@ -31,8 +31,8 @@ public sealed class WeeklyDoughClosingManagementService : IWeeklyDoughClosingMan
         ArgumentNullException.ThrowIfNull(request);
 
         var user = await GetRequiredAuthorizedUserAsync(request.ClosedByUserId, cancellationToken);
-        var weekStartDate = NormalizeOperationalWeekStart(request.WeekStartDate);
-        var existingClosing = await _weeklyDoughClosingRepository.GetByWeekStartDateAsync(weekStartDate, cancellationToken);
+        var closingWeekStartDate = NormalizeClosingWeekStart(request.WeekStartDate);
+        var existingClosing = await FindExistingClosingForWeekAsync(closingWeekStartDate, cancellationToken);
 
         if (existingClosing is not null)
         {
@@ -40,7 +40,7 @@ public sealed class WeeklyDoughClosingManagementService : IWeeklyDoughClosingMan
         }
 
         var closing = WeeklyDoughClosing.Create(
-            weekStartDate,
+            closingWeekStartDate,
             request.NeededBalls,
             request.ProducedBalls,
             request.UsedBalls,
@@ -116,15 +116,29 @@ public sealed class WeeklyDoughClosingManagementService : IWeeklyDoughClosingMan
             ?? throw new KeyNotFoundException("The weekly dough closing could not be found.");
     }
 
-    private static DateOnly NormalizeOperationalWeekStart(DateOnly referenceDate)
+    private static DateOnly NormalizeClosingWeekStart(DateOnly referenceDate)
     {
         if (referenceDate == default)
         {
             throw new ArgumentException("Week start date is required.", nameof(referenceDate));
         }
 
-        var diff = ((int)referenceDate.DayOfWeek - (int)DayOfWeek.Tuesday + 7) % 7;
+        var diff = ((int)referenceDate.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
         return referenceDate.AddDays(-diff);
+    }
+
+    private async Task<WeeklyDoughClosing?> FindExistingClosingForWeekAsync(
+        DateOnly normalizedClosingWeekStartDate,
+        CancellationToken cancellationToken)
+    {
+        var exactMatch = await _weeklyDoughClosingRepository.GetByWeekStartDateAsync(normalizedClosingWeekStartDate, cancellationToken);
+        if (exactMatch is not null)
+        {
+            return exactMatch;
+        }
+
+        var legacyTuesdayWeekStartDate = normalizedClosingWeekStartDate.AddDays(1);
+        return await _weeklyDoughClosingRepository.GetByWeekStartDateAsync(legacyTuesdayWeekStartDate, cancellationToken);
     }
 
     private static WeeklyDoughClosingResponse Map(WeeklyDoughClosing closing)

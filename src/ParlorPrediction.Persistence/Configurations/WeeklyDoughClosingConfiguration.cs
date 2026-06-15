@@ -6,11 +6,16 @@ namespace ParlorPrediction.Persistence.Configurations;
 
 public sealed class WeeklyDoughClosingConfiguration : IEntityTypeConfiguration<WeeklyDoughClosing>
 {
+    internal const string WeekWindowCheckSql =
+        "DATEDIFF(day, [WeekStartDate], [WeekEndDate]) = 6 " +
+        "AND (DATEDIFF(day, CONVERT(date, '19000101'), [WeekStartDate]) % 7) = 0 " +
+        "AND (DATEDIFF(day, CONVERT(date, '19000107'), [WeekEndDate]) % 7) = 0";
+
     public void Configure(EntityTypeBuilder<WeeklyDoughClosing> builder)
     {
         builder.ToTable("WeeklyDoughClosings", table =>
         {
-            table.HasCheckConstraint("CK_WeeklyDoughClosings_WeekWindow", "DATEDIFF(day, [WeekStartDate], [WeekEndDate]) = 5");
+            table.HasCheckConstraint("CK_WeeklyDoughClosings_WeekWindow", WeekWindowCheckSql);
             table.HasCheckConstraint("CK_WeeklyDoughClosings_NeededBalls_NonNegative", "[NeededBalls] >= 0");
             table.HasCheckConstraint("CK_WeeklyDoughClosings_ProducedBalls_NonNegative", "[ProducedBalls] >= 0");
             table.HasCheckConstraint("CK_WeeklyDoughClosings_UsedBalls_NonNegative", "[UsedBalls] >= 0");

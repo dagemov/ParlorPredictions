@@ -51,5 +51,5 @@ public sealed class WeeklyDoughClosingFormViewModel
 
     public DateOnly WeekEndDate => WeekStartDate == default
         ? default
-        : WeekStartDate.AddDays(5);
+        : WeekStartDate.AddDays(6);
 }

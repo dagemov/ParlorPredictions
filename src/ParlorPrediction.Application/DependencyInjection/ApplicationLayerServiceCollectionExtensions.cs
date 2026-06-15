@@ -17,6 +17,7 @@ public static class ApplicationLayerServiceCollectionExtensions
         services.AddScoped<IAiPrepRecommendationService, AiPrepRecommendationService>();
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IDoughDemandPlanService, DoughDemandPlanService>();
+        services.AddScoped<IDoughAvailabilityProjectionService, DoughAvailabilityProjectionService>();
         services.AddScoped<IDoughPrepCalculationService, DoughPrepCalculationService>();
         services.AddScoped<IDoughQualityManagementService, DoughQualityManagementService>();
         services.AddScoped<IDoughQualityReadService, DoughQualityReadService>();
