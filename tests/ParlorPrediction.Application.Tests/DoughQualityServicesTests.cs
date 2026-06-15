@@ -16,10 +16,14 @@ public sealed class DoughQualityServicesTests
     public async Task GetSummaryAsync_AttentionCountsAsAvailable()
     {
         var qualityRepository = new InMemoryDoughBatchQualityRepository();
+        var usageTraceRepository = new InMemoryDoughUsageTraceRepository();
         await qualityRepository.AddAsync(CreateRecord(120, DoughQualityStatus.Good, "admin-user"));
         await qualityRepository.AddAsync(CreateRecord(80, DoughQualityStatus.Attention, "admin-user"));
 
-        var service = new DoughQualityReadService(qualityRepository, new InMemoryDoughLossRecordRepository());
+        var service = new DoughQualityReadService(
+            qualityRepository,
+            new DoughSourceProjectionService(qualityRepository, usageTraceRepository),
+            new InMemoryDoughLossRecordRepository());
 
         var summary = await service.GetSummaryAsync();
 
@@ -31,10 +35,14 @@ public sealed class DoughQualityServicesTests
     public async Task GetSummaryAsync_DiscardedDoesNotCountAsAvailable()
     {
         var qualityRepository = new InMemoryDoughBatchQualityRepository();
+        var usageTraceRepository = new InMemoryDoughUsageTraceRepository();
         await qualityRepository.AddAsync(CreateRecord(100, DoughQualityStatus.Good, "admin-user"));
         await qualityRepository.AddAsync(CreateRecord(40, DoughQualityStatus.Discarded, "admin-user", discardReason: DoughLossReason.ManagerDecision));
 
-        var service = new DoughQualityReadService(qualityRepository, new InMemoryDoughLossRecordRepository());
+        var service = new DoughQualityReadService(
+            qualityRepository,
+            new DoughSourceProjectionService(qualityRepository, usageTraceRepository),
+            new InMemoryDoughLossRecordRepository());
 
         var summary = await service.GetSummaryAsync();
 

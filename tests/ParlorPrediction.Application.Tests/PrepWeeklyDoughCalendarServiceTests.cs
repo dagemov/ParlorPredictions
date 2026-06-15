@@ -283,9 +283,11 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         var dailyClosings = new InMemoryDailyDoughClosingRepository();
         var qualityRecords = new InMemoryDoughBatchQualityRepository();
         var lossRecords = new InMemoryDoughLossRecordRepository();
+        var usageTraces = new InMemoryDoughUsageTraceRepository();
+        var sourceProjectionService = new DoughSourceProjectionService(qualityRecords, usageTraces);
         var availabilityProjectionService = new DoughAvailabilityProjectionService(
             dailyClosings,
-            qualityRecords,
+            sourceProjectionService,
             inventorySnapshots,
             lossRecords,
             tasks,
