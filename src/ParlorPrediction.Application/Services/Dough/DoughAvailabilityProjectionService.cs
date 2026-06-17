@@ -13,6 +13,7 @@ public sealed class DoughAvailabilityProjectionService : IDoughAvailabilityProje
 
     private readonly IDailyDoughClosingRepository _dailyDoughClosingRepository;
     private readonly IDoughSourceProjectionService _doughSourceProjectionService;
+    private readonly IDoughUsageTraceRepository _doughUsageTraceRepository;
     private readonly IDoughInventoryReadRepository _doughInventoryReadRepository;
     private readonly IDoughLossRecordRepository _doughLossRecordRepository;
     private readonly IPrepTaskRepository _prepTaskRepository;
@@ -21,6 +22,7 @@ public sealed class DoughAvailabilityProjectionService : IDoughAvailabilityProje
     public DoughAvailabilityProjectionService(
         IDailyDoughClosingRepository dailyDoughClosingRepository,
         IDoughSourceProjectionService doughSourceProjectionService,
+        IDoughUsageTraceRepository doughUsageTraceRepository,
         IDoughInventoryReadRepository doughInventoryReadRepository,
         IDoughLossRecordRepository doughLossRecordRepository,
         IPrepTaskRepository prepTaskRepository,
@@ -28,6 +30,7 @@ public sealed class DoughAvailabilityProjectionService : IDoughAvailabilityProje
     {
         _dailyDoughClosingRepository = dailyDoughClosingRepository;
         _doughSourceProjectionService = doughSourceProjectionService;
+        _doughUsageTraceRepository = doughUsageTraceRepository;
         _doughInventoryReadRepository = doughInventoryReadRepository;
         _doughLossRecordRepository = doughLossRecordRepository;
         _prepTaskRepository = prepTaskRepository;
@@ -59,6 +62,11 @@ public sealed class DoughAvailabilityProjectionService : IDoughAvailabilityProje
             referenceDate,
             cancellationToken);
         var closings = await _dailyDoughClosingRepository.ListByWeekStartDateAsync(weekStartDate, cancellationToken);
+        var usageTraces = await _doughUsageTraceRepository.SearchAsync(
+            weekStartDate,
+            referenceDate,
+            null,
+            cancellationToken);
         var losses = await _doughLossRecordRepository.SearchAsync(
             weekStartDate,
             referenceDate,
@@ -72,14 +80,19 @@ public sealed class DoughAvailabilityProjectionService : IDoughAvailabilityProje
         var actualUsedBallsThisWeek = closings
             .Where(closing => closing.ClosingDate <= referenceDate)
             .Sum(closing => closing.ActualUsedBalls);
+        var openUsageTraceBallsThisWeek = SumOpenUsageTraceBallsThisWeek(
+            usageTraces,
+            closings,
+            referenceDate);
         var lostBallsThisWeek = losses.Sum(loss => loss.QuantityLostBalls);
-        var availableBalls = ResolveAvailableBalls(
+        var baselineAvailableBalls = ResolveAvailableBalls(
             carryover,
             latestInventorySnapshot,
             weekStartDate,
             producedThisWeekBalls,
             actualUsedBallsThisWeek,
             lostBallsThisWeek);
+        var availableBalls = Math.Max(baselineAvailableBalls - openUsageTraceBallsThisWeek, 0);
 
         var currentMustUseBalls = SumCurrentStatusBalls(remainingBySource, DoughQualityStatus.MustUseNextDay);
         var currentAttentionBalls = SumCurrentStatusBalls(remainingBySource, DoughQualityStatus.Attention);
@@ -168,6 +181,23 @@ public sealed class DoughAvailabilityProjectionService : IDoughAvailabilityProje
         return qualityRecords
             .Where(record => string.Equals(record.SourceType, status.ToString(), StringComparison.OrdinalIgnoreCase))
             .Sum(record => record.RemainingBalls);
+    }
+
+    private static int SumOpenUsageTraceBallsThisWeek(
+        IReadOnlyList<DoughUsageTrace> usageTraces,
+        IReadOnlyList<DailyDoughClosing> closings,
+        DateOnly referenceDate)
+    {
+        var closedDates = closings
+            .Where(closing => closing.ClosingDate <= referenceDate)
+            .Select(closing => closing.ClosingDate)
+            .ToHashSet();
+
+        // Daily Closing remains the authority for already-closed days.
+        // Usage traces only reduce live availability for open days that have not closed yet.
+        return usageTraces
+            .Where(trace => trace.UsageDate <= referenceDate && !closedDates.Contains(trace.UsageDate))
+            .Sum(trace => trace.BallsUsed);
     }
 
     private static (int MustUseRemainingBalls, int AttentionRemainingBalls, int RegularReadyBalls) AllocateAvailableBallsByPriority(
