@@ -114,11 +114,11 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         Assert.Equal(300, result.ReadyNowBalls);
         Assert.Equal(168, result.MixedButNotBalledBalls);
         Assert.Equal(723, result.PreviousWeekFinishedBalls);
-        Assert.Equal(132, result.StillMissingThisWeekBalls);
+        Assert.Equal(300, result.StillMissingThisWeekBalls);
     }
 
     [Fact]
-    public async Task In_Process_Dough_Reduces_Weekly_Missing_But_Does_Not_Count_As_Ready_Now()
+    public async Task In_Process_Dough_StaysInFutureDough_AndDoesNotCountAsReadyNow()
     {
         var fixture = CreateFixture(referenceDate: new DateOnly(2026, 6, 9));
         fixture.InventorySnapshots.Snapshots.Add(CreateSnapshot(
@@ -142,7 +142,7 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         Assert.Equal(24, result.ReadyNowBalls);
         Assert.Equal(0, result.StillFermentingBalls);
         Assert.Equal(336, result.MixedButNotBalledBalls);
-        Assert.Equal(240, result.StillMissingThisWeekBalls);
+        Assert.Equal(576, result.StillMissingThisWeekBalls);
     }
 
     [Fact]
@@ -172,7 +172,7 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
     }
 
     [Fact]
-    public async Task TuesdayScenario_432Ready_OneMixedLoad_DoesNotIncreaseReadyOrInflateStillMissing()
+    public async Task TuesdayScenario_432Ready_OneMixedLoad_KeepsFutureDoughSeparateFromStillMissing()
     {
         var tuesday = new DateOnly(2026, 6, 9);
         var fixture = CreateFixture(referenceDate: tuesday);
@@ -189,7 +189,7 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         Assert.Equal(168, result.MixedButNotBalledBalls);
         Assert.Equal(1, result.MixedButNotBalledLoads);
         Assert.Equal(0, result.StillFermentingBalls);
-        Assert.Equal(0, result.StillMissingThisWeekBalls);
+        Assert.Equal(168, result.StillMissingThisWeekBalls);
     }
 
     [Fact]
@@ -314,9 +314,95 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         Assert.Equal(0, result.FutureBalls);
     }
 
-    private static TestFixture CreateFixture(DateOnly referenceDate)
+    [Fact]
+    public async Task OnePendingLoad_IsCountedOnce_EvenWithMakeTask_BallTask_AndUnballedBatch()
     {
-        var calculationService = new FixedWeeklyCalculationService(referenceDate);
+        var referenceDate = new DateOnly(2026, 6, 17);
+        var fixture = CreateFixture(referenceDate);
+        fixture.InventorySnapshots.Snapshots.Add(CreateSnapshot(referenceDate, availableBalls: 720));
+
+        var pendingBatch = new DoughBatch(
+            Guid.NewGuid(),
+            batchDate: referenceDate,
+            totalCases: DoughBatch.StandardLoadCases);
+        fixture.Batches.Batches.Add(pendingBatch);
+
+        fixture.Tasks.Tasks.Add(CreateCompletedLoadTask(
+            taskDate: referenceDate,
+            completedAtUtc: new DateTime(2026, 6, 17, 15, 0, 0, DateTimeKind.Utc),
+            quantityCompleted: 1));
+        fixture.Tasks.Tasks.Add(CreatePendingBallTask(
+            taskDate: referenceDate.AddDays(1),
+            sourceDoughBatchId: pendingBatch.Id,
+            quantityRecommended: DoughRules.StandardBatchBalls));
+
+        var result = await fixture.Service.GetWeekAsync(referenceDate, historicalWeeksToUse: 8);
+
+        Assert.Equal(720, result.ReadyNowBalls);
+        Assert.Equal(168, result.MixedButNotBalledBalls);
+        Assert.Equal(1, result.MixedButNotBalledLoads);
+        Assert.Equal(168, result.FutureBalls);
+    }
+
+    [Fact]
+    public async Task ReadyNow720_Future168_StillMissing223_ForFourLoadsAndFourReballedCases()
+    {
+        var referenceDate = new DateOnly(2026, 6, 17);
+        var readyFromCompletedLoads = 4 * DoughRules.StandardBatchBalls;
+        var readyFromReballedCases = 4 * DoughRules.BallsPerCase;
+        var fixture = CreateFixture(
+            referenceDate,
+            new SingleDayRequiredBallsCalculationService(referenceDate, requiredBalls: 943));
+        fixture.InventorySnapshots.Snapshots.Add(CreateSnapshot(
+            referenceDate,
+            availableBalls: readyFromCompletedLoads + readyFromReballedCases));
+
+        fixture.QualityRecords.Records.Add(CreateQualityRecord(
+            sourceDate: referenceDate.AddDays(-3),
+            createdOrBalledAtUtc: new DateTime(2026, 6, 14, 10, 0, 0, DateTimeKind.Utc),
+            quantityBalls: 168,
+            status: DoughQualityStatus.Good));
+        fixture.QualityRecords.Records.Add(CreateQualityRecord(
+            sourceDate: referenceDate.AddDays(-2),
+            createdOrBalledAtUtc: new DateTime(2026, 6, 15, 10, 0, 0, DateTimeKind.Utc),
+            quantityBalls: 168,
+            status: DoughQualityStatus.Good));
+        fixture.QualityRecords.Records.Add(CreateQualityRecord(
+            sourceDate: referenceDate.AddDays(-1),
+            createdOrBalledAtUtc: new DateTime(2026, 6, 16, 10, 0, 0, DateTimeKind.Utc),
+            quantityBalls: 168,
+            status: DoughQualityStatus.Good));
+        fixture.QualityRecords.Records.Add(CreateQualityRecord(
+            sourceDate: referenceDate,
+            createdOrBalledAtUtc: new DateTime(2026, 6, 17, 10, 0, 0, DateTimeKind.Utc),
+            quantityBalls: 168,
+            status: DoughQualityStatus.Good));
+        fixture.QualityRecords.Records.Add(CreateQualityRecord(
+            sourceDate: referenceDate,
+            createdOrBalledAtUtc: new DateTime(2026, 6, 17, 11, 0, 0, DateTimeKind.Utc),
+            quantityBalls: 48,
+            status: DoughQualityStatus.Reballed));
+
+        fixture.Batches.Batches.Add(new DoughBatch(
+            Guid.NewGuid(),
+            batchDate: referenceDate,
+            totalCases: DoughBatch.StandardLoadCases));
+
+        var result = await fixture.Service.GetWeekAsync(referenceDate, historicalWeeksToUse: 8);
+
+        Assert.Equal(672, readyFromCompletedLoads);
+        Assert.Equal(48, readyFromReballedCases);
+        Assert.Equal(720, readyFromCompletedLoads + readyFromReballedCases);
+        Assert.Equal(720, result.ReadyNowBalls);
+        Assert.Equal(168, result.MixedButNotBalledBalls);
+        Assert.Equal(1, result.MixedButNotBalledLoads);
+        Assert.Equal(168, result.FutureBalls);
+        Assert.Equal(223, result.StillMissingThisWeekBalls);
+    }
+
+    private static TestFixture CreateFixture(DateOnly referenceDate, IDoughPrepCalculationService? calculationService = null)
+    {
+        calculationService ??= new FixedWeeklyCalculationService(referenceDate);
         var batches = new InMemoryDoughBatchReadRepository();
         var inventorySnapshots = new InMemoryDoughInventoryReadRepository();
         var tasks = new InMemoryPrepTaskRepository();
@@ -386,6 +472,54 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
 
         task.Complete("user-1", quantityCompleted, completedAtUtc: completedAtUtc);
         return task;
+    }
+
+    private static PrepTask CreateCompletedLoadTask(
+        DateOnly taskDate,
+        DateTime completedAtUtc,
+        int quantityCompleted)
+    {
+        var task = PrepTask.Create(
+            taskDate,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            ApplicationRole.PizzaMaker,
+            quantityRecommended: quantityCompleted,
+            taskType: PrepTaskType.MakeDoughLoad,
+            quantityUnit: DoughQuantityUnit.FullLoads);
+
+        task.Complete("user-1", quantityCompleted, completedAtUtc: completedAtUtc);
+        return task;
+    }
+
+    private static PrepTask CreatePendingBallTask(
+        DateOnly taskDate,
+        Guid sourceDoughBatchId,
+        int quantityRecommended)
+    {
+        return PrepTask.Create(
+            taskDate,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            ApplicationRole.PizzaMaker,
+            quantityRecommended: quantityRecommended,
+            taskType: PrepTaskType.BallDough,
+            quantityUnit: DoughQuantityUnit.Balls,
+            sourceDoughBatchId: sourceDoughBatchId);
+    }
+
+    private static DoughBatchQualityRecord CreateQualityRecord(
+        DateOnly sourceDate,
+        DateTime createdOrBalledAtUtc,
+        int quantityBalls,
+        DoughQualityStatus status)
+    {
+        return DoughBatchQualityRecord.Create(
+            sourceDate,
+            createdOrBalledAtUtc,
+            quantityBalls,
+            createdByUserId: "manager-user",
+            initialStatus: status);
     }
 
     private sealed record TestFixture(
@@ -493,6 +627,41 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
                 RecommendedCases = 0,
                 RecommendedLoads = 0,
                 Reason = "test"
+            });
+        }
+    }
+
+    private sealed class SingleDayRequiredBallsCalculationService : IDoughPrepCalculationService
+    {
+        private readonly DateOnly _targetDate;
+        private readonly int _requiredBalls;
+
+        public SingleDayRequiredBallsCalculationService(DateOnly targetDate, int requiredBalls)
+        {
+            _targetDate = targetDate;
+            _requiredBalls = requiredBalls;
+        }
+
+        public Task<DoughPrepCalculationResult> CalculateAsync(
+            CalculateDoughPrepRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var requiredBalls = request.TargetDate == _targetDate
+                ? _requiredBalls
+                : 0;
+
+            return Task.FromResult(new DoughPrepCalculationResult
+            {
+                TargetDate = request.TargetDate,
+                HistoricalAverageBalls = requiredBalls,
+                EventEstimatedBalls = 0,
+                RequiredBalls = requiredBalls,
+                AvailableBalls = 0,
+                CompletedBalls = 0,
+                MissingBalls = requiredBalls,
+                RecommendedCases = 0,
+                RecommendedLoads = 0,
+                Reason = "single-day-required-balls-test"
             });
         }
     }

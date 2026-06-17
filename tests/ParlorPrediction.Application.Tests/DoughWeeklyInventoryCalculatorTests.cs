@@ -31,7 +31,7 @@ public sealed class DoughWeeklyInventoryCalculatorTests
     }
 
     [Fact]
-    public void StillMissing_SubtractsReadyMixedAndFermentingSeparately()
+    public void StillMissing_UsesReadyNowOnly_AndLeavesFutureDoughSeparate()
     {
         var breakdown = new DoughWeeklyInventoryBreakdown(
             ReadyNowBalls: 432,
@@ -42,7 +42,7 @@ public sealed class DoughWeeklyInventoryCalculatorTests
 
         var stillMissing = DoughWeeklyInventoryCalculator.CalculateStillMissingThisWeek(600, breakdown);
 
-        Assert.Equal(0, stillMissing);
+        Assert.Equal(168, stillMissing);
     }
 
     [Fact]
@@ -72,7 +72,45 @@ public sealed class DoughWeeklyInventoryCalculatorTests
 
         var stillMissing = DoughWeeklyInventoryCalculator.CalculateStillMissingThisWeek(1063, breakdown, actualUsedBallsThisWeek: 45);
 
-        Assert.Equal(418, stillMissing);
+        Assert.Equal(586, stillMissing);
+    }
+
+    [Fact]
+    public void CarryoverFallback_DoesNotDuplicateLivePendingLoad()
+    {
+        var referenceDate = new DateOnly(2026, 6, 17);
+        var weekEndDate = referenceDate.AddDays(4);
+        var batches = new[]
+        {
+            new DoughBatch(Guid.NewGuid(), referenceDate, DoughBatch.StandardLoadCases)
+        };
+
+        var breakdown = DoughWeeklyInventoryCalculator.Calculate(
+            referenceDate,
+            weekEndDate,
+            readyNowBalls: 720,
+            batches,
+            carryoverMixedLoads: 1,
+            applyCarryoverMixedFallback: true);
+
+        Assert.Equal(168, breakdown.MixedButNotBalledBalls);
+        Assert.Equal(1, breakdown.MixedButNotBalledLoads);
+        Assert.Equal(168, breakdown.FutureBalls);
+    }
+
+    [Fact]
+    public void StillMissing_Equals223_WhenWeeklyRemainingNeedIs943_AndReadyNowIs720()
+    {
+        var breakdown = new DoughWeeklyInventoryBreakdown(
+            ReadyNowBalls: 720,
+            MixedButNotBalledBalls: 168,
+            MixedButNotBalledLoads: 1,
+            StillFermentingBalls: 0,
+            FutureBalls: 168);
+
+        var stillMissing = DoughWeeklyInventoryCalculator.CalculateStillMissingThisWeek(943, breakdown);
+
+        Assert.Equal(223, stillMissing);
     }
 
     [Fact]

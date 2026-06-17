@@ -154,7 +154,7 @@ public sealed class DoughRegistrationFlowTests
     }
 
     [Fact]
-    public async Task ExampleA_WeeklyNeed1063_With432ReadyAnd168Mixed_StillMissing463()
+    public async Task ExampleA_WeeklyNeed1063_With432ReadyAnd168Mixed_StillMissing631()
     {
         var tuesday = new DateOnly(2026, 6, 9);
         var fixture = CreateCalendarFixture(tuesday, useCanonicalWeekNeed: true);
@@ -170,7 +170,7 @@ public sealed class DoughRegistrationFlowTests
 
         Assert.Equal(432, result.ReadyNowBalls);
         Assert.Equal(168, result.MixedButNotBalledBalls);
-        Assert.Equal(463, result.StillMissingThisWeekBalls);
+        Assert.Equal(631, result.StillMissingThisWeekBalls);
     }
 
     private static void SetCarryover(CalendarFixture fixture, int carryoverReady)
