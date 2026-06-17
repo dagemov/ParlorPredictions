@@ -16,5 +16,7 @@ public interface IDoughUsageTraceRepository
         Guid? sourceDoughBatchQualityRecordId,
         CancellationToken cancellationToken = default);
 
+    void Update(DoughUsageTrace trace);
+
     void Remove(DoughUsageTrace trace);
 }

@@ -95,6 +95,42 @@ public sealed class DoughUsageTrace
             notes);
     }
 
+    public static DoughUsageTrace Rehydrate(
+        Guid id,
+        DateOnly usageDate,
+        Guid sourceDoughBatchQualityRecordId,
+        DateOnly sourceDate,
+        DoughQualityStatus sourceType,
+        DoughUsageDestination destination,
+        decimal trayCount,
+        int ballsPerTray,
+        int ballsUsed,
+        string createdByUserId,
+        string updatedByUserId,
+        DateTime createdAtUtc,
+        DateTime updatedAtUtc,
+        string? notes = null)
+    {
+        var trace = new DoughUsageTrace(
+            id,
+            usageDate,
+            sourceDoughBatchQualityRecordId,
+            sourceDate,
+            sourceType,
+            destination,
+            trayCount,
+            createdByUserId,
+            notes);
+
+        trace.BallsPerTray = ballsPerTray;
+        trace.BallsUsed = ballsUsed;
+        trace.CreatedAtUtc = createdAtUtc;
+        trace.UpdatedAtUtc = updatedAtUtc;
+        trace.UpdatedByUserId = NormalizeRequired(updatedByUserId, nameof(updatedByUserId));
+
+        return trace;
+    }
+
     public void Correct(
         DateOnly usageDate,
         Guid sourceDoughBatchQualityRecordId,

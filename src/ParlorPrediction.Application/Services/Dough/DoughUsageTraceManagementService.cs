@@ -85,6 +85,7 @@ public sealed class DoughUsageTraceManagementService : IDoughUsageTraceManagemen
             user.Id,
             request.Notes);
 
+        _doughUsageTraceRepository.Update(trace);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Map(trace);
