@@ -14,9 +14,27 @@ public sealed class DoughUsageTraceFormViewModel
 
     public Guid SourceDoughBatchQualityRecordId { get; set; }
 
-    public int TrayCount { get; set; } = 1;
+    public decimal TrayCount { get; set; } = 1m;
 
     public string? Notes { get; set; }
 
-    public int BallsUsed => Math.Max(TrayCount, 0) * DoughRules.BallsPerCase;
+    public int BallsUsed
+    {
+        get
+        {
+            if (TrayCount <= 0m)
+            {
+                return 0;
+            }
+
+            try
+            {
+                return DoughRules.ConvertCaseQuantityToBalls(TrayCount);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return 0;
+            }
+        }
+    }
 }

@@ -51,7 +51,7 @@
                 <div>
                     <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Entry</p>
                     <h2 class="mt-2 text-3xl font-black tracking-[-0.04em] text-primary">Trace the service source</h2>
-                    <p class="mt-2 text-base text-on-surface-variant">1 tray/case = 12 balls. Choose the exact dough source before saving.</p>
+                    <p class="mt-2 text-base text-on-surface-variant">1 case = 12 balls. Half cases are allowed, so 0.5 case = 6 balls.</p>
                 </div>
                 <div class="rounded-2xl bg-surface-container px-5 py-4 text-right">
                     <span class="block text-xs font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Calculated Balls</span>
@@ -100,8 +100,8 @@
 
                 <div class="grid gap-4 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
                     <div>
-                        <label asp-for="Form.TrayCount" class="mb-2 block text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Tray Count</label>
-                        <input asp-for="Form.TrayCount" type="number" min="1" step="1" class="h-touch-target-min w-full rounded-xl border border-outline-variant bg-white px-4" />
+                        <label asp-for="Form.TrayCount" class="mb-2 block text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Cases Used</label>
+                        <input asp-for="Form.TrayCount" type="number" min="0.5" step="0.5" class="h-touch-target-min w-full rounded-xl border border-outline-variant bg-white px-4" />
                         <span asp-validation-for="Form.TrayCount" class="mt-2 block text-sm text-red-700"></span>
                     </div>
 

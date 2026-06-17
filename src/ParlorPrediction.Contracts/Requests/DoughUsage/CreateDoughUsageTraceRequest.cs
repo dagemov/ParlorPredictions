@@ -8,7 +8,7 @@ public sealed class CreateDoughUsageTraceRequest
 
     public string Destination { get; init; } = string.Empty;
 
-    public int TrayCount { get; init; }
+    public decimal TrayCount { get; init; }
 
     public string? Notes { get; init; }
 

@@ -202,9 +202,9 @@ public sealed class DoughUsageTraceManagementService : IDoughUsageTraceManagemen
         return destination;
     }
 
-    private static int CalculateBallsUsed(int trayCount)
+    private static int CalculateBallsUsed(decimal trayCount)
     {
-        return DoughRules.ConvertToBalls(trayCount, DoughQuantityUnit.Cases);
+        return DoughRules.ConvertCaseQuantityToBalls(trayCount);
     }
 
     private static DoughUsageTraceResponse Map(DoughUsageTrace trace)
