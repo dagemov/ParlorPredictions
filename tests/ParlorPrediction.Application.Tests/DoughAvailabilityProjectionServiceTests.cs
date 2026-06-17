@@ -127,6 +127,40 @@ public sealed class DoughAvailabilityProjectionServiceTests
         Assert.Equal(200, projection.AvailableBalls);
     }
 
+    [Fact]
+    public async Task RemainingBySourceMatchesAvailableInventoryAfterClosedAndOpenUsage()
+    {
+        var fixture = CreateFixture();
+        fixture.WeeklyClosingRead.Carryover = CreateCarryover(168);
+
+        var source = DoughBatchQualityRecord.Create(
+            sourceDate: new DateOnly(2026, 6, 9),
+            createdOrBalledAt: new DateTime(2026, 6, 9, 10, 0, 0, DateTimeKind.Utc),
+            quantityBalls: 168,
+            createdByUserId: "manager-user");
+        fixture.QualityRecords.Records.Add(source);
+
+        fixture.DailyClosings.Items.Add(CreateDailyClosing(
+            closingDate: new DateOnly(2026, 6, 9),
+            weekStartDate: new DateOnly(2026, 6, 9),
+            actualUsedBalls: 100));
+        fixture.UsageTraces.Items.Add(DoughUsageTrace.Create(
+            usageDate: new DateOnly(2026, 6, 10),
+            sourceDoughBatchQualityRecordId: source.Id,
+            sourceDate: new DateOnly(2026, 6, 9),
+            sourceType: DoughQualityStatus.Good,
+            destination: DoughUsageDestination.Restaurant,
+            trayCount: 2m,
+            createdByUserId: "manager-user"));
+
+        var projection = await fixture.Service.GetWeeklyAvailabilityAsync(new DateOnly(2026, 6, 10));
+        var liveRemaining = await fixture.SourceProjectionService.GetRemainingBySourceAsync(new DateOnly(2026, 6, 10));
+
+        Assert.Equal(
+            projection.AvailableBalls,
+            liveRemaining.Where(sourceItem => sourceItem.CountsAsAvailable).Sum(sourceItem => sourceItem.RemainingBalls));
+    }
+
     private static WeeklyDoughCarryoverResponse CreateCarryover(int carryoverAvailableBalls)
     {
         return new WeeklyDoughCarryoverResponse
@@ -162,7 +196,11 @@ public sealed class DoughAvailabilityProjectionServiceTests
         var tasks = new InMemoryPrepTaskRepository();
         var usageTraces = new InMemoryDoughUsageTraceRepository();
         var weeklyClosingRead = new StubWeeklyDoughClosingReadService();
-        var sourceProjectionService = new DoughSourceProjectionService(qualityRecords, usageTraces);
+        var sourceProjectionService = new DoughSourceProjectionService(
+            qualityRecords,
+            dailyClosings,
+            usageTraces,
+            weeklyClosingRead);
 
         return new TestFixture(
             dailyClosings,
@@ -172,6 +210,7 @@ public sealed class DoughAvailabilityProjectionServiceTests
             tasks,
             usageTraces,
             weeklyClosingRead,
+            sourceProjectionService,
             new DoughAvailabilityProjectionService(
                 dailyClosings,
                 sourceProjectionService,
@@ -190,6 +229,7 @@ public sealed class DoughAvailabilityProjectionServiceTests
         InMemoryPrepTaskRepository Tasks,
         InMemoryDoughUsageTraceRepository UsageTraces,
         StubWeeklyDoughClosingReadService WeeklyClosingRead,
+        DoughSourceProjectionService SourceProjectionService,
         DoughAvailabilityProjectionService Service);
 
     private sealed class StubWeeklyDoughClosingReadService : IWeeklyDoughClosingReadService
@@ -229,6 +269,27 @@ public sealed class DoughAvailabilityProjectionServiceTests
         public Task<DailyDoughClosing?> GetByClosingDateAsync(DateOnly closingDate, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(Items.FirstOrDefault(item => item.ClosingDate == closingDate));
+        }
+
+        public Task<IReadOnlyList<DailyDoughClosing>> SearchAsync(
+            DateOnly? closingDateFrom,
+            DateOnly? closingDateTo,
+            CancellationToken cancellationToken = default)
+        {
+            IEnumerable<DailyDoughClosing> query = Items;
+
+            if (closingDateFrom.HasValue)
+            {
+                query = query.Where(item => item.ClosingDate >= closingDateFrom.Value);
+            }
+
+            if (closingDateTo.HasValue)
+            {
+                query = query.Where(item => item.ClosingDate <= closingDateTo.Value);
+            }
+
+            return Task.FromResult<IReadOnlyList<DailyDoughClosing>>(
+                query.OrderBy(item => item.ClosingDate).ToArray());
         }
 
         public Task<IReadOnlyList<DailyDoughClosing>> ListByWeekStartDateAsync(DateOnly weekStartDate, CancellationToken cancellationToken = default)

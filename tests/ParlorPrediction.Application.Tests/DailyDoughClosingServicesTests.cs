@@ -245,6 +245,27 @@ public sealed class DailyDoughClosingServicesTests
             return Task.FromResult(Items.FirstOrDefault(item => item.ClosingDate == closingDate));
         }
 
+        public Task<IReadOnlyList<DailyDoughClosing>> SearchAsync(
+            DateOnly? closingDateFrom,
+            DateOnly? closingDateTo,
+            CancellationToken cancellationToken = default)
+        {
+            IEnumerable<DailyDoughClosing> query = Items;
+
+            if (closingDateFrom.HasValue)
+            {
+                query = query.Where(item => item.ClosingDate >= closingDateFrom.Value);
+            }
+
+            if (closingDateTo.HasValue)
+            {
+                query = query.Where(item => item.ClosingDate <= closingDateTo.Value);
+            }
+
+            return Task.FromResult<IReadOnlyList<DailyDoughClosing>>(
+                query.OrderBy(item => item.ClosingDate).ToArray());
+        }
+
         public Task<IReadOnlyList<DailyDoughClosing>> ListByWeekStartDateAsync(
             DateOnly weekStartDate,
             CancellationToken cancellationToken = default)

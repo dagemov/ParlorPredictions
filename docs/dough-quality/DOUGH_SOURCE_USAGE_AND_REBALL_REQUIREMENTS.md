@@ -12,9 +12,12 @@
 
 ## Reball Planning
 
-- Reball planning must read the remaining balls by source.
+- Reball planning must read the live remaining balls by source.
 - Reball planning must not use the gross historical quantity of the source.
+- Closed-day `Daily Closing` usage must be reconciled into those live source balances before a source is considered for reball.
+- Older carryover sources must not exceed the carryover quantity that actually crossed into the current service week.
 - If a source started with 48 balls and traced usage already consumed 24, reball decisions use the remaining 24 only.
+- If a source started with 168 balls and closed-day usage already consumed 120, reball decisions use the remaining 48 only.
 
 ## Priority Rules
 

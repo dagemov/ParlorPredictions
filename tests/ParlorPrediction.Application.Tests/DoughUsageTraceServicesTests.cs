@@ -3,7 +3,9 @@ using ParlorPrediction.Application.Interfaces.Auth;
 using ParlorPrediction.Application.Interfaces.Dough;
 using ParlorPrediction.Application.Interfaces.Persistence;
 using ParlorPrediction.Application.Services.Dough;
+using ParlorPrediction.Contracts.Requests.DoughClosing;
 using ParlorPrediction.Contracts.Requests.DoughUsage;
+using ParlorPrediction.Contracts.Responses.DoughClosing;
 using ParlorPrediction.Domain.Entities;
 using ParlorPrediction.Domain.Enums;
 using Xunit;
@@ -212,6 +214,107 @@ public sealed class DoughUsageTraceServicesTests
     }
 
     [Fact]
+    public async Task GetRemainingBySourceAsync_ClosedDayUsageReconciliationLeavesOnlyFortyEightLiveBalls()
+    {
+        var fixture = CreateFixture();
+        var source = fixture.AddSourceRecord(
+            quantityBalls: 168,
+            status: DoughQualityStatus.Good,
+            sourceDate: new DateOnly(2026, 6, 9),
+            createdAtUtc: new DateTime(2026, 6, 9, 12, 0, 0, DateTimeKind.Utc));
+
+        fixture.DailyClosings.Items.Add(CreateDailyClosing(
+            closingDate: new DateOnly(2026, 6, 14),
+            weekStartDate: new DateOnly(2026, 6, 9),
+            actualUsedBalls: 120));
+
+        var remaining = await fixture.ReadService.GetRemainingBySourceAsync(new GetDoughRemainingBySourceRequest
+        {
+            ReferenceDate = new DateOnly(2026, 6, 14)
+        });
+
+        var selectedSource = Assert.Single(remaining, item => item.SourceDoughBatchQualityRecordId == source.Id);
+        Assert.Equal(120, selectedSource.UsedBalls);
+        Assert.Equal(48, selectedSource.RemainingBalls);
+    }
+
+    [Fact]
+    public async Task GetReballPlanningForDate_UsesCarryoverCappedRemainingForPriorWeekSource()
+    {
+        var fixture = CreateFixture();
+        fixture.WeeklyClosingRead.Carryover = new WeeklyDoughCarryoverResponse
+        {
+            HasClosingCarryover = true,
+            CarryoverAvailableBalls = 48,
+            CarryoverReadyBalls = 48,
+            SourceWeekStartDate = new DateOnly(2026, 6, 9),
+            SourceWeekEndDate = new DateOnly(2026, 6, 14)
+        };
+
+        var source = fixture.AddSourceRecord(
+            quantityBalls: 168,
+            status: DoughQualityStatus.Good,
+            sourceDate: new DateOnly(2026, 6, 10),
+            createdAtUtc: new DateTime(2026, 6, 10, 12, 0, 0, DateTimeKind.Utc));
+
+        var plan = await fixture.ReadService.GetReballPlanningForDateAsync(new GetDoughReballPlanningRequest
+        {
+            ReferenceDate = new DateOnly(2026, 6, 16)
+        });
+
+        var candidate = Assert.Single(plan.ReballCandidates, item => item.SourceDoughBatchQualityRecordId == source.Id);
+        Assert.Equal(48, candidate.RemainingBalls);
+    }
+
+    [Fact]
+    public async Task GetReballPlanningForDate_FullyConsumedSourceDisappears()
+    {
+        var fixture = CreateFixture();
+        var source = fixture.AddSourceRecord(
+            quantityBalls: 48,
+            status: DoughQualityStatus.Good,
+            sourceDate: new DateOnly(2026, 6, 10),
+            createdAtUtc: new DateTime(2026, 6, 10, 12, 0, 0, DateTimeKind.Utc));
+
+        await fixture.ManagementService.CreateAsync(new CreateDoughUsageTraceRequest
+        {
+            UsageDate = new DateOnly(2026, 6, 14),
+            SourceDoughBatchQualityRecordId = source.Id,
+            Destination = "Restaurant",
+            TrayCount = 2m,
+            CreatedByUserId = "manager-user"
+        });
+
+        fixture.DailyClosings.Items.Add(CreateDailyClosing(
+            closingDate: new DateOnly(2026, 6, 14),
+            weekStartDate: new DateOnly(2026, 6, 9),
+            actualUsedBalls: 48));
+
+        var plan = await fixture.ReadService.GetReballPlanningForDateAsync(new GetDoughReballPlanningRequest
+        {
+            ReferenceDate = new DateOnly(2026, 6, 14)
+        });
+
+        Assert.DoesNotContain(plan.ReballCandidates, item => item.SourceDoughBatchQualityRecordId == source.Id);
+    }
+
+    [Fact]
+    public async Task GetReballPlanningForDate_StaysEmptyUntilBalledSourcesExist()
+    {
+        var fixture = CreateFixture();
+
+        var plan = await fixture.ReadService.GetReballPlanningForDateAsync(new GetDoughReballPlanningRequest
+        {
+            ReferenceDate = new DateOnly(2026, 6, 16)
+        });
+
+        Assert.Empty(plan.MustUseFirstSources);
+        Assert.Empty(plan.ReviewSources);
+        Assert.Empty(plan.ReballCandidates);
+        Assert.Empty(plan.DiscardCandidates);
+    }
+
+    [Fact]
     public async Task GetAvailableSourcesForDate_ExcludesDiscardedDough()
     {
         var fixture = CreateFixture();
@@ -231,8 +334,14 @@ public sealed class DoughUsageTraceServicesTests
     private static Fixture CreateFixture()
     {
         var qualityRepository = new InMemoryDoughBatchQualityRepository();
+        var dailyClosingRepository = new InMemoryDailyDoughClosingRepository();
         var usageRepository = new InMemoryDoughUsageTraceRepository();
-        var sourceProjectionService = new DoughSourceProjectionService(qualityRepository, usageRepository);
+        var weeklyClosingRead = new StubWeeklyDoughClosingReadService();
+        var sourceProjectionService = new DoughSourceProjectionService(
+            qualityRepository,
+            dailyClosingRepository,
+            usageRepository,
+            weeklyClosingRead);
         var userRepository = new StubUserRepository(
             CreateUser("manager-user", ApplicationRole.Manager),
             CreateUser("admin-user", ApplicationRole.Admin),
@@ -240,7 +349,9 @@ public sealed class DoughUsageTraceServicesTests
 
         return new Fixture(
             qualityRepository,
+            dailyClosingRepository,
             usageRepository,
+            weeklyClosingRead,
             sourceProjectionService,
             new DoughUsageTraceManagementService(
                 qualityRepository,
@@ -266,9 +377,25 @@ public sealed class DoughUsageTraceServicesTests
         };
     }
 
+    private static DailyDoughClosing CreateDailyClosing(
+        DateOnly closingDate,
+        DateOnly weekStartDate,
+        int actualUsedBalls)
+    {
+        return DailyDoughClosing.Create(
+            closingDate,
+            weekStartDate,
+            forecastNeededBalls: actualUsedBalls + 20,
+            actualUsedBalls: actualUsedBalls,
+            closedByUserId: "manager-user",
+            closedAtUtc: DateTime.UtcNow);
+    }
+
     private sealed record Fixture(
         InMemoryDoughBatchQualityRepository QualityRecords,
+        InMemoryDailyDoughClosingRepository DailyClosings,
         InMemoryDoughUsageTraceRepository UsageTraces,
+        StubWeeklyDoughClosingReadService WeeklyClosingRead,
         DoughSourceProjectionService SourceProjectionService,
         DoughUsageTraceManagementService ManagementService,
         DoughUsageTraceReadService ReadService)
@@ -333,6 +460,74 @@ public sealed class DoughUsageTraceServicesTests
             }
 
             return Task.FromResult<IReadOnlyList<DoughBatchQualityRecord>>(query.ToArray());
+        }
+    }
+
+    private sealed class InMemoryDailyDoughClosingRepository : IDailyDoughClosingRepository
+    {
+        public List<DailyDoughClosing> Items { get; } = [];
+
+        public Task AddAsync(DailyDoughClosing closing, CancellationToken cancellationToken = default)
+        {
+            Items.Add(closing);
+            return Task.CompletedTask;
+        }
+
+        public Task<DailyDoughClosing?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Items.FirstOrDefault(item => item.Id == id));
+        }
+
+        public Task<DailyDoughClosing?> GetByClosingDateAsync(DateOnly closingDate, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Items.FirstOrDefault(item => item.ClosingDate == closingDate));
+        }
+
+        public Task<IReadOnlyList<DailyDoughClosing>> SearchAsync(
+            DateOnly? closingDateFrom,
+            DateOnly? closingDateTo,
+            CancellationToken cancellationToken = default)
+        {
+            IEnumerable<DailyDoughClosing> query = Items;
+
+            if (closingDateFrom.HasValue)
+            {
+                query = query.Where(item => item.ClosingDate >= closingDateFrom.Value);
+            }
+
+            if (closingDateTo.HasValue)
+            {
+                query = query.Where(item => item.ClosingDate <= closingDateTo.Value);
+            }
+
+            return Task.FromResult<IReadOnlyList<DailyDoughClosing>>(query.OrderBy(item => item.ClosingDate).ToArray());
+        }
+
+        public Task<IReadOnlyList<DailyDoughClosing>> ListByWeekStartDateAsync(
+            DateOnly weekStartDate,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<DailyDoughClosing>>(
+                Items.Where(item => item.WeekStartDate == weekStartDate).OrderBy(item => item.ClosingDate).ToArray());
+        }
+    }
+
+    private sealed class StubWeeklyDoughClosingReadService : IWeeklyDoughClosingReadService
+    {
+        public WeeklyDoughCarryoverResponse Carryover { get; set; } = new();
+
+        public Task<IReadOnlyList<WeeklyDoughClosingResponse>> GetWeeklyClosingsAsync(
+            GetWeeklyClosingsRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<WeeklyDoughClosingResponse>>(Array.Empty<WeeklyDoughClosingResponse>());
+        }
+
+        public Task<WeeklyDoughCarryoverResponse> GetCarryoverForWeekAsync(
+            GetWeeklyDoughCarryoverRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Carryover);
         }
     }
 

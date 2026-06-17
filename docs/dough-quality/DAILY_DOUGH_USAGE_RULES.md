@@ -24,8 +24,11 @@ It does not replace `Daily Closing`, and it does not change weekly closing rules
 - A dough usage trace must point to a specific dough quality source.
 - `Discarded` dough can never be selected as a usage source.
 - The source must already exist on or before the usage date.
-- Remaining dough by source is always calculated as:
+- `Traceable remaining` for the entry screen is calculated as:
   `original source balls - traced balls already used from that source`
+- `Live remaining` for reball planning and ready-dough guidance is calculated as:
+  `current live source balls - traced open-day usage - closed-day daily-closing usage not yet traced by source`
+- When a source is older than the current service week, live remaining is also capped by the weekly carryover that crossed into the new week.
 
 ## Destination Rules
 
@@ -45,4 +48,5 @@ It does not replace `Daily Closing`, and it does not change weekly closing rules
 
 - `Daily Closing` is still the week-to-date actual usage authority for closed days.
 - Usage traces explain the source story behind that usage.
+- Closed-day usage that has not been traced yet must reduce live remaining dough before reball decisions are made.
 - If closed-day `Daily Closing` totals do not match closed-day usage traces, the UI must show a reconciliation warning instead of silently blending the numbers.

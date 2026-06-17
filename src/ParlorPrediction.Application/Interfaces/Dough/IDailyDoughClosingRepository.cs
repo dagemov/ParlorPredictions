@@ -10,6 +10,11 @@ public interface IDailyDoughClosingRepository
 
     Task<DailyDoughClosing?> GetByClosingDateAsync(DateOnly closingDate, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<DailyDoughClosing>> SearchAsync(
+        DateOnly? closingDateFrom,
+        DateOnly? closingDateTo,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<DailyDoughClosing>> ListByWeekStartDateAsync(
         DateOnly weekStartDate,
         CancellationToken cancellationToken = default);

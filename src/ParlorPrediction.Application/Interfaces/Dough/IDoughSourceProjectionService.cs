@@ -7,4 +7,8 @@ public interface IDoughSourceProjectionService
     Task<IReadOnlyList<DoughSourceRemainingResponse>> GetRemainingBySourceAsync(
         DateOnly referenceDate,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<DoughSourceRemainingResponse>> GetTraceableRemainingBySourceAsync(
+        DateOnly referenceDate,
+        CancellationToken cancellationToken = default);
 }

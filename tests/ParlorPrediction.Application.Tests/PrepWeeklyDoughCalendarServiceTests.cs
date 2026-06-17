@@ -325,7 +325,11 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         var qualityRecords = new InMemoryDoughBatchQualityRepository();
         var lossRecords = new InMemoryDoughLossRecordRepository();
         var usageTraces = new InMemoryDoughUsageTraceRepository();
-        var sourceProjectionService = new DoughSourceProjectionService(qualityRecords, usageTraces);
+        var sourceProjectionService = new DoughSourceProjectionService(
+            qualityRecords,
+            dailyClosings,
+            usageTraces,
+            weeklyClosingRead);
         var availabilityProjectionService = new DoughAvailabilityProjectionService(
             dailyClosings,
             sourceProjectionService,
@@ -432,6 +436,27 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         public Task<DailyDoughClosing?> GetByClosingDateAsync(DateOnly closingDate, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(Items.FirstOrDefault(item => item.ClosingDate == closingDate));
+        }
+
+        public Task<IReadOnlyList<DailyDoughClosing>> SearchAsync(
+            DateOnly? closingDateFrom,
+            DateOnly? closingDateTo,
+            CancellationToken cancellationToken = default)
+        {
+            IEnumerable<DailyDoughClosing> query = Items;
+
+            if (closingDateFrom.HasValue)
+            {
+                query = query.Where(item => item.ClosingDate >= closingDateFrom.Value);
+            }
+
+            if (closingDateTo.HasValue)
+            {
+                query = query.Where(item => item.ClosingDate <= closingDateTo.Value);
+            }
+
+            return Task.FromResult<IReadOnlyList<DailyDoughClosing>>(
+                query.OrderBy(item => item.ClosingDate).ToArray());
         }
 
         public Task<IReadOnlyList<DailyDoughClosing>> ListByWeekStartDateAsync(

@@ -31,6 +31,7 @@ public sealed class DoughBatchQualityRepository : IDoughBatchQualityRepository
     {
         return await _dbContext.DoughBatchQualityRecords
             .AsNoTracking()
+            .Include(record => record.ReballRecords)
             .OrderByDescending(record => record.SourceDate)
             .ThenByDescending(record => record.CreatedOrBalledAt)
             .ToArrayAsync(cancellationToken);
