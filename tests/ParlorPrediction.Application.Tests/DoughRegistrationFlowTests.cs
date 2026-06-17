@@ -205,6 +205,7 @@ public sealed class DoughRegistrationFlowTests
         var availabilityProjectionService = new DoughAvailabilityProjectionService(
             dailyClosings,
             sourceProjectionService,
+            usageTraces,
             inventorySnapshots,
             lossRecords,
             tasks,

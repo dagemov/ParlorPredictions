@@ -61,7 +61,7 @@ public sealed class DailyDoughClosingServicesTests
     {
         var repository = new InMemoryDailyDoughClosingRepository();
         var managementService = CreateManagementService(repository);
-        var readService = CreateReadService(repository);
+        var readService = CreateReadService(repository, new InMemoryDoughUsageTraceRepository());
 
         await managementService.CreateDailyClosingAsync(new CreateDailyDoughClosingRequest
         {
@@ -96,7 +96,7 @@ public sealed class DailyDoughClosingServicesTests
     {
         var repository = new InMemoryDailyDoughClosingRepository();
         var managementService = CreateManagementService(repository);
-        var readService = CreateReadService(repository);
+        var readService = CreateReadService(repository, new InMemoryDoughUsageTraceRepository());
 
         await managementService.CreateDailyClosingAsync(new CreateDailyDoughClosingRequest
         {
@@ -115,6 +115,44 @@ public sealed class DailyDoughClosingServicesTests
         Assert.Equal(15, insights.AccumulatedSurplus);
         Assert.Equal(420, insights.CurrentAvailableBalls);
         Assert.Equal(insights.RemainingForecastNeed - 15, insights.AdjustedRemainingForecastNeed);
+    }
+
+    [Fact]
+    public async Task OperationalInsights_WarnsWhenClosedDayTracesDoNotMatchDailyClosing()
+    {
+        var repository = new InMemoryDailyDoughClosingRepository();
+        var usageTraces = new InMemoryDoughUsageTraceRepository();
+        var managementService = CreateManagementService(repository);
+        var readService = CreateReadService(repository, usageTraces);
+
+        await managementService.CreateDailyClosingAsync(new CreateDailyDoughClosingRequest
+        {
+            ClosingDate = new DateOnly(2026, 6, 9),
+            ForecastNeededBalls = 100,
+            ActualUsedBalls = 80,
+            ClosedByUserId = "manager-user"
+        });
+
+        usageTraces.Items.Add(DoughUsageTrace.Create(
+            usageDate: new DateOnly(2026, 6, 9),
+            sourceDoughBatchQualityRecordId: Guid.NewGuid(),
+            sourceDate: new DateOnly(2026, 6, 8),
+            sourceType: DoughQualityStatus.Good,
+            destination: DoughUsageDestination.Restaurant,
+            trayCount: 6m,
+            createdByUserId: "manager-user"));
+
+        var insights = await readService.GetOperationalInsightsAsync(new GetDailyClosingWeekSummaryRequest
+        {
+            ReferenceDate = new DateOnly(2026, 6, 9),
+            HistoricalWeeksToUse = 8
+        });
+
+        Assert.True(insights.HasTraceReconciliationWarning);
+        Assert.Equal(72, insights.TotalTracedUsedBallsOnClosedDays);
+        Assert.Equal(8, insights.TraceReconciliationDifferenceBalls);
+        Assert.Contains("80", insights.TraceReconciliationMessage);
+        Assert.Contains("72", insights.TraceReconciliationMessage);
     }
 
     [Fact]
@@ -162,11 +200,14 @@ public sealed class DailyDoughClosingServicesTests
                 CreateUser("pizzamaker-user", ApplicationRole.PizzaMaker)));
     }
 
-    private static DailyDoughClosingReadService CreateReadService(InMemoryDailyDoughClosingRepository repository)
+    private static DailyDoughClosingReadService CreateReadService(
+        InMemoryDailyDoughClosingRepository repository,
+        InMemoryDoughUsageTraceRepository usageTraces)
     {
         return new DailyDoughClosingReadService(
             repository,
             new StubDoughPrepCalculationService(),
+            usageTraces,
             new StubPrepWeeklyDoughCalendarService());
     }
 

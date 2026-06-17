@@ -273,6 +273,47 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         Assert.Equal(0, result.StillMissingThisWeekBalls);
     }
 
+    [Fact]
+    public async Task OpenUsageTracesReduceReadyNowButDoNotReduceProducedThisWeek()
+    {
+        var tuesday = new DateOnly(2026, 6, 9);
+        var fixture = CreateFixture(referenceDate: tuesday);
+        fixture.WeeklyClosingRead.Carryover = new WeeklyDoughCarryoverResponse
+        {
+            HasClosingCarryover = true,
+            CarryoverAvailableBalls = 432,
+            CarryoverReadyBalls = 432
+        };
+        fixture.InventorySnapshots.Snapshots.Add(CreateSnapshot(tuesday, availableBalls: 432));
+
+        var batch = new DoughBatch(
+            Guid.NewGuid(),
+            batchDate: tuesday,
+            totalCases: DoughBatch.StandardLoadCases);
+        batch.MarkAsBalled(new DateTime(2026, 6, 9, 18, 0, 0, DateTimeKind.Utc));
+        fixture.Batches.Batches.Add(batch);
+
+        fixture.Tasks.Tasks.Add(CreateCompletedTask(
+            taskDate: tuesday,
+            completedAtUtc: new DateTime(2026, 6, 9, 18, 0, 0, DateTimeKind.Utc),
+            quantityCompleted: 168));
+
+        fixture.UsageTraces.Items.Add(DoughUsageTrace.Create(
+            usageDate: tuesday,
+            sourceDoughBatchQualityRecordId: Guid.NewGuid(),
+            sourceDate: tuesday.AddDays(-1),
+            sourceType: DoughQualityStatus.Good,
+            destination: DoughUsageDestination.Restaurant,
+            trayCount: 1.5m,
+            createdByUserId: "manager-user"));
+
+        var result = await fixture.Service.GetWeekAsync(tuesday, historicalWeeksToUse: 8);
+
+        Assert.Equal(582, result.ReadyNowBalls);
+        Assert.Equal(168, result.ProducedThisWeekBalls);
+        Assert.Equal(0, result.FutureBalls);
+    }
+
     private static TestFixture CreateFixture(DateOnly referenceDate)
     {
         var calculationService = new FixedWeeklyCalculationService(referenceDate);
@@ -288,6 +329,7 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         var availabilityProjectionService = new DoughAvailabilityProjectionService(
             dailyClosings,
             sourceProjectionService,
+            usageTraces,
             inventorySnapshots,
             lossRecords,
             tasks,
@@ -301,6 +343,7 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
             dailyClosings,
             qualityRecords,
             lossRecords,
+            usageTraces,
             new PrepWeeklyDoughCalendarService(
                 availabilityProjectionService,
                 calculationService,
@@ -349,6 +392,7 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         InMemoryDailyDoughClosingRepository DailyClosings,
         InMemoryDoughBatchQualityRepository QualityRecords,
         InMemoryDoughLossRecordRepository LossRecords,
+        InMemoryDoughUsageTraceRepository UsageTraces,
         PrepWeeklyDoughCalendarService Service);
 
     private sealed class StubWeeklyDoughClosingReadService : IWeeklyDoughClosingReadService

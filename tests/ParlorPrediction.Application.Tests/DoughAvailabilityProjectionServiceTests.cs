@@ -85,6 +85,48 @@ public sealed class DoughAvailabilityProjectionServiceTests
         Assert.Equal(240, projection.RegularReadyBalls);
     }
 
+    [Fact]
+    public async Task OpenUsageTracesReduceAvailableBallsBeforeDailyClosing()
+    {
+        var fixture = CreateFixture();
+        fixture.WeeklyClosingRead.Carryover = CreateCarryover(300);
+        fixture.UsageTraces.Items.Add(DoughUsageTrace.Create(
+            usageDate: new DateOnly(2026, 6, 10),
+            sourceDoughBatchQualityRecordId: Guid.NewGuid(),
+            sourceDate: new DateOnly(2026, 6, 9),
+            sourceType: DoughQualityStatus.Good,
+            destination: DoughUsageDestination.Restaurant,
+            trayCount: 2m,
+            createdByUserId: "manager-user"));
+
+        var projection = await fixture.Service.GetWeeklyAvailabilityAsync(new DateOnly(2026, 6, 10));
+
+        Assert.Equal(276, projection.AvailableBalls);
+    }
+
+    [Fact]
+    public async Task ClosedDayUsageTracesDoNotDoubleReduceAvailability()
+    {
+        var fixture = CreateFixture();
+        fixture.WeeklyClosingRead.Carryover = CreateCarryover(300);
+        fixture.DailyClosings.Items.Add(CreateDailyClosing(
+            closingDate: new DateOnly(2026, 6, 9),
+            weekStartDate: new DateOnly(2026, 6, 9),
+            actualUsedBalls: 100));
+        fixture.UsageTraces.Items.Add(DoughUsageTrace.Create(
+            usageDate: new DateOnly(2026, 6, 9),
+            sourceDoughBatchQualityRecordId: Guid.NewGuid(),
+            sourceDate: new DateOnly(2026, 6, 8),
+            sourceType: DoughQualityStatus.Good,
+            destination: DoughUsageDestination.Restaurant,
+            trayCount: 2m,
+            createdByUserId: "manager-user"));
+
+        var projection = await fixture.Service.GetWeeklyAvailabilityAsync(new DateOnly(2026, 6, 10));
+
+        Assert.Equal(200, projection.AvailableBalls);
+    }
+
     private static WeeklyDoughCarryoverResponse CreateCarryover(int carryoverAvailableBalls)
     {
         return new WeeklyDoughCarryoverResponse
@@ -133,6 +175,7 @@ public sealed class DoughAvailabilityProjectionServiceTests
             new DoughAvailabilityProjectionService(
                 dailyClosings,
                 sourceProjectionService,
+                usageTraces,
                 inventorySnapshots,
                 losses,
                 tasks,

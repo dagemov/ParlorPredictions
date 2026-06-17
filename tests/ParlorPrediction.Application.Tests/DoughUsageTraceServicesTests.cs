@@ -33,6 +33,25 @@ public sealed class DoughUsageTraceServicesTests
     }
 
     [Fact]
+    public async Task CreateAsync_HalfCaseRecordsSixBalls()
+    {
+        var fixture = CreateFixture();
+        var source = fixture.AddSourceRecord(quantityBalls: 48, status: DoughQualityStatus.Good);
+
+        var response = await fixture.ManagementService.CreateAsync(new CreateDoughUsageTraceRequest
+        {
+            UsageDate = new DateOnly(2026, 6, 16),
+            SourceDoughBatchQualityRecordId = source.Id,
+            Destination = "Restaurant",
+            TrayCount = 0.5m,
+            CreatedByUserId = "manager-user"
+        });
+
+        Assert.Equal(6, response.BallsUsed);
+        Assert.Equal(6, fixture.UsageTraces.Items[0].BallsUsed);
+    }
+
+    [Fact]
     public async Task CreateAsync_ThreeTraysRecordsThirtySixBallsUsed()
     {
         var fixture = CreateFixture();
@@ -125,6 +144,26 @@ public sealed class DoughUsageTraceServicesTests
         });
 
         Assert.Contains(sources, source => source.SourceType == "Reballed" && source.HasWarning);
+    }
+
+    [Fact]
+    public async Task GetAvailableSourcesForFarmersMarketInSummer_WarnsOnMustUseAndOlderDough()
+    {
+        var fixture = CreateFixture();
+        fixture.AddSourceRecord(
+            quantityBalls: 24,
+            status: DoughQualityStatus.MustUseNextDay,
+            sourceDate: new DateOnly(2026, 7, 12),
+            createdAtUtc: new DateTime(2026, 7, 12, 12, 0, 0, DateTimeKind.Utc),
+            mustUseByDate: new DateOnly(2026, 7, 16));
+
+        var sources = await fixture.ReadService.GetAvailableSourcesForDateAsync(new GetAvailableDoughSourcesRequest
+        {
+            UsageDate = new DateOnly(2026, 7, 15),
+            Destination = "FarmersMarket"
+        });
+
+        Assert.Contains(sources, source => source.SourceType == "MustUseNextDay" && source.HasWarning);
     }
 
     [Fact]
