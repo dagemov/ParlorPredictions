@@ -209,6 +209,19 @@ else
             </section>
         }
 
+        @if (dailyInsights?.HasTraceReconciliationWarning == true && !string.IsNullOrWhiteSpace(dailyInsights.TraceReconciliationMessage))
+        {
+            <section class="rounded-[24px] border border-[#d3a74b] bg-[#fff8ea] p-6 shadow-sm">
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-[#8d5b00]">Daily Closing vs Traces</p>
+                <p class="mt-3 mb-0 text-lg leading-8 text-on-surface">
+                    Closed-day actual used: <strong>@dailyInsights.TotalActualUsedBalls</strong>.
+                    Traced used: <strong>@dailyInsights.TotalTracedUsedBallsOnClosedDays</strong>.
+                    Difference: <strong>@(dailyInsights.TraceReconciliationDifferenceBalls > 0 ? $"+{dailyInsights.TraceReconciliationDifferenceBalls}" : dailyInsights.TraceReconciliationDifferenceBalls.ToString())</strong>.
+                </p>
+                <p class="mt-3 mb-0 text-base leading-7 text-on-surface-variant">@dailyInsights.TraceReconciliationMessage</p>
+            </section>
+        }
+
         @if (weeklyGoal?.HasClosingCarryover == true)
         {
             <section class="rounded-[24px] border border-outline-variant bg-surface-container-low p-6">

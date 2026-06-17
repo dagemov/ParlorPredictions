@@ -79,6 +79,11 @@
             <strong>@Model.AccumulatedShortage</strong>
             <small>Days where usage ran above forecast.</small>
         </article>
+        <article class="metric-card">
+            <span class="metric-card__label">Traced Used</span>
+            <strong>@Model.TotalTracedUsedBallsOnClosedDays</strong>
+            <small>Source-tracked balls on closed days.</small>
+        </article>
     </div>
 
     @if (Model.HasSurplusWarning || Model.HasShortageWarning)
@@ -93,6 +98,14 @@
                 <h3>Potential Dough Shortage: @Model.ProjectedSurplus Balls</h3>
             }
             <p class="mb-0">@Model.Recommendation</p>
+        </div>
+    }
+
+    @if (Model.HasTraceReconciliationWarning && !string.IsNullOrWhiteSpace(Model.TraceReconciliationMessage))
+    {
+        <div class="recommendation-note mb-4 border-warning">
+            <h3>Trace Reconciliation Warning: @Model.TraceReconciliationDifferenceBalls ball difference</h3>
+            <p class="mb-0">@Model.TraceReconciliationMessage</p>
         </div>
     }
 </section>

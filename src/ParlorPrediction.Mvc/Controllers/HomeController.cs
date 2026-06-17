@@ -244,6 +244,10 @@ public class HomeController : Controller
             ProjectedSurplus = insights.ProjectedSurplus,
             HasSurplusWarning = insights.HasSurplusWarning,
             HasShortageWarning = insights.HasShortageWarning,
+            TotalTracedUsedBallsOnClosedDays = insights.TotalTracedUsedBallsOnClosedDays,
+            TraceReconciliationDifferenceBalls = insights.TraceReconciliationDifferenceBalls,
+            HasTraceReconciliationWarning = insights.HasTraceReconciliationWarning,
+            TraceReconciliationMessage = insights.TraceReconciliationMessage,
             Recommendation = insights.Recommendation
         };
     }
