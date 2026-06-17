@@ -31,4 +31,12 @@ public sealed class DoughUsageSourceCardViewModel
     public string DisplaySourceType => DoughUsageDisplayText.Format(SourceType);
 
     public string DisplayRecommendedAction => DoughUsageDisplayText.Format(RecommendedAction);
+
+    public int UsedPercent => OriginalBalls <= 0
+        ? 0
+        : Math.Clamp((int)Math.Round((double)UsedBalls * 100 / OriginalBalls), 0, 100);
+
+    public int RemainingPercent => OriginalBalls <= 0
+        ? 0
+        : Math.Clamp((int)Math.Round((double)RemainingBalls * 100 / OriginalBalls), 0, 100);
 }

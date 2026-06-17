@@ -23,4 +23,8 @@ public sealed class DoughUsageTraceListItemViewModel
     public string DisplayDestination => DoughUsageDisplayText.Format(Destination);
 
     public string DisplaySourceType => DoughUsageDisplayText.Format(SourceType);
+
+    public string DisplayTrayCount => TrayCount.ToString("0.##");
+
+    public string CaseLabel => TrayCount == 1m ? "case" : "cases";
 }
