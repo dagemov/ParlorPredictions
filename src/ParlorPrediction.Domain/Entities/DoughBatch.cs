@@ -62,6 +62,44 @@ public sealed class DoughBatch
 
     public DateTime UpdatedAtUtc { get; private set; }
 
+    public static DoughBatch Rehydrate(
+        Guid id,
+        DateOnly batchDate,
+        int totalCases,
+        int ballsPerCase,
+        int totalBalls,
+        DateOnly fermentationReadyDate,
+        bool isBalled,
+        DateTime? balledAtUtc,
+        bool isEventException,
+        bool isVoided,
+        DateTime? voidedAtUtc,
+        string? notes,
+        string? voidReason,
+        DateTime createdAtUtc,
+        DateTime updatedAtUtc)
+    {
+        var batch = new DoughBatch(
+            id,
+            batchDate,
+            totalCases,
+            ballsPerCase,
+            isEventException,
+            notes);
+
+        batch.TotalBalls = totalBalls;
+        batch.FermentationReadyDate = fermentationReadyDate;
+        batch.IsBalled = isBalled;
+        batch.BalledAtUtc = balledAtUtc;
+        batch.IsVoided = isVoided;
+        batch.VoidedAtUtc = voidedAtUtc;
+        batch.VoidReason = NormalizeOptional(voidReason);
+        batch.CreatedAtUtc = createdAtUtc;
+        batch.UpdatedAtUtc = updatedAtUtc;
+
+        return batch;
+    }
+
     public void MarkAsBalled(DateTime balledAtUtc)
     {
         if (balledAtUtc == default)
