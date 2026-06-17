@@ -1,0 +1,148 @@
+@model DoughReballPlanningPageViewModel
+@{
+    ViewData["Title"] = "Review Reball Plan";
+    ViewData["DoughNav"] = "dough";
+    var statusType = TempData["DoughUsageStatusType"] as string;
+    var statusMessage = TempData["DoughUsageStatusMessage"] as string;
+}
+
+<section class="space-y-gutter">
+    <section class="rounded-[28px] border border-outline-variant bg-white p-6 shadow-sm">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Reball Planning</p>
+                <h1 class="mt-2 text-4xl font-black tracking-[-0.05em] text-primary lg:text-5xl">Review Reball Plan</h1>
+                <p class="mt-3 max-w-4xl text-lg leading-8 text-on-surface-variant">
+                    This board reads the dough that still remains after traced usage and separates what should be used first, reviewed, reballed, or discarded.
+                </p>
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+                <a asp-action="Create"
+                   asp-controller="DoughUsage"
+                   asp-route-date="@Model.ReferenceDate.ToString("yyyy-MM-dd")"
+                   class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest no-underline">
+                    <span class="material-symbols-outlined">arrow_back</span>
+                    Record Dough Used
+                </a>
+                <a asp-action="Dough"
+                   asp-controller="Prep"
+                   asp-route-targetDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")"
+                   class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl bg-primary text-on-primary font-bold hover:opacity-90 transition-opacity no-underline">
+                    <span class="material-symbols-outlined">home</span>
+                    Back To Dough Prep
+                </a>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(statusMessage))
+        {
+            <div class="mt-6 rounded-2xl border border-outline-variant bg-surface-container-low px-5 py-4 text-on-surface">
+                <strong class="block text-sm uppercase tracking-[0.18em] text-on-surface-variant">@statusType</strong>
+                <span class="mt-2 block text-base">@statusMessage</span>
+            </div>
+        }
+    </section>
+
+    <section class="grid gap-6 xl:grid-cols-2">
+        <section class="rounded-[28px] border border-outline-variant bg-white p-6 shadow-sm">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Use First</p>
+            <h2 class="mt-2 text-3xl font-black tracking-[-0.04em] text-primary">Must move next</h2>
+            <div class="mt-6 space-y-4">
+                @if (Model.MustUseFirstSources.Count == 0)
+                {
+                    <div class="rounded-2xl bg-surface-container-low px-5 py-4 text-on-surface-variant">No must-use dough is waiting right now.</div>
+                }
+                else
+                {
+                    @foreach (var source in Model.MustUseFirstSources)
+                    {
+                        <article class="rounded-[24px] border border-outline-variant bg-surface-container-low p-5">
+                            <h3 class="m-0 text-xl font-black tracking-[-0.03em] text-on-surface">@source.Title</h3>
+                            <p class="mt-1 text-sm uppercase tracking-[0.18em] text-on-surface-variant">@source.DisplaySourceType</p>
+                            <div class="mt-4 flex flex-wrap gap-4 text-sm text-on-surface-variant">
+                                <span>Remaining: @source.RemainingBalls balls</span>
+                                <span>Age: @source.AgeDays day@(source.AgeDays == 1 ? string.Empty : "s")</span>
+                            </div>
+                        </article>
+                    }
+                }
+            </div>
+        </section>
+
+        <section class="rounded-[28px] border border-outline-variant bg-white p-6 shadow-sm">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Needs Review</p>
+            <h2 class="mt-2 text-3xl font-black tracking-[-0.04em] text-primary">Watch closely</h2>
+            <div class="mt-6 space-y-4">
+                @if (Model.ReviewSources.Count == 0)
+                {
+                    <div class="rounded-2xl bg-surface-container-low px-5 py-4 text-on-surface-variant">No remaining dough is sitting in the attention window.</div>
+                }
+                else
+                {
+                    @foreach (var source in Model.ReviewSources)
+                    {
+                        <article class="rounded-[24px] border border-outline-variant bg-surface-container-low p-5">
+                            <h3 class="m-0 text-xl font-black tracking-[-0.03em] text-on-surface">@source.Title</h3>
+                            <p class="mt-1 text-sm uppercase tracking-[0.18em] text-on-surface-variant">@source.DisplaySourceType</p>
+                            <div class="mt-4 flex flex-wrap gap-4 text-sm text-on-surface-variant">
+                                <span>Remaining: @source.RemainingBalls balls</span>
+                                <span>Recommended: @source.DisplayRecommendedAction</span>
+                            </div>
+                        </article>
+                    }
+                }
+            </div>
+        </section>
+
+        <section class="rounded-[28px] border border-outline-variant bg-white p-6 shadow-sm">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Reball Candidates</p>
+            <h2 class="mt-2 text-3xl font-black tracking-[-0.04em] text-primary">Old dough that survived service</h2>
+            <div class="mt-6 space-y-4">
+                @if (Model.ReballCandidates.Count == 0)
+                {
+                    <div class="rounded-2xl bg-surface-container-low px-5 py-4 text-on-surface-variant">No remaining dough is asking for reball right now.</div>
+                }
+                else
+                {
+                    @foreach (var source in Model.ReballCandidates)
+                    {
+                        <article class="rounded-[24px] border border-outline-variant bg-surface-container-low p-5">
+                            <h3 class="m-0 text-xl font-black tracking-[-0.03em] text-on-surface">@source.Title</h3>
+                            <p class="mt-1 text-sm uppercase tracking-[0.18em] text-on-surface-variant">@source.DisplaySourceType</p>
+                            <div class="mt-4 flex flex-wrap gap-4 text-sm text-on-surface-variant">
+                                <span>Remaining: @source.RemainingBalls balls</span>
+                                <span>Tracked balls: @source.OriginalBalls</span>
+                            </div>
+                        </article>
+                    }
+                }
+            </div>
+        </section>
+
+        <section class="rounded-[28px] border border-outline-variant bg-white p-6 shadow-sm">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Discard Candidates</p>
+            <h2 class="mt-2 text-3xl font-black tracking-[-0.04em] text-primary">Manager decision needed</h2>
+            <div class="mt-6 space-y-4">
+                @if (Model.DiscardCandidates.Count == 0)
+                {
+                    <div class="rounded-2xl bg-surface-container-low px-5 py-4 text-on-surface-variant">Nothing active is past the discard threshold today.</div>
+                }
+                else
+                {
+                    @foreach (var source in Model.DiscardCandidates)
+                    {
+                        <article class="rounded-[24px] border border-red-200 bg-red-50 p-5">
+                            <h3 class="m-0 text-xl font-black tracking-[-0.03em] text-red-900">@source.Title</h3>
+                            <p class="mt-1 text-sm uppercase tracking-[0.18em] text-red-700">@source.DisplaySourceType</p>
+                            <div class="mt-4 flex flex-wrap gap-4 text-sm text-red-800">
+                                <span>Remaining: @source.RemainingBalls balls</span>
+                                <span>Age: @source.AgeDays day@(source.AgeDays == 1 ? string.Empty : "s")</span>
+                            </div>
+                        </article>
+                    }
+                }
+            </div>
+        </section>
+    </section>
+</section>

@@ -106,6 +106,11 @@ public sealed class DoughBatchQualityRecordConfiguration : IEntityTypeConfigurat
             .HasForeignKey(reball => reball.DoughBatchQualityRecordId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasMany(record => record.UsageTraces)
+            .WithOne(trace => trace.SourceDoughBatchQualityRecord)
+            .HasForeignKey(trace => trace.SourceDoughBatchQualityRecordId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasIndex(record => record.SourceDate);
         builder.HasIndex(record => record.CreatedOrBalledAt);
         builder.HasIndex(record => record.CurrentStatus);

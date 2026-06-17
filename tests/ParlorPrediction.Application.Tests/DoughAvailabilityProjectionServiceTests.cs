@@ -118,7 +118,9 @@ public sealed class DoughAvailabilityProjectionServiceTests
         var inventorySnapshots = new InMemoryDoughInventoryReadRepository();
         var losses = new InMemoryDoughLossRecordRepository();
         var tasks = new InMemoryPrepTaskRepository();
+        var usageTraces = new InMemoryDoughUsageTraceRepository();
         var weeklyClosingRead = new StubWeeklyDoughClosingReadService();
+        var sourceProjectionService = new DoughSourceProjectionService(qualityRecords, usageTraces);
 
         return new TestFixture(
             dailyClosings,
@@ -126,10 +128,11 @@ public sealed class DoughAvailabilityProjectionServiceTests
             inventorySnapshots,
             losses,
             tasks,
+            usageTraces,
             weeklyClosingRead,
             new DoughAvailabilityProjectionService(
                 dailyClosings,
-                qualityRecords,
+                sourceProjectionService,
                 inventorySnapshots,
                 losses,
                 tasks,
@@ -142,6 +145,7 @@ public sealed class DoughAvailabilityProjectionServiceTests
         InMemoryDoughInventoryReadRepository InventorySnapshots,
         InMemoryDoughLossRecordRepository Losses,
         InMemoryPrepTaskRepository Tasks,
+        InMemoryDoughUsageTraceRepository UsageTraces,
         StubWeeklyDoughClosingReadService WeeklyClosingRead,
         DoughAvailabilityProjectionService Service);
 

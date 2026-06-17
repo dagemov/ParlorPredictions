@@ -12,7 +12,7 @@ public sealed class DoughAvailabilityProjectionService : IDoughAvailabilityProje
     private const int OperationalDays = 6;
 
     private readonly IDailyDoughClosingRepository _dailyDoughClosingRepository;
-    private readonly IDoughBatchQualityRepository _doughBatchQualityRepository;
+    private readonly IDoughSourceProjectionService _doughSourceProjectionService;
     private readonly IDoughInventoryReadRepository _doughInventoryReadRepository;
     private readonly IDoughLossRecordRepository _doughLossRecordRepository;
     private readonly IPrepTaskRepository _prepTaskRepository;
@@ -20,14 +20,14 @@ public sealed class DoughAvailabilityProjectionService : IDoughAvailabilityProje
 
     public DoughAvailabilityProjectionService(
         IDailyDoughClosingRepository dailyDoughClosingRepository,
-        IDoughBatchQualityRepository doughBatchQualityRepository,
+        IDoughSourceProjectionService doughSourceProjectionService,
         IDoughInventoryReadRepository doughInventoryReadRepository,
         IDoughLossRecordRepository doughLossRecordRepository,
         IPrepTaskRepository prepTaskRepository,
         IWeeklyDoughClosingReadService weeklyDoughClosingReadService)
     {
         _dailyDoughClosingRepository = dailyDoughClosingRepository;
-        _doughBatchQualityRepository = doughBatchQualityRepository;
+        _doughSourceProjectionService = doughSourceProjectionService;
         _doughInventoryReadRepository = doughInventoryReadRepository;
         _doughLossRecordRepository = doughLossRecordRepository;
         _prepTaskRepository = prepTaskRepository;
@@ -64,7 +64,9 @@ public sealed class DoughAvailabilityProjectionService : IDoughAvailabilityProje
             referenceDate,
             null,
             cancellationToken);
-        var qualityRecords = await _doughBatchQualityRepository.ListAsync(cancellationToken);
+        var remainingBySource = await _doughSourceProjectionService.GetRemainingBySourceAsync(
+            referenceDate,
+            cancellationToken);
 
         var producedThisWeekBalls = SumProducedBallsWithinWindow(tasks, weekStartDate, referenceDate);
         var actualUsedBallsThisWeek = closings
@@ -79,19 +81,12 @@ public sealed class DoughAvailabilityProjectionService : IDoughAvailabilityProje
             actualUsedBallsThisWeek,
             lostBallsThisWeek);
 
-        var currentMustUseBalls = SumCurrentStatusBalls(
-            qualityRecords,
-            DoughQualityStatus.MustUseNextDay,
-            referenceDate);
-        var currentAttentionBalls = SumCurrentStatusBalls(
-            qualityRecords,
-            DoughQualityStatus.Attention,
-            referenceDate);
+        var currentMustUseBalls = SumCurrentStatusBalls(remainingBySource, DoughQualityStatus.MustUseNextDay);
+        var currentAttentionBalls = SumCurrentStatusBalls(remainingBySource, DoughQualityStatus.Attention);
         var (mustUseRemainingBalls, attentionRemainingBalls, regularReadyBalls) = AllocateAvailableBallsByPriority(
             availableBalls,
             currentMustUseBalls,
-            currentAttentionBalls,
-            actualUsedBallsThisWeek);
+            currentAttentionBalls);
 
         return new DoughAvailabilityProjectionResponse
         {
@@ -167,35 +162,22 @@ public sealed class DoughAvailabilityProjectionService : IDoughAvailabilityProje
     }
 
     private static int SumCurrentStatusBalls(
-        IReadOnlyList<DoughBatchQualityRecord> qualityRecords,
-        DoughQualityStatus status,
-        DateOnly referenceDate)
+        IReadOnlyList<Contracts.Responses.DoughUsage.DoughSourceRemainingResponse> qualityRecords,
+        DoughQualityStatus status)
     {
         return qualityRecords
-            .Where(record => record.CurrentStatus == status)
-            .Where(record => DateOnly.FromDateTime(record.CreatedOrBalledAt.ToLocalTime()) <= referenceDate)
-            .Sum(record => record.QuantityBalls);
+            .Where(record => string.Equals(record.SourceType, status.ToString(), StringComparison.OrdinalIgnoreCase))
+            .Sum(record => record.RemainingBalls);
     }
 
     private static (int MustUseRemainingBalls, int AttentionRemainingBalls, int RegularReadyBalls) AllocateAvailableBallsByPriority(
         int availableBalls,
         int grossMustUseBalls,
-        int grossAttentionBalls,
-        int actualUsedBallsThisWeek)
+        int grossAttentionBalls)
     {
-        var remainingConsumption = actualUsedBallsThisWeek;
-
-        var mustUseConsumedBalls = Math.Min(grossMustUseBalls, remainingConsumption);
-        remainingConsumption -= mustUseConsumedBalls;
-        var mustUseRemainingBalls = Math.Max(grossMustUseBalls - mustUseConsumedBalls, 0);
-
-        var attentionConsumedBalls = Math.Min(grossAttentionBalls, remainingConsumption);
-        remainingConsumption -= attentionConsumedBalls;
-        var attentionRemainingBalls = Math.Max(grossAttentionBalls - attentionConsumedBalls, 0);
-
-        var effectiveMustUseBalls = Math.Min(mustUseRemainingBalls, availableBalls);
+        var effectiveMustUseBalls = Math.Min(grossMustUseBalls, availableBalls);
         var availableAfterMustUse = Math.Max(availableBalls - effectiveMustUseBalls, 0);
-        var effectiveAttentionBalls = Math.Min(attentionRemainingBalls, availableAfterMustUse);
+        var effectiveAttentionBalls = Math.Min(grossAttentionBalls, availableAfterMustUse);
         var regularReadyBalls = Math.Max(availableBalls - effectiveMustUseBalls - effectiveAttentionBalls, 0);
 
         return (effectiveMustUseBalls, effectiveAttentionBalls, regularReadyBalls);
