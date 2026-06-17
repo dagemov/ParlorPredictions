@@ -2,6 +2,7 @@ namespace ParlorPrediction.Domain.Entities;
 
 public sealed class WeeklyDoughClosing
 {
+    public const int ClosingWeekLengthDays = 7;
     public const int NotesMaxLength = 1000;
     public const int CorrectionNoteMaxLength = 1000;
     public const int OperationalWeekLengthDays = 6;
@@ -25,7 +26,7 @@ public sealed class WeeklyDoughClosing
         string? notes)
     {
         Id = id == Guid.Empty ? Guid.NewGuid() : id;
-        SetWeekWindow(weekStartDate, weekStartDate.AddDays(OperationalWeekLengthDays - 1));
+        SetWeekWindow(weekStartDate, weekStartDate.AddDays(ClosingWeekLengthDays - 1));
         SetCounts(
             neededBalls,
             producedBalls,
@@ -159,9 +160,19 @@ public sealed class WeeklyDoughClosing
             throw new ArgumentException("Week end date must be on or after week start date.", nameof(weekEndDate));
         }
 
-        if (weekEndDate.DayNumber - weekStartDate.DayNumber != OperationalWeekLengthDays - 1)
+        if (weekEndDate.DayNumber - weekStartDate.DayNumber != ClosingWeekLengthDays - 1)
         {
-            throw new ArgumentException("Weekly dough closing must cover the operational six-day window.", nameof(weekEndDate));
+            throw new ArgumentException("Weekly dough closing must cover the Monday through Sunday closing window.", nameof(weekEndDate));
+        }
+
+        if (weekStartDate.DayOfWeek != DayOfWeek.Monday)
+        {
+            throw new ArgumentException("Weekly dough closing must start on Monday.", nameof(weekStartDate));
+        }
+
+        if (weekEndDate.DayOfWeek != DayOfWeek.Sunday)
+        {
+            throw new ArgumentException("Weekly dough closing must end on Sunday.", nameof(weekEndDate));
         }
 
         WeekStartDate = weekStartDate;

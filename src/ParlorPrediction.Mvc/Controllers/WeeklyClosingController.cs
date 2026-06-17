@@ -1,9 +1,12 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using ParlorPrediction.Application.Interfaces.Dough;
+using ParlorPrediction.Application.Interfaces.Prep;
 using ParlorPrediction.Contracts.Requests.DoughClosing;
 using ParlorPrediction.Contracts.Responses.DoughClosing;
+using ParlorPrediction.Domain.Entities;
 using ParlorPrediction.Domain.Enums;
 using ParlorPrediction.Domain.Rules;
 using ParlorPrediction.Mvc.Models.DoughClosing;
@@ -17,16 +20,25 @@ public sealed class WeeklyClosingController : Controller
     private const string StatusTypeKey = "WeeklyClosingStatusType";
     private const string StatusMessageKey = "WeeklyClosingStatusMessage";
 
+    private readonly IDoughAvailabilityProjectionService _doughAvailabilityProjectionService;
     private readonly IDailyDoughClosingReadService _dailyDoughClosingReadService;
+    private readonly ILogger<WeeklyClosingController> _logger;
+    private readonly IPrepWeeklyDoughCalendarService _prepWeeklyDoughCalendarService;
     private readonly IWeeklyDoughClosingManagementService _weeklyDoughClosingManagementService;
     private readonly IWeeklyDoughClosingReadService _weeklyDoughClosingReadService;
 
     public WeeklyClosingController(
+        IDoughAvailabilityProjectionService doughAvailabilityProjectionService,
         IDailyDoughClosingReadService dailyDoughClosingReadService,
+        ILogger<WeeklyClosingController> logger,
+        IPrepWeeklyDoughCalendarService prepWeeklyDoughCalendarService,
         IWeeklyDoughClosingManagementService weeklyDoughClosingManagementService,
         IWeeklyDoughClosingReadService weeklyDoughClosingReadService)
     {
+        _doughAvailabilityProjectionService = doughAvailabilityProjectionService;
         _dailyDoughClosingReadService = dailyDoughClosingReadService;
+        _logger = logger;
+        _prepWeeklyDoughCalendarService = prepWeeklyDoughCalendarService;
         _weeklyDoughClosingManagementService = weeklyDoughClosingManagementService;
         _weeklyDoughClosingReadService = weeklyDoughClosingReadService;
     }
@@ -51,13 +63,13 @@ public sealed class WeeklyClosingController : Controller
     [HttpGet("create")]
     public IActionResult Create(DateOnly? weekStartDate)
     {
-        var normalizedWeekStartDate = NormalizeOperationalWeekStart(
-            weekStartDate ?? NormalizeOperationalWeekStart(DateOnly.FromDateTime(DateTime.Today)).AddDays(-7));
+        var normalizedWeekStartDate = NormalizeClosingWeekStart(
+            weekStartDate ?? NormalizeClosingWeekStart(DateOnly.FromDateTime(DateTime.Today)).AddDays(-7));
 
         return View("Form", new WeeklyDoughClosingFormPageViewModel
         {
             Title = "Weekly Dough Closing",
-            Intro = "Record what really remained at the end of the operational week so the next week starts from real carryover instead of resetting to zero.",
+            Intro = "Record what really remained from Monday through Sunday so the next week starts from real carryover instead of resetting to zero.",
             Form = new WeeklyDoughClosingFormViewModel
             {
                 WeekStartDate = normalizedWeekStartDate
@@ -77,7 +89,7 @@ public sealed class WeeklyClosingController : Controller
         {
             return View("Form", BuildFormPageModel(
                 "Weekly Dough Closing",
-                "Record what really remained at the end of the operational week so the next week starts from real carryover instead of resetting to zero.",
+                "Record what really remained from Monday through Sunday so the next week starts from real carryover instead of resetting to zero.",
                 model));
         }
 
@@ -113,7 +125,7 @@ public sealed class WeeklyClosingController : Controller
             SetStatusMessage("danger", exception.Message);
             return View("Form", BuildFormPageModel(
                 "Weekly Dough Closing",
-                "Record what really remained at the end of the operational week so the next week starts from real carryover instead of resetting to zero.",
+                "Record what really remained from Monday through Sunday so the next week starts from real carryover instead of resetting to zero.",
                 model));
         }
     }
@@ -190,6 +202,71 @@ public sealed class WeeklyClosingController : Controller
         }
     }
 
+    [HttpGet("close-this-week")]
+    public async Task<IActionResult> CloseThisWeek(
+        DateOnly? referenceDate,
+        CancellationToken cancellationToken = default)
+    {
+        var selectedReferenceDate = referenceDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var model = await BuildCloseThisWeekViewModelAsync(selectedReferenceDate, cancellationToken);
+        return View("CloseThisWeek", model);
+    }
+
+    [HttpPost("close-this-week")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CloseThisWeek(
+        WeeklyCloseThisWeekConfirmViewModel model,
+        CancellationToken cancellationToken = default)
+    {
+        var currentUserId = GetRequiredCurrentUserId();
+        if (currentUserId is null)
+        {
+            return Challenge();
+        }
+
+        var preview = await BuildCloseThisWeekViewModelAsync(model.ReferenceDate, cancellationToken);
+        if (!preview.CanConfirmClose)
+        {
+            SetStatusMessage("danger", "This week cannot be closed from the current summary.");
+            return View("CloseThisWeek", preview);
+        }
+
+        try
+        {
+            _logger.LogInformation(
+                "Submitting weekly close. WorkDate={WorkDate} WeekStart={WeekStart} WeekEnd={WeekEnd} ServiceStart={ServiceStart} ServiceEnd={ServiceEnd}",
+                preview.ReferenceDate,
+                preview.ClosingWeekStartDate,
+                preview.ClosingWeekEndDate,
+                preview.ServiceStartDate,
+                preview.ServiceEndDate);
+
+            await _weeklyDoughClosingManagementService.CreateWeeklyClosingAsync(
+                new CreateWeeklyDoughClosingRequest
+                {
+                    WeekStartDate = preview.ClosingWeekStartDate,
+                    NeededBalls = preview.TotalForecastBalls,
+                    ProducedBalls = preview.ProducedBalls,
+                    UsedBalls = preview.TotalActualUsedBalls,
+                    LostBalls = preview.LostBalls,
+                    LeftoverReadyBalls = preview.ReadyBallsToCarryForward,
+                    LeftoverAttentionBalls = preview.TotalAttentionAndUseFirstBalls,
+                    LeftoverMixedLoads = preview.MixedLoadsToCarryForward,
+                    Notes = preview.AutoGeneratedNotes,
+                    ClosedByUserId = currentUserId
+                },
+                cancellationToken);
+
+            SetStatusMessage("success", "Weekly dough closing saved from Daily Closing Summary.");
+            return RedirectToAction(nameof(Index), new { referenceDate = preview.ClosingWeekEndDate.ToString("yyyy-MM-dd") });
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
+        {
+            SetStatusMessage("danger", exception.Message);
+            return View("CloseThisWeek", preview);
+        }
+    }
+
     private async Task<WeeklyDoughClosingIndexViewModel> BuildIndexViewModelAsync(
         DateOnly referenceDate,
         DateOnly? fromWeekStartDate,
@@ -211,18 +288,25 @@ public sealed class WeeklyClosingController : Controller
             },
             cancellationToken);
 
-        var weekStart = NormalizeOperationalWeekStart(referenceDate);
+        var closingWeekStart = NormalizeClosingWeekStart(referenceDate);
+        var closingWeekEnd = closingWeekStart.AddDays(WeeklyDoughClosing.ClosingWeekLengthDays - 1);
         var dailySummary = await _dailyDoughClosingReadService.GetWeekSummaryAsync(
             new GetDailyClosingWeekSummaryRequest
             {
-                ReferenceDate = referenceDate,
+                ReferenceDate = closingWeekEnd,
                 HistoricalWeeksToUse = 8
             },
             cancellationToken);
+        var currentWeekClosing = await FindClosingForWeekAsync(closingWeekStart, cancellationToken);
+        var today = DateOnly.FromDateTime(DateTime.Today);
 
         return new WeeklyDoughClosingIndexViewModel
         {
             ReferenceDate = referenceDate,
+            ClosingWeekStartDate = closingWeekStart,
+            ClosingWeekEndDate = closingWeekEnd,
+            CurrentWeekClosingId = currentWeekClosing?.Id,
+            CanCloseThisWeek = today >= closingWeekEnd && currentWeekClosing is null,
             FromWeekStartDate = fromWeekStartDate,
             ToWeekStartDate = toWeekStartDate,
             CarryoverPreview = new WeeklyDoughCarryoverPreviewViewModel
@@ -245,8 +329,8 @@ public sealed class WeeklyClosingController : Controller
             },
             DailyClosingSummary = new WeeklyDailyClosingSummaryViewModel
             {
-                WeekStartDate = weekStart,
-                WeekEndDate = weekStart.AddDays(5),
+                ServiceStartDate = dailySummary.WeekStartDate,
+                ServiceEndDate = dailySummary.WeekEndDate,
                 TotalForecastBalls = dailySummary.TotalForecastBalls,
                 TotalActualUsedBalls = dailySummary.TotalActualUsedBalls,
                 AccumulatedVariance = dailySummary.AccumulatedVariance,
@@ -260,6 +344,66 @@ public sealed class WeeklyClosingController : Controller
         };
     }
 
+    private async Task<WeeklyCloseThisWeekConfirmViewModel> BuildCloseThisWeekViewModelAsync(
+        DateOnly referenceDate,
+        CancellationToken cancellationToken)
+    {
+        var closingWeekStart = NormalizeClosingWeekStart(referenceDate);
+        var closingWeekEnd = closingWeekStart.AddDays(WeeklyDoughClosing.ClosingWeekLengthDays - 1);
+        var evaluationDate = closingWeekEnd;
+        var today = DateOnly.FromDateTime(DateTime.Today);
+
+        var dailySummary = await _dailyDoughClosingReadService.GetWeekSummaryAsync(
+            new GetDailyClosingWeekSummaryRequest
+            {
+                ReferenceDate = evaluationDate,
+                HistoricalWeeksToUse = 8
+            },
+            cancellationToken);
+        var weeklyCalendar = await _prepWeeklyDoughCalendarService.GetWeekAsync(
+            evaluationDate,
+            historicalWeeksToUse: 8,
+            cancellationToken);
+        var availability = await _doughAvailabilityProjectionService.GetWeeklyAvailabilityAsync(
+            evaluationDate,
+            cancellationToken);
+        var existingClosing = await FindClosingForWeekAsync(closingWeekStart, cancellationToken);
+
+        _logger.LogInformation(
+            "Prepared Close This Week preview. WorkDate={WorkDate} WeekStart={WeekStart} WeekEnd={WeekEnd} ServiceStart={ServiceStart} ServiceEnd={ServiceEnd} ClosedDays={ClosedDaysCount} ExistingClosingId={ExistingClosingId}",
+            referenceDate,
+            closingWeekStart,
+            closingWeekEnd,
+            dailySummary.WeekStartDate,
+            dailySummary.WeekEndDate,
+            dailySummary.ClosedDaysCount,
+            existingClosing?.Id);
+
+        return new WeeklyCloseThisWeekConfirmViewModel
+        {
+            ReferenceDate = referenceDate,
+            ClosingWeekStartDate = closingWeekStart,
+            ClosingWeekEndDate = closingWeekEnd,
+            ServiceStartDate = dailySummary.WeekStartDate,
+            ServiceEndDate = dailySummary.WeekEndDate,
+            ExistingClosingId = existingClosing?.Id,
+            ClosedDaysCount = dailySummary.ClosedDaysCount,
+            TotalForecastBalls = dailySummary.TotalForecastBalls,
+            TotalActualUsedBalls = dailySummary.TotalActualUsedBalls,
+            AccumulatedVariance = dailySummary.AccumulatedVariance,
+            AccumulatedSurplus = dailySummary.AccumulatedSurplus,
+            AccumulatedShortage = dailySummary.AccumulatedShortage,
+            ProducedBalls = availability.ProducedThisWeekBalls,
+            LostBalls = availability.LostBallsThisWeek,
+            ReadyBallsToCarryForward = availability.RegularReadyBalls,
+            AttentionBallsToCarryForward = availability.AttentionAvailableBalls,
+            UseFirstBallsToCarryForward = availability.MustUseNextDayBalls,
+            MixedLoadsToCarryForward = weeklyCalendar.MixedButNotBalledLoads,
+            MixedPotentialBallsToCarryForward = weeklyCalendar.MixedButNotBalledBalls,
+            CanConfirmClose = today >= closingWeekEnd && existingClosing is null
+        };
+    }
+
     private async Task<WeeklyDoughClosingResponse?> FindClosingByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         var closings = await _weeklyDoughClosingReadService.GetWeeklyClosingsAsync(
@@ -267,6 +411,19 @@ public sealed class WeeklyClosingController : Controller
             cancellationToken);
 
         return closings.FirstOrDefault(item => item.Id == id);
+    }
+
+    private async Task<WeeklyDoughClosingResponse?> FindClosingForWeekAsync(
+        DateOnly normalizedClosingWeekStartDate,
+        CancellationToken cancellationToken)
+    {
+        var closings = await _weeklyDoughClosingReadService.GetWeeklyClosingsAsync(
+            new GetWeeklyClosingsRequest(),
+            cancellationToken);
+
+        return closings.FirstOrDefault(item =>
+            item.WeekStartDate == normalizedClosingWeekStartDate ||
+            item.WeekStartDate == normalizedClosingWeekStartDate.AddDays(1));
     }
 
     private static WeeklyDoughClosingListItemViewModel MapListItem(WeeklyDoughClosingResponse closing)
@@ -337,9 +494,9 @@ public sealed class WeeklyClosingController : Controller
         TempData[StatusMessageKey] = message;
     }
 
-    private static DateOnly NormalizeOperationalWeekStart(DateOnly referenceDate)
+    private static DateOnly NormalizeClosingWeekStart(DateOnly referenceDate)
     {
-        var diff = ((int)referenceDate.DayOfWeek - (int)DayOfWeek.Tuesday + 7) % 7;
+        var diff = ((int)referenceDate.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
         return referenceDate.AddDays(-diff);
     }
 }

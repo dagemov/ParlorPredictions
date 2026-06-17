@@ -41,10 +41,10 @@ public sealed class WeeklyDoughClosingReadService : IWeeklyDoughClosingReadServi
             throw new ArgumentException("Week start date is required.", nameof(request.WeekStartDate));
         }
 
-        var targetWeekStartDate = NormalizeOperationalWeekStart(request.WeekStartDate);
-        var targetWeekEndDate = targetWeekStartDate.AddDays(WeeklyDoughClosing.OperationalWeekLengthDays - 1);
+        var targetWeekStartDate = NormalizeClosingWeekStart(request.WeekStartDate);
+        var targetWeekEndDate = targetWeekStartDate.AddDays(WeeklyDoughClosing.ClosingWeekLengthDays - 1);
         var previousWeekStartDate = targetWeekStartDate.AddDays(-7);
-        var sourceClosing = await _weeklyDoughClosingRepository.GetByWeekStartDateAsync(previousWeekStartDate, cancellationToken);
+        var sourceClosing = await FindClosingForWeekAsync(previousWeekStartDate, cancellationToken);
 
         if (sourceClosing is null)
         {
@@ -73,10 +73,24 @@ public sealed class WeeklyDoughClosingReadService : IWeeklyDoughClosingReadServi
         };
     }
 
-    private static DateOnly NormalizeOperationalWeekStart(DateOnly referenceDate)
+    private static DateOnly NormalizeClosingWeekStart(DateOnly referenceDate)
     {
-        var diff = ((int)referenceDate.DayOfWeek - (int)DayOfWeek.Tuesday + 7) % 7;
+        var diff = ((int)referenceDate.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
         return referenceDate.AddDays(-diff);
+    }
+
+    private async Task<WeeklyDoughClosing?> FindClosingForWeekAsync(
+        DateOnly normalizedWeekStartDate,
+        CancellationToken cancellationToken)
+    {
+        var exactMatch = await _weeklyDoughClosingRepository.GetByWeekStartDateAsync(normalizedWeekStartDate, cancellationToken);
+        if (exactMatch is not null)
+        {
+            return exactMatch;
+        }
+
+        var legacyTuesdayWeekStartDate = normalizedWeekStartDate.AddDays(1);
+        return await _weeklyDoughClosingRepository.GetByWeekStartDateAsync(legacyTuesdayWeekStartDate, cancellationToken);
     }
 
     private static WeeklyDoughClosingResponse Map(WeeklyDoughClosing closing)

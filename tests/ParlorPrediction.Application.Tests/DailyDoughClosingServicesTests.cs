@@ -132,6 +132,25 @@ public sealed class DailyDoughClosingServicesTests
         }));
     }
 
+    [Fact]
+    public async Task DailyClosingServiceDaysRemainTuesdayThroughSunday()
+    {
+        var repository = new InMemoryDailyDoughClosingRepository();
+        var managementService = CreateManagementService(repository);
+
+        await managementService.CreateDailyClosingAsync(new CreateDailyDoughClosingRequest
+        {
+            ClosingDate = new DateOnly(2026, 6, 14),
+            ForecastNeededBalls = 80,
+            ActualUsedBalls = 40,
+            ClosedByUserId = "manager-user"
+        });
+
+        var saved = Assert.Single(repository.Items);
+        Assert.Equal(new DateOnly(2026, 6, 9), saved.WeekStartDate);
+        Assert.Equal(new DateOnly(2026, 6, 14), saved.WeekStartDate.AddDays(WeeklyDoughClosing.OperationalWeekLengthDays - 1));
+    }
+
     private static DailyDoughClosingManagementService CreateManagementService(InMemoryDailyDoughClosingRepository repository)
     {
         return new DailyDoughClosingManagementService(

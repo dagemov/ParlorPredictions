@@ -23,7 +23,7 @@ It documents:
 
 ### 1. End of week
 
-At the end of the operational week, the manager records what really happened:
+At the end of the closing week, the manager records what really happened:
 
 - how much dough was needed
 - how much was produced
@@ -34,16 +34,21 @@ At the end of the operational week, the manager records what really happened:
 - how many mixed loads were left unballed
 - optional notes
 
-This is now handled in `Weekly Closing`.
+This is now handled in `Weekly Closing`, preferably from the `Close This Week` confirmation flow.
 
 ### 2. Start of next week
 
-When the next operational week starts:
+When the next planning week starts:
 
 - `Leftover Ready Balls` carry in as available
 - `Leftover Attention Balls` carry in as available but attention
 - `Leftover Mixed Loads` carry in as `Mixed But Not Balled`
 - mixed loads do not count as available balls yet
+
+Current week boundary split:
+
+- closing week: `Monday-Sunday`
+- service / prep planning week: `Tuesday-Sunday`
 
 ### 3. During the week
 

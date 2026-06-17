@@ -9,27 +9,24 @@ namespace ParlorPrediction.Application.Services.Dough;
 
 public sealed class DoughProductionPlanningService : IDoughProductionPlanningService
 {
+    private readonly IDoughAvailabilityProjectionService _doughAvailabilityProjectionService;
     private readonly IDoughBatchReadRepository _doughBatchReadRepository;
     private readonly IDoughDemandPlanReadRepository _doughDemandPlanReadRepository;
-    private readonly IDoughInventoryReadRepository _doughInventoryReadRepository;
     private readonly IRestaurantEventReadRepository _restaurantEventReadRepository;
     private readonly ISalesHistoryReadRepository _salesHistoryReadRepository;
-    private readonly IWeeklyDoughClosingReadService _weeklyDoughClosingReadService;
 
     public DoughProductionPlanningService(
+        IDoughAvailabilityProjectionService doughAvailabilityProjectionService,
         IDoughBatchReadRepository doughBatchReadRepository,
         IDoughDemandPlanReadRepository doughDemandPlanReadRepository,
-        IDoughInventoryReadRepository doughInventoryReadRepository,
         IRestaurantEventReadRepository restaurantEventReadRepository,
-        ISalesHistoryReadRepository salesHistoryReadRepository,
-        IWeeklyDoughClosingReadService weeklyDoughClosingReadService)
+        ISalesHistoryReadRepository salesHistoryReadRepository)
     {
+        _doughAvailabilityProjectionService = doughAvailabilityProjectionService;
         _doughBatchReadRepository = doughBatchReadRepository;
         _doughDemandPlanReadRepository = doughDemandPlanReadRepository;
-        _doughInventoryReadRepository = doughInventoryReadRepository;
         _restaurantEventReadRepository = restaurantEventReadRepository;
         _salesHistoryReadRepository = salesHistoryReadRepository;
-        _weeklyDoughClosingReadService = weeklyDoughClosingReadService;
     }
 
     public async Task<DoughProductionPlanningResponse> PlanAsync(
@@ -40,13 +37,12 @@ public sealed class DoughProductionPlanningService : IDoughProductionPlanningSer
         ValidateRequest(request);
 
         var horizonEndDate = request.ProductionDate.AddDays(request.DaysAhead - 1);
-        var latestInventorySnapshot = await _doughInventoryReadRepository.GetLatestSnapshotOnOrBeforeAsync(
-            request.ProductionDate,
-            cancellationToken);
         var doughBatches = await _doughBatchReadRepository.GetProducedOnOrBeforeAsync(
             request.ProductionDate,
             cancellationToken);
-        var carryover = await GetCarryoverFallbackAsync(request.ProductionDate, latestInventorySnapshot, cancellationToken);
+        var availability = await _doughAvailabilityProjectionService.GetWeeklyAvailabilityAsync(
+            request.ProductionDate,
+            cancellationToken);
         var upcomingEvents = await _restaurantEventReadRepository.GetBetweenDatesAsync(
             request.ProductionDate,
             horizonEndDate,
@@ -70,9 +66,7 @@ public sealed class DoughProductionPlanningService : IDoughProductionPlanningSer
             .ToArray();
 
         var totalFutureRequiredBalls = upcomingNeedsReadOnly.Sum(need => need.TotalRequiredBalls);
-        var readyBalls = carryover?.CarryoverAvailableBalls
-            ?? latestInventorySnapshot?.AvailableBalls
-            ?? 0;
+        var readyBalls = availability.AvailableBalls;
 
         var liveFermentingBalls = doughBatches
             .Where(batch => batch.IsBalled && batch.FermentationReadyDate > request.ProductionDate)
@@ -82,7 +76,7 @@ public sealed class DoughProductionPlanningService : IDoughProductionPlanningSer
             .Where(batch => !batch.IsBalled)
             .Sum(batch => batch.TotalBalls);
         var carryoverUnballedBalls = liveUnballedBalls == 0
-            ? carryover?.MixedButNotBalledLoads * DoughRules.StandardBatchBalls ?? 0
+            ? availability.CarryoverMixedButNotBalledLoads * DoughRules.StandardBatchBalls
             : 0;
         var fermentingBalls = liveFermentingBalls;
         var unballedBalls = liveUnballedBalls + carryoverUnballedBalls;
@@ -274,37 +268,5 @@ public sealed class DoughProductionPlanningService : IDoughProductionPlanningSer
             ", ",
             needsForTodayWindow.Select(need =>
                 $"{need.NeedDate:ddd MMM d} ({need.TotalRequiredBalls} balls, best made on {need.RecommendedMakeDate:MMM d})"));
-    }
-
-    private async Task<Contracts.Responses.DoughClosing.WeeklyDoughCarryoverResponse?> GetCarryoverFallbackAsync(
-        DateOnly productionDate,
-        DoughInventorySnapshot? latestInventorySnapshot,
-        CancellationToken cancellationToken)
-    {
-        var weekStartDate = GetOperationalWeekStart(productionDate);
-        var hasCurrentWeekSnapshot = latestInventorySnapshot is not null &&
-            latestInventorySnapshot.SnapshotDate >= weekStartDate;
-
-        if (hasCurrentWeekSnapshot)
-        {
-            return null;
-        }
-
-        var carryover = await _weeklyDoughClosingReadService.GetCarryoverForWeekAsync(
-            new Contracts.Requests.DoughClosing.GetWeeklyDoughCarryoverRequest
-            {
-                WeekStartDate = productionDate
-            },
-            cancellationToken);
-
-        return carryover.HasClosingCarryover
-            ? carryover
-            : null;
-    }
-
-    private static DateOnly GetOperationalWeekStart(DateOnly referenceDate)
-    {
-        var diff = ((int)referenceDate.DayOfWeek - (int)DayOfWeek.Tuesday + 7) % 7;
-        return referenceDate.AddDays(-diff);
     }
 }

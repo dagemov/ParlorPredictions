@@ -1,4 +1,7 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using ParlorPrediction.Application.Interfaces.Auth;
 using ParlorPrediction.Application.Interfaces.Dough;
 using ParlorPrediction.Application.Interfaces.Persistence;
@@ -6,12 +9,89 @@ using ParlorPrediction.Application.Services.Dough;
 using ParlorPrediction.Contracts.Requests.DoughClosing;
 using ParlorPrediction.Domain.Entities;
 using ParlorPrediction.Domain.Enums;
+using ParlorPrediction.Persistence;
 using Xunit;
 
 namespace ParlorPrediction.Application.Tests;
 
 public sealed class WeeklyDoughClosingServicesTests
 {
+    [Fact]
+    public async Task CloseThisWeekWithTuesdayStoresMondaySundayWindow()
+    {
+        var repository = new InMemoryWeeklyDoughClosingRepository();
+        var managementService = CreateManagementService(repository);
+
+        var response = await managementService.CreateWeeklyClosingAsync(new CreateWeeklyDoughClosingRequest
+        {
+            WeekStartDate = new DateOnly(2026, 6, 9),
+            NeededBalls = 900,
+            ProducedBalls = 860,
+            UsedBalls = 520,
+            LostBalls = 40,
+            LeftoverReadyBalls = 300,
+            LeftoverAttentionBalls = 25,
+            LeftoverMixedLoads = 1,
+            ClosedByUserId = "manager-user"
+        });
+
+        var saved = Assert.Single(repository.Items);
+        Assert.Equal(new DateOnly(2026, 6, 8), saved.WeekStartDate);
+        Assert.Equal(new DateOnly(2026, 6, 14), saved.WeekEndDate);
+        Assert.Equal(saved.WeekStartDate, response.WeekStartDate);
+        Assert.Equal(saved.WeekEndDate, response.WeekEndDate);
+    }
+
+    [Fact]
+    public async Task CloseThisWeekWithSundayStoresMondaySundayWindow()
+    {
+        var repository = new InMemoryWeeklyDoughClosingRepository();
+        var managementService = CreateManagementService(repository);
+
+        var response = await managementService.CreateWeeklyClosingAsync(new CreateWeeklyDoughClosingRequest
+        {
+            WeekStartDate = new DateOnly(2026, 6, 14),
+            NeededBalls = 700,
+            ProducedBalls = 650,
+            UsedBalls = 500,
+            LostBalls = 20,
+            LeftoverReadyBalls = 40,
+            LeftoverAttentionBalls = 10,
+            LeftoverMixedLoads = 2,
+            ClosedByUserId = "manager-user"
+        });
+
+        var saved = Assert.Single(repository.Items);
+        Assert.Equal(new DateOnly(2026, 6, 8), saved.WeekStartDate);
+        Assert.Equal(new DateOnly(2026, 6, 14), saved.WeekEndDate);
+        Assert.Equal(saved.WeekStartDate, response.WeekStartDate);
+        Assert.Equal(saved.WeekEndDate, response.WeekEndDate);
+    }
+
+    [Fact]
+    public async Task CloseThisWeekDoesNotUseTuesdayServiceStartAsWeekStart()
+    {
+        var repository = new InMemoryWeeklyDoughClosingRepository();
+        var managementService = CreateManagementService(repository);
+
+        await managementService.CreateWeeklyClosingAsync(new CreateWeeklyDoughClosingRequest
+        {
+            WeekStartDate = new DateOnly(2026, 6, 9),
+            NeededBalls = 650,
+            ProducedBalls = 610,
+            UsedBalls = 480,
+            LostBalls = 15,
+            LeftoverReadyBalls = 24,
+            LeftoverAttentionBalls = 6,
+            LeftoverMixedLoads = 3,
+            ClosedByUserId = "manager-user"
+        });
+
+        var saved = Assert.Single(repository.Items);
+        Assert.NotEqual(new DateOnly(2026, 6, 9), saved.WeekStartDate);
+        Assert.Equal(new DateOnly(2026, 6, 8), saved.WeekStartDate);
+    }
+
     [Fact]
     public async Task LeftoverReadyBallsCarryIntoNextWeekAsAvailable()
     {
@@ -109,7 +189,7 @@ public sealed class WeeklyDoughClosingServicesTests
 
         await managementService.CreateWeeklyClosingAsync(new CreateWeeklyDoughClosingRequest
         {
-            WeekStartDate = new DateOnly(2026, 6, 2),
+            WeekStartDate = new DateOnly(2026, 6, 9),
             NeededBalls = 800,
             ProducedBalls = 780,
             UsedBalls = 610,
@@ -122,7 +202,7 @@ public sealed class WeeklyDoughClosingServicesTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => managementService.CreateWeeklyClosingAsync(new CreateWeeklyDoughClosingRequest
         {
-            WeekStartDate = new DateOnly(2026, 6, 2),
+            WeekStartDate = new DateOnly(2026, 6, 14),
             NeededBalls = 820,
             ProducedBalls = 790,
             UsedBalls = 630,
@@ -135,7 +215,7 @@ public sealed class WeeklyDoughClosingServicesTests
 
         var carryover = await readService.GetCarryoverForWeekAsync(new GetWeeklyDoughCarryoverRequest
         {
-            WeekStartDate = new DateOnly(2026, 6, 9)
+            WeekStartDate = new DateOnly(2026, 6, 16)
         });
 
         Assert.Single(repository.Items);
@@ -171,6 +251,24 @@ public sealed class WeeklyDoughClosingServicesTests
         Assert.Equal(723, carryover.PreviousWeekUsedBalls);
         Assert.Equal(24, carryover.CarryoverAvailableBalls);
         Assert.Equal(18, carryover.PreviousWeekLostBalls);
+    }
+
+    [Fact]
+    public void WeeklyClosingConstraintRequiresMondaySundayWindow()
+    {
+        var options = new DbContextOptionsBuilder<ParlorPredictionDbContext>()
+            .UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=ParlorPredictionConstraintTests;Trusted_Connection=True;TrustServerCertificate=True")
+            .Options;
+
+        using var dbContext = new ParlorPredictionDbContext(options);
+        var designTimeModel = dbContext.GetService<IDesignTimeModel>().Model;
+        var entityType = designTimeModel.FindEntityType(typeof(WeeklyDoughClosing));
+        var checkConstraint = Assert.Single(entityType!.GetCheckConstraints(), constraint => constraint.Name == "CK_WeeklyDoughClosings_WeekWindow");
+
+        Assert.NotNull(checkConstraint.Sql);
+        Assert.Contains("DATEDIFF(day, [WeekStartDate], [WeekEndDate]) = 6", checkConstraint.Sql, StringComparison.Ordinal);
+        Assert.Contains("19000101", checkConstraint.Sql, StringComparison.Ordinal);
+        Assert.Contains("19000107", checkConstraint.Sql, StringComparison.Ordinal);
     }
 
     private static WeeklyDoughClosingManagementService CreateManagementService(InMemoryWeeklyDoughClosingRepository repository)

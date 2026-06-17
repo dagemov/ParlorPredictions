@@ -1,0 +1,142 @@
+@model WeeklyCloseThisWeekConfirmViewModel
+@{
+    ViewData["Title"] = "Close This Week";
+    ViewData["DoughNav"] = "closing";
+    var statusType = TempData["WeeklyClosingStatusType"] as string;
+    var statusMessage = TempData["WeeklyClosingStatusMessage"] as string;
+}
+
+<section class="page-hero page-hero--compact">
+    <div>
+        <span class="eyebrow">Daily Closing Summary</span>
+        <h1>Close This Week</h1>
+        <p class="page-copy">Review the auto-calculated carryover for closing window @Model.ClosingWeekStartDate.ToString("MMM d") - @Model.ClosingWeekEndDate.ToString("MMM d") using service days @Model.ServiceStartDate.ToString("MMM d") - @Model.ServiceEndDate.ToString("MMM d"), then confirm the weekly close.</p>
+    </div>
+
+    <div class="hero-actions">
+        <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="WeeklyClosing" asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")">
+            <i class="fa-solid fa-arrow-left me-2"></i>
+            Back To Summary
+        </a>
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(statusMessage))
+{
+    <div class="alert @(string.Equals(statusType, "success", StringComparison.OrdinalIgnoreCase) ? "alert-success" : "alert-danger") mt-4" role="alert">
+        @statusMessage
+    </div>
+}
+
+@if (Model.ExistingClosingId.HasValue)
+{
+    <section class="content-card content-card--padded mt-4">
+        <div class="recommendation-note">
+            <h3>This week is already closed.</h3>
+            <p class="mb-3">To avoid duplicating carryover, use the correction flow instead of creating a second weekly close.</p>
+            <a class="btn btn-outline-secondary" asp-action="Edit" asp-controller="WeeklyClosing" asp-route-id="@Model.ExistingClosingId.Value">
+                <i class="fa-solid fa-pen-to-square me-2"></i>
+                Correct Existing Closing
+            </a>
+        </div>
+    </section>
+}
+else
+{
+    <section class="content-card content-card--padded mt-4">
+        <div class="section-heading">
+            <span class="eyebrow">Confirmation</span>
+            <h2>Weekly close summary</h2>
+            <p>This keeps the close simple: confirm the Monday-Sunday closing window while keeping the Tuesday-Sunday service-day totals visible separately.</p>
+        </div>
+
+        <div class="recommendation-note mt-4">
+            <h3>Window alignment</h3>
+            <p class="mb-0">Closing window: @Model.ClosingWeekStartDate.ToString("dddd, MMM d, yyyy") through @Model.ClosingWeekEndDate.ToString("dddd, MMM d, yyyy"). Service days included: @Model.ServiceStartDate.ToString("dddd, MMM d, yyyy") through @Model.ServiceEndDate.ToString("dddd, MMM d, yyyy").</p>
+        </div>
+
+        @if (Model.HasOpenServiceDays)
+        {
+            <div class="alert alert-warning mt-4" role="alert">
+                @Model.ClosedDaysCount of @Model.ExpectedServiceDaysCount service days have a Daily Closing recorded. You can still confirm, but the carryover is based only on the closed days available now.
+            </div>
+        }
+
+        @if (!Model.CanConfirmClose)
+        {
+            <div class="alert alert-warning mt-4" role="alert">
+                This week can be closed only after Sunday has finished.
+            </div>
+        }
+
+        <div class="metric-grid mt-4">
+            <article class="metric-card">
+                <span class="metric-card__label">Total Forecast</span>
+                <strong>@Model.TotalForecastBalls</strong>
+                <small>Service-day forecast for @Model.ServiceStartDate.ToString("MMM d") - @Model.ServiceEndDate.ToString("MMM d").</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Total Actual Used</span>
+                <strong>@Model.TotalActualUsedBalls</strong>
+                <small>Recorded from Daily Closings.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Variance</span>
+                <strong class="@(Model.AccumulatedVariance > 0 ? "text-success" : Model.AccumulatedVariance < 0 ? "text-danger" : string.Empty)">
+                    @(Model.AccumulatedVariance > 0 ? $"+{Model.AccumulatedVariance}" : Model.AccumulatedVariance.ToString())
+                </strong>
+                <small>Forecast minus actual.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Accumulated Surplus</span>
+                <strong>@Model.AccumulatedSurplus</strong>
+                <small>Closed days below forecast.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Accumulated Shortage</span>
+                <strong>@Model.AccumulatedShortage</strong>
+                <small>Closed days above forecast.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Ready Balls To Carry Forward</span>
+                <strong>@Model.ReadyBallsToCarryForward</strong>
+                <small>@Model.ReadyLoadsToCarryForward full load@(Model.ReadyLoadsToCarryForward == 1 ? string.Empty : "s") ready right away.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Mixed Loads To Carry Forward</span>
+                <strong>@Model.MixedPotentialBallsToCarryForward</strong>
+                <small>@Model.MixedLoadsToCarryForward load@(Model.MixedLoadsToCarryForward == 1 ? string.Empty : "s"). Potential only until Ball Dough is completed.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Attention Dough</span>
+                <strong>@Model.AttentionBallsToCarryForward</strong>
+                <small>@Model.AttentionLoadsToCarryForward full load@(Model.AttentionLoadsToCarryForward == 1 ? string.Empty : "s") still usable, but keep separate.</small>
+            </article>
+            <article class="metric-card">
+                <span class="metric-card__label">Use First</span>
+                <strong>@Model.UseFirstBallsToCarryForward</strong>
+                <small>@Model.UseFirstLoadsToCarryForward full load@(Model.UseFirstLoadsToCarryForward == 1 ? string.Empty : "s") must be used first next week.</small>
+            </article>
+        </div>
+
+        <div class="recommendation-note mt-4">
+            <h3>Audit note that will be saved</h3>
+            <p class="mb-0">@Model.AutoGeneratedNotes</p>
+        </div>
+
+        <form asp-action="CloseThisWeek" asp-controller="WeeklyClosing" method="post" class="mt-4">
+            @Html.AntiForgeryToken()
+            <input asp-for="ReferenceDate" type="hidden" />
+
+            <div class="d-flex flex-wrap gap-3">
+                <button type="submit" class="btn btn-primary" @(Model.CanConfirmClose ? null : "disabled")>
+                    <i class="fa-solid fa-check-double me-2"></i>
+                    Confirm Weekly Close
+                </button>
+                <a class="btn btn-outline-secondary" asp-action="Index" asp-controller="WeeklyClosing" asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </section>
+}
