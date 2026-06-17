@@ -1,0 +1,356 @@
+@model ParlorPrediction.Mvc.Models.AdminDoughCorrections.AdminDoughCorrectionsPageViewModel
+@{
+    ViewData["Title"] = "Dough Corrections";
+}
+
+<section class="space-y-gutter">
+    <header class="rounded-[28px] border border-outline-variant bg-white p-8 shadow-sm">
+        <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Admin / Dough Corrections</p>
+        <h1 class="mt-3 text-4xl font-black tracking-[-0.05em] text-primary lg:text-6xl">Correct live dough data without touching SQL.</h1>
+        <p class="mt-4 max-w-4xl text-xl leading-9 text-on-surface-variant">@Model.ManualCorrectionWarning</p>
+
+        <form method="get" class="mt-6 flex flex-wrap items-end gap-4">
+            <label class="block">
+                <span class="mb-2 block text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Reference date</span>
+                <input type="date" name="referenceDate" value="@Model.ReferenceDate.ToString("yyyy-MM-dd")" class="h-touch-target-min rounded-xl border border-outline-variant bg-white px-4" />
+            </label>
+            <button type="submit" class="inline-flex h-touch-target-min items-center rounded-xl bg-primary px-5 text-sm font-extrabold uppercase tracking-[0.14em] text-white">
+                Refresh Snapshot
+            </button>
+        </form>
+    </header>
+
+    @if (TempData["AdminDoughCorrectionsStatusMessage"] is string statusMessage)
+    {
+        var statusType = TempData["AdminDoughCorrectionsStatusType"] as string ?? "info";
+        var toneClass = statusType == "success"
+            ? "border-[#2e6e14] bg-[#eff8e7] text-[#2e6e14]"
+            : statusType == "warning"
+                ? "border-[#c87917] bg-[#fff3e2] text-[#9b5200]"
+                : "border-error bg-[#fdeceb] text-error";
+
+        <div class="rounded-[22px] border px-5 py-4 text-base font-semibold @toneClass">@statusMessage</div>
+    }
+
+    <section class="grid gap-5 lg:grid-cols-4">
+        <article class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Ready Now</p>
+            <strong class="mt-4 block text-5xl font-black tracking-[-0.05em] text-primary">@Model.WeeklyCalendar?.ReadyNowBalls</strong>
+            <p class="mt-3 mb-0 text-base leading-7 text-on-surface-variant">Live ready dough after weekly carryover, production, closed-day use, and losses.</p>
+        </article>
+
+        <article class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Future Dough</p>
+            <strong class="mt-4 block text-5xl font-black tracking-[-0.05em] text-primary">@Model.WeeklyCalendar?.FutureBalls</strong>
+            <p class="mt-3 mb-0 text-base leading-7 text-on-surface-variant">Mixed but not balled plus fermenting dough that is still not physically ready.</p>
+        </article>
+
+        <article class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Produced This Week</p>
+            <strong class="mt-4 block text-5xl font-black tracking-[-0.05em] text-primary">@Model.WeeklyCalendar?.ProducedThisWeekBalls</strong>
+            <p class="mt-3 mb-0 text-base leading-7 text-on-surface-variant">Completed Ball Dough output, separate from what was later sold, traced, or discarded.</p>
+        </article>
+
+        <article class="rounded-[24px] border @(Model.HasPendingFractionalTrayMigration ? "border-[#c87917] bg-[#fff8ef]" : "border-outline-variant bg-white") p-6 shadow-sm">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">TrayCount Storage</p>
+            <strong class="mt-4 block text-3xl font-black tracking-[-0.05em] @(Model.HasPendingFractionalTrayMigration ? "text-[#9b5200]" : "text-primary")">@Model.TrayCountStorageType</strong>
+            <p class="mt-3 mb-0 text-base leading-7 @(Model.HasPendingFractionalTrayMigration ? "text-[#9b5200]" : "text-on-surface-variant")">
+                @if (Model.HasPendingFractionalTrayMigration)
+                {
+                    @:The fractional dough usage migration is still pending in this database. Decimal tray edits need the DB update before they can be trusted end-to-end.
+                }
+                else
+                {
+                    @:TrayCount is already stored as decimal, so fractional case usage is aligned with the app model.
+                }
+            </p>
+        </article>
+    </section>
+
+    <section class="grid gap-5 lg:grid-cols-2">
+        <article class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Snapshot</p>
+                    <h2 class="mt-2 text-3xl font-black tracking-[-0.04em] text-primary">Why the UI shows these numbers</h2>
+                </div>
+                <a asp-controller="Prep" asp-action="DoughDebug" asp-route-targetDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")" class="rounded-xl border border-outline-variant px-4 py-2 text-sm font-extrabold uppercase tracking-[0.14em] text-primary no-underline">
+                    Dev Debug JSON
+                </a>
+            </div>
+            <dl class="mt-6 grid gap-4 sm:grid-cols-2">
+                <div>
+                    <dt class="text-sm font-extrabold uppercase tracking-[0.16em] text-on-surface-variant">Weekly Goal</dt>
+                    <dd class="mt-1 text-2xl font-black text-on-surface">@Model.WeeklyCalendar?.WeekTotalNeededBalls</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-extrabold uppercase tracking-[0.16em] text-on-surface-variant">Still Missing</dt>
+                    <dd class="mt-1 text-2xl font-black text-on-surface">@Model.WeeklyCalendar?.StillMissingThisWeekBalls</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-extrabold uppercase tracking-[0.16em] text-on-surface-variant">Mixed But Not Balled</dt>
+                    <dd class="mt-1 text-2xl font-black text-on-surface">@Model.WeeklyCalendar?.MixedButNotBalledBalls</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-extrabold uppercase tracking-[0.16em] text-on-surface-variant">Closed-Day Used</dt>
+                    <dd class="mt-1 text-2xl font-black text-on-surface">@Model.WeeklyCalendar?.ActualUsedBallsThisWeek</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-extrabold uppercase tracking-[0.16em] text-on-surface-variant">Carryover Available</dt>
+                    <dd class="mt-1 text-2xl font-black text-on-surface">@Model.Carryover?.CarryoverAvailableBalls</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-extrabold uppercase tracking-[0.16em] text-on-surface-variant">Carryover Mixed Loads</dt>
+                    <dd class="mt-1 text-2xl font-black text-on-surface">@Model.Carryover?.MixedButNotBalledLoads</dd>
+                </div>
+            </dl>
+        </article>
+
+        <article class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Correction Entry Points</p>
+            <div class="mt-5 grid gap-3">
+                @if (Model.IsAdmin)
+                {
+                    <a asp-controller="WeeklyClosing" asp-action="Index" class="rounded-xl border border-outline-variant px-4 py-3 text-base font-extrabold text-primary no-underline">Weekly Closing Corrections</a>
+                    <a asp-controller="DailyClosing" asp-action="Index" class="rounded-xl border border-outline-variant px-4 py-3 text-base font-extrabold text-primary no-underline">Daily Closing Corrections</a>
+                    <a asp-controller="DoughUsage" asp-action="Create" asp-route-date="@Model.ReferenceDate.ToString("yyyy-MM-dd")" class="rounded-xl border border-outline-variant px-4 py-3 text-base font-extrabold text-primary no-underline">Dough Usage Trace Corrections</a>
+                    <a asp-controller="DoughQuality" asp-action="Review" asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")" class="rounded-xl border border-outline-variant px-4 py-3 text-base font-extrabold text-primary no-underline">Dough Quality / Reball Corrections</a>
+                }
+                else
+                {
+                    <div class="rounded-xl border border-outline-variant px-4 py-3 text-base font-semibold text-on-surface-variant">Weekly Closing Corrections - view from manager workspace only</div>
+                    <div class="rounded-xl border border-outline-variant px-4 py-3 text-base font-semibold text-on-surface-variant">Daily Closing Corrections - view from manager workspace only</div>
+                    <div class="rounded-xl border border-outline-variant px-4 py-3 text-base font-semibold text-on-surface-variant">Dough Usage Trace Corrections - view from manager workspace only</div>
+                    <div class="rounded-xl border border-outline-variant px-4 py-3 text-base font-semibold text-on-surface-variant">Dough Quality / Reball Corrections - view from manager workspace only</div>
+                }
+            </div>
+        </article>
+    </section>
+
+    <section class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+        <div class="flex items-center justify-between gap-4">
+            <div>
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Daily Closing Correction</p>
+                <h2 class="mt-2 text-3xl font-black tracking-[-0.04em] text-primary">Service days in the current week</h2>
+            </div>
+        </div>
+
+        <div class="mt-6 overflow-x-auto">
+            <table class="min-w-full text-left">
+                <thead>
+                    <tr class="border-b border-outline-variant text-sm font-extrabold uppercase tracking-[0.14em] text-on-surface-variant">
+                        <th class="px-3 py-3">Work Date</th>
+                        <th class="px-3 py-3">Forecast</th>
+                        <th class="px-3 py-3">Actual Used</th>
+                        <th class="px-3 py-3">Variance</th>
+                        <th class="px-3 py-3">Status</th>
+                        <th class="px-3 py-3">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var day in Model.DailySummary?.Days ?? Array.Empty<ParlorPrediction.Contracts.Responses.DoughClosing.DailyClosingWeekDayResponse>())
+                {
+                    <tr class="border-b border-outline-variant/60 align-top text-sm text-on-surface">
+                        <td class="px-3 py-3">@day.Date</td>
+                        <td class="px-3 py-3">@day.ForecastNeededBalls</td>
+                        <td class="px-3 py-3">@day.ActualUsedBalls</td>
+                        <td class="px-3 py-3">@day.DailyVariance</td>
+                        <td class="px-3 py-3">@(day.IsClosed ? "Closed" : "Open")</td>
+                        <td class="px-3 py-3">
+                            @if (Model.IsAdmin && day.DailyClosingId.HasValue)
+                            {
+                                <a asp-controller="DailyClosing" asp-action="Edit" asp-route-id="@day.DailyClosingId.Value" class="font-extrabold text-primary">Correct</a>
+                            }
+                            else if (Model.IsAdmin)
+                            {
+                                <a asp-controller="DailyClosing" asp-action="Close" asp-route-closingDate="@day.Date.ToString("yyyy-MM-dd")" class="font-extrabold text-primary">Open</a>
+                            }
+                            else
+                            {
+                                <span class="text-on-surface-variant">View only</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+        <div class="flex items-center justify-between gap-4">
+            <div>
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Completed Prep Tasks Correction</p>
+                <h2 class="mt-2 text-3xl font-black tracking-[-0.04em] text-primary">Recent dough tasks</h2>
+            </div>
+            @if (Model.IsAdmin)
+            {
+                <span class="rounded-full bg-primary-fixed px-3 py-1 text-sm font-extrabold uppercase tracking-[0.14em] text-primary">Admin edit enabled</span>
+            }
+        </div>
+
+        <div class="mt-6 overflow-x-auto">
+            <table class="min-w-full text-left">
+                <thead>
+                    <tr class="border-b border-outline-variant text-sm font-extrabold uppercase tracking-[0.14em] text-on-surface-variant">
+                        <th class="px-3 py-3">Id</th>
+                        <th class="px-3 py-3">Date</th>
+                        <th class="px-3 py-3">Type</th>
+                        <th class="px-3 py-3">Status</th>
+                        <th class="px-3 py-3">Qty</th>
+                        <th class="px-3 py-3">Source Batch</th>
+                        <th class="px-3 py-3">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var task in Model.PrepTasks)
+                {
+                    <tr class="border-b border-outline-variant/60 align-top text-sm text-on-surface">
+                        <td class="px-3 py-3 font-mono">@task.PrepTaskId</td>
+                        <td class="px-3 py-3">@task.TaskDate</td>
+                        <td class="px-3 py-3">@task.TaskType</td>
+                        <td class="px-3 py-3">@task.Status</td>
+                        <td class="px-3 py-3">@task.QuantityRecommended / @task.QuantityCompleted</td>
+                        <td class="px-3 py-3 font-mono">@(task.SourceDoughBatchId?.ToString() ?? "-")</td>
+                        <td class="px-3 py-3">
+                            @if (Model.IsAdmin)
+                            {
+                                <a asp-action="EditPrepTask" asp-route-id="@task.PrepTaskId" asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")" class="font-extrabold text-primary">Correct</a>
+                            }
+                            else
+                            {
+                                <span class="text-on-surface-variant">View only</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+        <div class="flex items-center justify-between gap-4">
+            <div>
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Dough Batch Correction</p>
+                <h2 class="mt-2 text-3xl font-black tracking-[-0.04em] text-primary">Live and orphan batches</h2>
+            </div>
+        </div>
+
+        <div class="mt-6 overflow-x-auto">
+            <table class="min-w-full text-left">
+                <thead>
+                    <tr class="border-b border-outline-variant text-sm font-extrabold uppercase tracking-[0.14em] text-on-surface-variant">
+                        <th class="px-3 py-3">Id</th>
+                        <th class="px-3 py-3">Batch Date</th>
+                        <th class="px-3 py-3">Cases</th>
+                        <th class="px-3 py-3">Balls</th>
+                        <th class="px-3 py-3">Balled</th>
+                        <th class="px-3 py-3">Voided</th>
+                        <th class="px-3 py-3">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var batch in Model.DoughBatches)
+                {
+                    <tr class="border-b border-outline-variant/60 align-top text-sm text-on-surface">
+                        <td class="px-3 py-3 font-mono">@batch.Id</td>
+                        <td class="px-3 py-3">@batch.BatchDate</td>
+                        <td class="px-3 py-3">@batch.TotalCases</td>
+                        <td class="px-3 py-3">@batch.TotalBalls</td>
+                        <td class="px-3 py-3">@(batch.IsBalled ? "Yes" : "No")</td>
+                        <td class="px-3 py-3">@(batch.IsVoided ? "Yes" : "No")</td>
+                        <td class="px-3 py-3">
+                            @if (Model.IsAdmin)
+                            {
+                                <a asp-action="EditDoughBatch" asp-route-id="@batch.Id" asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")" class="font-extrabold text-primary">Correct</a>
+                            }
+                            else
+                            {
+                                <span class="text-on-surface-variant">View only</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="grid gap-5 lg:grid-cols-2">
+        <article class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Usage Traces</p>
+            <div class="mt-5 space-y-3">
+                @foreach (var trace in Model.UsageTraces)
+                {
+                    <div class="rounded-xl border border-outline-variant px-4 py-3">
+                        <div class="flex items-center justify-between gap-4">
+                            <div>
+                                <div class="font-black text-on-surface">@trace.UsageDate - @trace.TrayCount case(s) / @trace.BallsUsed balls</div>
+                                <div class="mt-1 text-sm text-on-surface-variant font-mono">@trace.Id</div>
+                            </div>
+                            @if (Model.IsAdmin)
+                            {
+                                <a asp-controller="DoughUsage" asp-action="Create" asp-route-date="@trace.UsageDate.ToString("yyyy-MM-dd")" asp-route-traceId="@trace.Id" class="font-extrabold text-primary">Edit</a>
+                            }
+                            else
+                            {
+                                <span class="text-on-surface-variant">View only</span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </article>
+
+        <article class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Quality / Reball Records</p>
+            <div class="mt-5 space-y-3">
+                @foreach (var record in Model.QualityRecords)
+                {
+                    <div class="rounded-xl border border-outline-variant px-4 py-3">
+                        <div class="flex items-center justify-between gap-4">
+                            <div>
+                                <div class="font-black text-on-surface">@record.SourceDate - @record.CurrentStatus - @record.QuantityBalls balls</div>
+                                <div class="mt-1 text-sm text-on-surface-variant font-mono">@record.Id</div>
+                            </div>
+                            @if (Model.IsAdmin)
+                            {
+                                <a asp-controller="DoughQuality" asp-action="CorrectStatus" asp-route-recordId="@record.Id" asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")" class="font-extrabold text-primary">Review</a>
+                            }
+                            else
+                            {
+                                <span class="text-on-surface-variant">View only</span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </article>
+    </section>
+
+    <section class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+        <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Weekly Closings</p>
+        <div class="mt-5 space-y-3">
+            @foreach (var closing in Model.WeeklyClosings)
+            {
+                <div class="rounded-xl border border-outline-variant px-4 py-3">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <div class="font-black text-on-surface">@closing.WeekStartDate - @closing.WeekEndDate</div>
+                            <div class="mt-1 text-sm text-on-surface-variant">Carryover ready: @closing.LeftoverReadyBalls | attention: @closing.LeftoverAttentionBalls | mixed loads: @closing.LeftoverMixedLoads</div>
+                        </div>
+                        @if (Model.IsAdmin)
+                        {
+                            <a asp-controller="WeeklyClosing" asp-action="Edit" asp-route-id="@closing.Id" class="font-extrabold text-primary">Edit</a>
+                        }
+                        else
+                        {
+                            <span class="text-on-surface-variant">View only</span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+</section>

@@ -55,6 +55,14 @@ public sealed class AdminPanelController : Controller
             [
                 new()
                 {
+                    Title = "Dough Corrections",
+                    Description = "Audit live planning numbers and correct tasks, batches, closings, traces, and dough quality from one admin workspace.",
+                    IconClass = "fa-solid fa-screwdriver-wrench",
+                    Controller = "AdminDoughCorrections",
+                    Action = "Index"
+                },
+                new()
+                {
                     Title = "Prep Dough Data",
                     Description = "Manage demand plans and special events that affect dough forecasting.",
                     IconClass = "fa-solid fa-database",

@@ -52,6 +52,12 @@ public sealed class DoughBatch
 
     public string? Notes { get; private set; }
 
+    public bool IsVoided { get; private set; }
+
+    public DateTime? VoidedAtUtc { get; private set; }
+
+    public string? VoidReason { get; private set; }
+
     public DateTime CreatedAtUtc { get; private set; }
 
     public DateTime UpdatedAtUtc { get; private set; }
@@ -70,6 +76,54 @@ public sealed class DoughBatch
 
         IsBalled = true;
         BalledAtUtc = balledAtUtc;
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    public void MarkAsUnballed()
+    {
+        IsBalled = false;
+        BalledAtUtc = null;
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    public void CorrectBatch(
+        DateOnly batchDate,
+        int totalCases,
+        bool isBalled,
+        DateTime? balledAtUtc,
+        bool isEventException,
+        string? notes)
+    {
+        SetBatchDate(batchDate);
+        SetTotals(totalCases, BallsPerCase);
+        IsEventException = isEventException;
+        Notes = NormalizeOptional(notes);
+
+        if (isBalled)
+        {
+            MarkAsBalled(balledAtUtc ?? batchDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+        }
+        else
+        {
+            MarkAsUnballed();
+        }
+
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    public void Void(string? reason = null, DateTime? voidedAtUtc = null)
+    {
+        IsVoided = true;
+        VoidedAtUtc = voidedAtUtc ?? DateTime.UtcNow;
+        VoidReason = NormalizeOptional(reason);
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    public void Restore()
+    {
+        IsVoided = false;
+        VoidedAtUtc = null;
+        VoidReason = null;
         UpdatedAtUtc = DateTime.UtcNow;
     }
 

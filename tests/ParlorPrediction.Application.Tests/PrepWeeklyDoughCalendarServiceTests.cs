@@ -146,6 +146,26 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
     }
 
     [Fact]
+    public async Task Voided_Orphan_Batch_DoesNotCountAsMixedButNotBalled()
+    {
+        var referenceDate = new DateOnly(2026, 6, 9);
+        var fixture = CreateFixture(referenceDate);
+
+        var orphanBatch = new DoughBatch(
+            Guid.NewGuid(),
+            batchDate: referenceDate,
+            totalCases: DoughBatch.StandardLoadCases);
+        orphanBatch.Void("orphan batch correction");
+        fixture.Batches.Batches.Add(orphanBatch);
+
+        var result = await fixture.Service.GetWeekAsync(referenceDate, historicalWeeksToUse: 8);
+
+        Assert.Equal(0, result.MixedButNotBalledLoads);
+        Assert.Equal(0, result.MixedButNotBalledBalls);
+        Assert.Equal(0, result.FutureBalls);
+    }
+
+    [Fact]
     public async Task Tuesday_Scenario_Shows_One_Ready_Load_And_Two_Mixed_Loads_Separately()
     {
         var fixture = CreateFixture(referenceDate: new DateOnly(2026, 6, 9));
@@ -676,8 +696,34 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         {
             return Task.FromResult<IReadOnlyCollection<DoughBatch>>(
                 Batches
-                    .Where(batch => batch.BatchDate <= productionDate)
+                    .Where(batch => batch.BatchDate <= productionDate && !batch.IsVoided)
                     .ToArray());
+        }
+
+        public Task<IReadOnlyCollection<DoughBatch>> SearchForCorrectionAsync(
+            DateOnly? batchDateFrom,
+            DateOnly? batchDateTo,
+            bool includeVoided,
+            CancellationToken cancellationToken = default)
+        {
+            IEnumerable<DoughBatch> query = Batches;
+
+            if (batchDateFrom.HasValue)
+            {
+                query = query.Where(batch => batch.BatchDate >= batchDateFrom.Value);
+            }
+
+            if (batchDateTo.HasValue)
+            {
+                query = query.Where(batch => batch.BatchDate <= batchDateTo.Value);
+            }
+
+            if (!includeVoided)
+            {
+                query = query.Where(batch => !batch.IsVoided);
+            }
+
+            return Task.FromResult<IReadOnlyCollection<DoughBatch>>(query.ToArray());
         }
     }
 

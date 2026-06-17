@@ -237,6 +237,55 @@ public sealed class PrepTask
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
+    public void AdminCorrect(
+        DateOnly taskDate,
+        PrepTaskType taskType,
+        DoughQuantityUnit quantityUnit,
+        int quantityRecommended,
+        PrepTaskStatus status,
+        int quantityCompleted,
+        DateTime? completedAtUtc,
+        string? completedByUserId,
+        Guid? sourcePrepTaskId,
+        Guid? sourceDoughBatchId,
+        string? notes = null)
+    {
+        SetTaskDate(taskDate);
+        SetSourcePrepTaskId(sourcePrepTaskId);
+        SetSourceDoughBatchId(sourceDoughBatchId);
+        TaskType = taskType;
+        QuantityUnit = quantityUnit;
+        QuantityRecommended = EnsurePositive(quantityRecommended, nameof(quantityRecommended));
+        ValidateTaskConfiguration(taskType, quantityUnit, quantityRecommended, sourcePrepTaskId, sourceDoughBatchId);
+
+        switch (status)
+        {
+            case PrepTaskStatus.Pending:
+            case PrepTaskStatus.InProgress:
+            case PrepTaskStatus.Cancelled:
+                QuantityCompleted = 0;
+                CompletedAtUtc = null;
+                CompletedByUserId = null;
+                Status = status;
+                break;
+
+            case PrepTaskStatus.Completed:
+                QuantityCompleted = EnsurePositive(quantityCompleted, nameof(quantityCompleted));
+                CompletedAtUtc = completedAtUtc ?? DateTime.UtcNow;
+                CompletedByUserId = NormalizeRequired(
+                    completedByUserId ?? string.Empty,
+                    nameof(completedByUserId));
+                Status = status;
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(status), "The prep task status is not supported.");
+        }
+
+        Notes = NormalizeOptional(notes);
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
     private void SetTaskDate(DateOnly taskDate)
     {
         if (taskDate == default)

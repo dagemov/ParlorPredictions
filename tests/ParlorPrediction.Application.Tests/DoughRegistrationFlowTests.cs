@@ -416,7 +416,33 @@ public sealed class DoughRegistrationFlowTests
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyCollection<DoughBatch>>(
-                Batches.Where(batch => batch.BatchDate <= productionDate).ToArray());
+                Batches.Where(batch => batch.BatchDate <= productionDate && !batch.IsVoided).ToArray());
+        }
+
+        public Task<IReadOnlyCollection<DoughBatch>> SearchForCorrectionAsync(
+            DateOnly? batchDateFrom,
+            DateOnly? batchDateTo,
+            bool includeVoided,
+            CancellationToken cancellationToken = default)
+        {
+            IEnumerable<DoughBatch> query = Batches;
+
+            if (batchDateFrom.HasValue)
+            {
+                query = query.Where(batch => batch.BatchDate >= batchDateFrom.Value);
+            }
+
+            if (batchDateTo.HasValue)
+            {
+                query = query.Where(batch => batch.BatchDate <= batchDateTo.Value);
+            }
+
+            if (!includeVoided)
+            {
+                query = query.Where(batch => !batch.IsVoided);
+            }
+
+            return Task.FromResult<IReadOnlyCollection<DoughBatch>>(query.ToArray());
         }
     }
 
