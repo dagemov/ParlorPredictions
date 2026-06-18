@@ -139,6 +139,10 @@
         var displayName = User.Identity?.Name ?? "Parlor User";
         var brandController = canSeeHome ? "Home" : canSeePrep ? "Prep" : "Home";
         var brandAction = canSeeHome ? "Index" : canSeePrep ? "Dough" : "Index";
+        var isPrepRoute =
+            string.Equals(currentController, "Prep", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(currentController, "DoughUsage", StringComparison.OrdinalIgnoreCase);
+        var isDoughInventoryRoute = string.Equals(currentController, "DoughInventory", StringComparison.OrdinalIgnoreCase);
 
         string NavLinkClass(string controller, string? action = null)
         {
@@ -239,9 +243,13 @@
                         }
                         @if (canSeePrep)
                         {
-                            <a class="@NavLinkClass("Prep")" asp-controller="Prep" asp-action="Dough">
+                            <a class="@(isPrepRoute ? "pp-nav-link is-active" : "pp-nav-link")" asp-controller="Prep" asp-action="Dough">
                                 <i class="fa-solid fa-bread-slice"></i>
                                 Dough Prep
+                            </a>
+                            <a class="@(isDoughInventoryRoute ? "pp-nav-link is-active" : "pp-nav-link")" asp-controller="DoughInventory" asp-action="Index">
+                                <i class="fa-solid fa-box-open"></i>
+                                Dough Inventory
                             </a>
                         }
                         @if (canSeeAdminPanel)
