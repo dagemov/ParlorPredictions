@@ -69,8 +69,8 @@ Definition of done:
 - [x] Add `validate_closing_before_save`.
 - [x] Store natural-language source text with normalized interpretation.
 - [x] Store before snapshot and after preview in each draft.
-- [ ] Return warnings for duplicate-load and carryover conflicts.
-- [ ] Persist `OperationalDraft` and `OperationalAuditEntry` through repositories and `DbContext`.
+- [x] Return warnings for duplicate-load and carryover conflicts.
+- [x] Persist `OperationalDraft` and `OperationalAuditEntry` through repositories and `DbContext`.
 
 Definition of done:
 
@@ -79,10 +79,10 @@ Definition of done:
 ## Phase 3 - Approval And Save Workflow
 
 - [ ] Create admin review surface in MVC or API.
-- [ ] Require explicit human approval for each draft execution.
+- [x] Require explicit human approval for each draft execution.
 - [ ] Verify database backup exists before important save operations.
-- [ ] Save only through existing application use cases.
-- [ ] Record approver, timestamp, reason, and target entities.
+- [x] Save only through existing application use cases.
+- [x] Record approver, timestamp, reason, and target entities.
 - [ ] Link each approval to rollback instructions or rollback artifact.
 - [ ] Add idempotency protection to approval execution.
 
@@ -94,9 +94,9 @@ Definition of done:
 
 - [x] Add unit tests for interpretation mapping and validation.
 - [x] Add MCP contract tests.
-- [ ] Add audit logging tests.
+- [x] Add audit logging tests.
 - [ ] Add authorization tests for admin-only and manager-safe paths.
-- [ ] Add duplicate-load regression tests.
+- [x] Add duplicate-load regression tests.
 - [ ] Add prompt-injection and malformed-input negative tests.
 - [ ] Add rollback procedure tests where feasible.
 - [x] Add the real regression case:
@@ -147,7 +147,7 @@ Definition of done:
 - [x] `Sun Jun 21 load -> Mon Jun 22 balling -> LeftoverReadyBalls = 504 -> LeftoverMixedLoads = 0`
 - [x] `3 lineas sobraron -> 504 ready balls`
 - [ ] `Mixed load carries over but does not count as available until BallDough`
-- [ ] `Same physical dough appears in MakeDoughLoad + BallDough + DoughBatch but must count once`
+- [x] `Same physical dough appears in MakeDoughLoad + BallDough + DoughBatch but must count once`
 - [ ] `Manager can review dashboard state but admin-only destructive corrections stay restricted`
 
 ## Commit Plan By Intention

@@ -1,10 +1,14 @@
 using System.Text.Json;
 using ParlorPrediction.Application.Interfaces.Ai;
 using ParlorPrediction.Application.Interfaces.Dough;
+using ParlorPrediction.Application.Interfaces.Persistence;
 using ParlorPrediction.Application.Interfaces.Prep;
 using ParlorPrediction.Contracts.Requests.Dough;
 using ParlorPrediction.Contracts.Requests.DoughClosing;
 using ParlorPrediction.Contracts.Responses.DoughClosing;
+using ParlorPrediction.Domain.Constants;
+using ParlorPrediction.Domain.Entities;
+using ParlorPrediction.Domain.Enums;
 using ParlorPrediction.Domain.Rules;
 
 namespace ParlorPrediction.Application.Services.OperationalSimulation;
@@ -14,22 +18,40 @@ public sealed class OperationalSimulationService : IOperationalSimulationService
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly IDoughAvailabilityProjectionService _doughAvailabilityProjectionService;
+    private readonly IDoughBatchReadRepository _doughBatchReadRepository;
     private readonly IDoughInventoryImpactReadService _doughInventoryImpactReadService;
+    private readonly IOperationalAuditEntryRepository _operationalAuditEntryRepository;
+    private readonly IOperationalDraftRepository _operationalDraftRepository;
     private readonly IOperationalIntentClassifier _operationalIntentClassifier;
+    private readonly IPrepItemReadRepository _prepItemReadRepository;
+    private readonly IPrepTaskRepository _prepTaskRepository;
     private readonly IPrepWeeklyDoughCalendarService _prepWeeklyDoughCalendarService;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IWeeklyDoughClosingReadService _weeklyDoughClosingReadService;
 
     public OperationalSimulationService(
         IDoughAvailabilityProjectionService doughAvailabilityProjectionService,
+        IDoughBatchReadRepository doughBatchReadRepository,
         IDoughInventoryImpactReadService doughInventoryImpactReadService,
+        IOperationalAuditEntryRepository operationalAuditEntryRepository,
+        IOperationalDraftRepository operationalDraftRepository,
         IOperationalIntentClassifier operationalIntentClassifier,
+        IPrepItemReadRepository prepItemReadRepository,
+        IPrepTaskRepository prepTaskRepository,
         IPrepWeeklyDoughCalendarService prepWeeklyDoughCalendarService,
+        IUnitOfWork unitOfWork,
         IWeeklyDoughClosingReadService weeklyDoughClosingReadService)
     {
         _doughAvailabilityProjectionService = doughAvailabilityProjectionService;
+        _doughBatchReadRepository = doughBatchReadRepository;
         _doughInventoryImpactReadService = doughInventoryImpactReadService;
+        _operationalAuditEntryRepository = operationalAuditEntryRepository;
+        _operationalDraftRepository = operationalDraftRepository;
         _operationalIntentClassifier = operationalIntentClassifier;
+        _prepItemReadRepository = prepItemReadRepository;
+        _prepTaskRepository = prepTaskRepository;
         _prepWeeklyDoughCalendarService = prepWeeklyDoughCalendarService;
+        _unitOfWork = unitOfWork;
         _weeklyDoughClosingReadService = weeklyDoughClosingReadService;
     }
 
@@ -41,6 +63,7 @@ public sealed class OperationalSimulationService : IOperationalSimulationService
         ArgumentException.ThrowIfNullOrWhiteSpace(request.SourceText);
 
         var correlationId = request.CorrelationId ?? Guid.NewGuid();
+        var actorUserId = ResolveActorUserId(request.ActorUserId);
         var historicalWeeksToUse = request.HistoricalWeeksToUse < 1
             ? 8
             : request.HistoricalWeeksToUse;
@@ -70,8 +93,17 @@ public sealed class OperationalSimulationService : IOperationalSimulationService
                 HistoricalWeeksToUse = historicalWeeksToUse
             },
             cancellationToken);
-        var existingClosing = await FindClosingForWeekAsync(
+        var existingClosing = await FindClosingForWeekAsync(targetWeekStartDate, cancellationToken);
+        var existingDraft = await _operationalDraftRepository.GetLatestByCorrelationIdAsync(correlationId, cancellationToken);
+        var doughItem = await _prepItemReadRepository.GetByCodeAsync(PrepCatalogCodes.DoughItem, cancellationToken);
+        var tasks = await _prepTaskRepository.GetDoughTasksBetweenDatesAsync(
             targetWeekStartDate,
+            request.ReferenceDate.AddDays(1),
+            cancellationToken);
+        var batches = await _doughBatchReadRepository.SearchForCorrectionAsync(
+            targetWeekStartDate,
+            request.ReferenceDate.AddDays(1),
+            includeVoided: true,
             cancellationToken);
         var warnings = new List<OperationalValidationWarning>();
 
@@ -80,13 +112,22 @@ public sealed class OperationalSimulationService : IOperationalSimulationService
                 intent,
                 request.ReferenceDate,
                 existingClosing,
+                existingDraft,
                 carryover,
                 availability,
                 weeklyGoal,
                 inventoryImpact,
+                doughItem,
                 warnings);
 
-        return new OperationalSimulationResult
+        ApplyExistingWeeklyClosingWarnings(existingClosing, warnings);
+        ApplyExistingDraftWarnings(existingDraft, warnings);
+        ApplyDuplicateLoadPreventionWarnings(weeklyCorrectionProposal, doughTaskDraftProposal, weeklyGoal, tasks, batches, warnings);
+        ApplyCarryoverConsistencyWarnings(weeklyCorrectionProposal, availability, weeklyGoal, warnings);
+        ApplyWeeklyClosingConsistencyWarnings(weeklyCorrectionProposal, availability, weeklyGoal, warnings);
+        ApplyMissingCatalogWarnings(doughItem, doughTaskDraftProposal, warnings);
+
+        var simulation = new OperationalSimulationResult
         {
             CorrelationId = correlationId,
             SourceText = request.SourceText.Trim(),
@@ -104,6 +145,22 @@ public sealed class OperationalSimulationService : IOperationalSimulationService
             WeeklyGoal = weeklyGoal,
             InventoryImpact = inventoryImpact
         };
+
+        var auditEntry = OperationalAuditEntry.Create(
+            correlationId,
+            "SimulateOperationalNarrative",
+            actorUserId,
+            simulation.SourceText,
+            SerializeIntent(intent),
+            simulation.BeforeSnapshotJson,
+            simulation.AfterPreviewJson,
+            simulation.ValidationWarningsJson,
+            existingDraft?.Id);
+
+        await _operationalAuditEntryRepository.AddAsync(auditEntry, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return simulation;
     }
 
     private static (
@@ -116,53 +173,61 @@ public sealed class OperationalSimulationService : IOperationalSimulationService
             OperationalIntent intent,
             DateOnly referenceDate,
             WeeklyDoughClosingResponse? existingClosing,
+            OperationalDraft? existingDraft,
             WeeklyDoughCarryoverResponse carryover,
             Contracts.Responses.Dough.DoughAvailabilityProjectionResponse availability,
             Contracts.Responses.Prep.WeeklyDoughCalendarResponse weeklyGoal,
             Contracts.Responses.Dough.DoughInventoryImpactResponse inventoryImpact,
+            PrepItem? doughItem,
             IList<OperationalValidationWarning> warnings)
     {
         if (intent is WeeklyClosingIntent weeklyClosingIntent)
         {
             var proposedReadyBalls = weeklyClosingIntent.LeftoverReadyBalls ??
                 existingClosing?.LeftoverReadyBalls ??
-                carryover.CarryoverReadyBalls;
+                availability.RegularReadyBalls;
             var proposedMixedLoads = weeklyClosingIntent.LeftoverMixedLoads ??
                 existingClosing?.LeftoverMixedLoads ??
-                carryover.MixedButNotBalledLoads;
+                weeklyGoal.MixedButNotBalledLoads;
+            var proposedAttentionBalls = existingClosing?.LeftoverAttentionBalls ??
+                availability.AttentionAvailableBalls + availability.MustUseNextDayBalls;
             var weeklyCorrectionProposal = new WeeklyCorrectionProposal
             {
+                ExistingWeeklyClosingId = existingClosing?.Id,
                 WeekStartDate = weeklyClosingIntent.WeekStartDate,
+                NeededBalls = existingClosing?.NeededBalls ?? weeklyGoal.WeekTotalNeededBalls,
+                ProducedBalls = existingClosing?.ProducedBalls ?? availability.ProducedThisWeekBalls,
+                UsedBalls = existingClosing?.UsedBalls ?? availability.ActualUsedBallsThisWeek,
+                LostBalls = existingClosing?.LostBalls ?? availability.LostBallsThisWeek,
                 LeftoverReadyBalls = proposedReadyBalls,
+                LeftoverAttentionBalls = proposedAttentionBalls,
                 LeftoverMixedLoads = proposedMixedLoads,
+                Notes = existingClosing?.Notes ?? $"Drafted from operational narrative on {referenceDate:yyyy-MM-dd}.",
                 Reason = weeklyClosingIntent.CorrectionReason
             };
-            var doughTaskDraftProposal = weeklyClosingIntent.SundayLoadBalledMonday
-                ? new DoughTaskDraftProposal
+            var doughTaskDraftProposal = doughItem is null || !weeklyClosingIntent.SundayLoadBalledMonday
+                ? null
+                : new DoughTaskDraftProposal
                 {
-                    TaskDate = referenceDate,
-                    TaskType = "BallDough",
+                    TaskDate = referenceDate.AddDays(1),
+                    TaskType = nameof(PrepTaskType.BallDough),
                     Quantity = DoughRules.StandardBatchBalls,
-                    QuantityUnit = "Balls",
-                    Notes = "Backfill Monday balling for the prior Sunday load before weekly closing correction."
-                }
-                : null;
-
-            if (existingClosing is not null)
-            {
-                warnings.Add(new OperationalValidationWarning
-                {
-                    Code = "existing-weekly-closing",
-                    Message = "A weekly closing already exists for the requested week. Use correction flow instead of create flow."
-                });
-            }
+                    QuantityUnit = nameof(DoughQuantityUnit.Balls),
+                    AssignedRole = nameof(ApplicationRole.PizzaMaker),
+                    PrepItemId = doughItem.Id,
+                    PrepStationId = doughItem.PrepStationId,
+                    Notes = "Backfill Monday balling for the prior Sunday load before weekly closing correction.",
+                    AutoCompleteOnApproval = true,
+                    CompletionQuantity = DoughRules.StandardBatchBalls
+                };
 
             if (weeklyClosingIntent.SundayLoadBalledMonday && proposedMixedLoads > 0)
             {
                 warnings.Add(new OperationalValidationWarning
                 {
                     Code = "monday-balling-still-pending",
-                    Message = "The narrative says the Sunday load was balled on Monday, so mixed loads should not remain pending."
+                    Message = "The narrative says the Sunday load was balled on Monday, so mixed loads should not remain pending.",
+                    BlocksDraft = true
                 });
             }
 
@@ -172,7 +237,8 @@ public sealed class OperationalSimulationService : IOperationalSimulationService
                 warnings.Add(new OperationalValidationWarning
                 {
                     Code = "line-conversion-mismatch",
-                    Message = "The proposed ready balls do not match the current line-to-ball conversion."
+                    Message = "The proposed ready balls do not match the current line-to-ball conversion.",
+                    BlocksDraft = true
                 });
             }
 
@@ -180,26 +246,28 @@ public sealed class OperationalSimulationService : IOperationalSimulationService
             {
                 ReferenceDate = referenceDate,
                 WeekStartDate = weeklyClosingIntent.WeekStartDate,
+                ExistingDraftId = existingDraft?.Id,
+                ExistingDraftStatus = existingDraft?.Status.ToString(),
                 ExistingWeeklyClosingId = existingClosing?.Id,
                 ExistingLeftoverReadyBalls = existingClosing?.LeftoverReadyBalls,
+                ExistingLeftoverAttentionBalls = existingClosing?.LeftoverAttentionBalls,
                 ExistingLeftoverMixedLoads = existingClosing?.LeftoverMixedLoads,
                 ExistingCorrectionNote = existingClosing?.CorrectionNote,
                 CarryoverReadyBalls = carryover.CarryoverReadyBalls,
                 CarryoverMixedLoads = carryover.MixedButNotBalledLoads,
                 ReadyNowBalls = weeklyGoal.ReadyNowBalls,
-                StillMissingThisWeekBalls = weeklyGoal.StillMissingThisWeekBalls,
+                AttentionAvailableBalls = availability.AttentionAvailableBalls,
+                MustUseNextDayBalls = availability.MustUseNextDayBalls,
+                MixedButNotBalledLoads = weeklyGoal.MixedButNotBalledLoads,
+                MixedButNotBalledBalls = weeklyGoal.MixedButNotBalledBalls,
                 InventoryReadyNowBalls = inventoryImpact.ReadyNowBalls
             };
             var afterPreview = new
             {
-                weeklyCorrectionProposal.WeekStartDate,
-                weeklyCorrectionProposal.LeftoverReadyBalls,
-                weeklyCorrectionProposal.LeftoverMixedLoads,
-                weeklyCorrectionProposal.Reason,
-                SundayLoadBalledMonday = weeklyClosingIntent.SundayLoadBalledMonday,
+                weeklyCorrectionProposal,
                 doughTaskDraftProposal
             };
-            var diffEntries = BuildDiffEntries(existingClosing, weeklyCorrectionProposal);
+            var diffEntries = BuildWeeklyCorrectionDiffEntries(existingClosing, weeklyCorrectionProposal);
 
             return (beforeSnapshot, afterPreview, diffEntries, weeklyCorrectionProposal, doughTaskDraftProposal);
         }
@@ -209,25 +277,29 @@ public sealed class OperationalSimulationService : IOperationalSimulationService
             var doughTaskDraftProposal = new DoughTaskDraftProposal
             {
                 TaskDate = referenceDate,
-                TaskType = productionIntent.MentionsBalling ? "BallDough" : "MakeDoughLoad",
+                TaskType = productionIntent.MentionsBalling ? nameof(PrepTaskType.BallDough) : nameof(PrepTaskType.MakeDoughLoad),
                 Quantity = productionIntent.Quantity ?? DoughRules.StandardBatchBalls,
-                QuantityUnit = productionIntent.MentionsBalling ? "Balls" : "FullLoads",
-                Notes = productionIntent.Notes ?? "Drafted from production narrative."
+                QuantityUnit = productionIntent.MentionsBalling
+                    ? nameof(DoughQuantityUnit.Balls)
+                    : nameof(DoughQuantityUnit.FullLoads),
+                AssignedRole = nameof(ApplicationRole.PizzaMaker),
+                PrepItemId = doughItem?.Id ?? Guid.Empty,
+                PrepStationId = doughItem?.PrepStationId ?? Guid.Empty,
+                Notes = productionIntent.Notes ?? "Drafted from production narrative.",
+                AutoCompleteOnApproval = false
             };
             var beforeSnapshot = new
             {
                 ReferenceDate = referenceDate,
+                ExistingDraftId = existingDraft?.Id,
+                ExistingDraftStatus = existingDraft?.Status.ToString(),
                 ReadyNowBalls = weeklyGoal.ReadyNowBalls,
                 FutureBalls = weeklyGoal.FutureBalls,
                 StillMissingThisWeekBalls = weeklyGoal.StillMissingThisWeekBalls
             };
             var afterPreview = new
             {
-                doughTaskDraftProposal.TaskDate,
-                doughTaskDraftProposal.TaskType,
-                doughTaskDraftProposal.Quantity,
-                doughTaskDraftProposal.QuantityUnit,
-                doughTaskDraftProposal.Notes
+                doughTaskDraftProposal
             };
             var diffEntries = new object[]
             {
@@ -251,6 +323,8 @@ public sealed class OperationalSimulationService : IOperationalSimulationService
         var genericBefore = new
         {
             ReferenceDate = referenceDate,
+            ExistingDraftId = existingDraft?.Id,
+            ExistingDraftStatus = existingDraft?.Status.ToString(),
             weeklyGoal.ReadyNowBalls,
             weeklyGoal.StillMissingThisWeekBalls,
             availability.AvailableBalls,
@@ -263,6 +337,226 @@ public sealed class OperationalSimulationService : IOperationalSimulationService
         };
 
         return (genericBefore, genericAfter, Array.Empty<object>(), null, null);
+    }
+
+    private static void ApplyExistingDraftWarnings(
+        OperationalDraft? existingDraft,
+        IList<OperationalValidationWarning> warnings)
+    {
+        if (existingDraft is null)
+        {
+            return;
+        }
+
+        if (existingDraft.Status is OperationalDraftStatus.Pending or OperationalDraftStatus.ReadyForApproval)
+        {
+            warnings.Add(new OperationalValidationWarning
+            {
+                Code = "existing-draft-context",
+                Message = $"A persisted draft already exists for this correlation id with status {existingDraft.Status}. Review it before creating another draft.",
+                RequiresHumanReview = true
+            });
+        }
+    }
+
+    private static void ApplyExistingWeeklyClosingWarnings(
+        WeeklyDoughClosingResponse? existingClosing,
+        IList<OperationalValidationWarning> warnings)
+    {
+        if (existingClosing is null)
+        {
+            return;
+        }
+
+        warnings.Add(new OperationalValidationWarning
+        {
+            Code = "existing-weekly-closing",
+            Message = "A weekly closing already exists for this week, so any approved draft must be treated as a correction and reviewed carefully.",
+            RequiresHumanReview = true
+        });
+    }
+
+    private static void ApplyDuplicateLoadPreventionWarnings(
+        WeeklyCorrectionProposal? weeklyCorrectionProposal,
+        DoughTaskDraftProposal? doughTaskDraftProposal,
+        Contracts.Responses.Prep.WeeklyDoughCalendarResponse weeklyGoal,
+        IReadOnlyList<PrepTask> tasks,
+        IReadOnlyCollection<DoughBatch> batches,
+        IList<OperationalValidationWarning> warnings)
+    {
+        var activeUnballedLoads = batches.Count(batch => !batch.IsVoided && !batch.IsBalled);
+
+        if (weeklyCorrectionProposal is not null &&
+            weeklyCorrectionProposal.LeftoverMixedLoads > weeklyGoal.MixedButNotBalledLoads)
+        {
+            warnings.Add(new OperationalValidationWarning
+            {
+                Code = "duplicate-load-prevention",
+                Message = "The proposed mixed loads exceed the task-derived mixed loads currently recognized by the system, which risks counting the same physical dough twice.",
+                BlocksDraft = true
+            });
+        }
+
+        if (weeklyCorrectionProposal is not null &&
+            weeklyCorrectionProposal.LeftoverMixedLoads > activeUnballedLoads)
+        {
+            warnings.Add(new OperationalValidationWarning
+            {
+                Code = "mixed-load-physical-mismatch",
+                Message = "The proposed mixed carryover is greater than the unballed physical loads currently tracked, so the same dough may be counted twice.",
+                BlocksDraft = true
+            });
+        }
+
+        if (doughTaskDraftProposal is null)
+        {
+            return;
+        }
+
+        var duplicateTaskExists = tasks.Any(task =>
+            task.TaskType.ToString() == doughTaskDraftProposal.TaskType &&
+            task.TaskDate == doughTaskDraftProposal.TaskDate &&
+            task.Status != PrepTaskStatus.Cancelled &&
+            (task.QuantityRecommended == doughTaskDraftProposal.Quantity ||
+             task.QuantityCompleted == doughTaskDraftProposal.Quantity));
+
+        if (duplicateTaskExists)
+        {
+            warnings.Add(new OperationalValidationWarning
+            {
+                Code = "duplicate-task-draft",
+                Message = "A task with the same type, date, and quantity already exists. Creating another draft would duplicate operational work.",
+                BlocksDraft = true
+            });
+        }
+
+        var duplicateBalledLoadExists = doughTaskDraftProposal.TaskType == nameof(PrepTaskType.BallDough) &&
+            batches.Any(batch =>
+                !batch.IsVoided &&
+                batch.IsBalled &&
+                batch.BatchDate.AddDays(1) == doughTaskDraftProposal.TaskDate &&
+                batch.TotalBalls == doughTaskDraftProposal.Quantity);
+
+        if (duplicateBalledLoadExists)
+        {
+            warnings.Add(new OperationalValidationWarning
+            {
+                Code = "duplicate-balled-load",
+                Message = "The draft would ball a dough load that is already marked as balled in the tracked physical batches.",
+                BlocksDraft = true
+            });
+        }
+    }
+
+    private static void ApplyCarryoverConsistencyWarnings(
+        WeeklyCorrectionProposal? weeklyCorrectionProposal,
+        Contracts.Responses.Dough.DoughAvailabilityProjectionResponse availability,
+        Contracts.Responses.Prep.WeeklyDoughCalendarResponse weeklyGoal,
+        IList<OperationalValidationWarning> warnings)
+    {
+        if (weeklyCorrectionProposal is null)
+        {
+            return;
+        }
+
+        var proposedPhysicalLeftoverBalls =
+            weeklyCorrectionProposal.LeftoverReadyBalls +
+            weeklyCorrectionProposal.LeftoverAttentionBalls +
+            (weeklyCorrectionProposal.LeftoverMixedLoads * DoughRules.StandardBatchBalls);
+        var derivedPhysicalLeftoverBalls =
+            weeklyGoal.ReadyNowBalls +
+            weeklyGoal.MixedButNotBalledBalls +
+            weeklyGoal.StillFermentingBalls;
+
+        if (proposedPhysicalLeftoverBalls > derivedPhysicalLeftoverBalls)
+        {
+            warnings.Add(new OperationalValidationWarning
+            {
+                Code = "carryover-consistency",
+                Message = "The proposed leftover dough exceeds the task-derived physical dough currently available in the system.",
+                BlocksDraft = true
+            });
+        }
+
+        var accountedPhysicalBalls =
+            weeklyGoal.ReadyNowBalls +
+            weeklyGoal.MixedButNotBalledBalls +
+            weeklyGoal.StillFermentingBalls +
+            weeklyGoal.ActualUsedBallsThisWeek;
+        var traceablePhysicalBalls =
+            weeklyGoal.CarryoverAvailableBalls +
+            weeklyGoal.CarryoverMixedButNotBalledPotentialBalls +
+            weeklyGoal.PreviousWeekFinishedBalls +
+            weeklyGoal.ProducedThisWeekBalls -
+            availability.LostBallsThisWeek;
+
+        if (accountedPhysicalBalls > traceablePhysicalBalls)
+        {
+            warnings.Add(new OperationalValidationWarning
+            {
+                Code = "physical-consistency-overflow",
+                Message = "Ready, mixed, fermenting, and used dough together exceed the traceable physical dough available from carryover plus production.",
+                BlocksDraft = true
+            });
+        }
+    }
+
+    private static void ApplyWeeklyClosingConsistencyWarnings(
+        WeeklyCorrectionProposal? weeklyCorrectionProposal,
+        Contracts.Responses.Dough.DoughAvailabilityProjectionResponse availability,
+        Contracts.Responses.Prep.WeeklyDoughCalendarResponse weeklyGoal,
+        IList<OperationalValidationWarning> warnings)
+    {
+        if (weeklyCorrectionProposal is null)
+        {
+            return;
+        }
+
+        var proposedAvailableBalls =
+            weeklyCorrectionProposal.LeftoverReadyBalls +
+            weeklyCorrectionProposal.LeftoverAttentionBalls;
+        var taskDerivedAvailableBalls =
+            availability.RegularReadyBalls +
+            availability.AttentionAvailableBalls +
+            availability.MustUseNextDayBalls;
+
+        if (proposedAvailableBalls != taskDerivedAvailableBalls)
+        {
+            warnings.Add(new OperationalValidationWarning
+            {
+                Code = "weekly-closing-available-mismatch",
+                Message = "The proposed available carryover does not match the current task-derived available dough.",
+                BlocksDraft = true
+            });
+        }
+
+        if (weeklyCorrectionProposal.LeftoverMixedLoads != weeklyGoal.MixedButNotBalledLoads)
+        {
+            warnings.Add(new OperationalValidationWarning
+            {
+                Code = "weekly-closing-mixed-mismatch",
+                Message = "The proposed mixed loads do not match the current task-derived mixed dough state.",
+                BlocksDraft = true
+            });
+        }
+    }
+
+    private static void ApplyMissingCatalogWarnings(
+        PrepItem? doughItem,
+        DoughTaskDraftProposal? doughTaskDraftProposal,
+        IList<OperationalValidationWarning> warnings)
+    {
+        if (doughTaskDraftProposal is null || doughItem is not null)
+        {
+            return;
+        }
+
+        warnings.Add(new OperationalValidationWarning
+        {
+            Code = "missing-dough-catalog-item",
+            Message = "The DOUGH prep item is not configured, so the system cannot safely build an approval-ready dough task payload.",
+            BlocksDraft = true
+        });
     }
 
     private async Task<WeeklyDoughClosingResponse?> FindClosingForWeekAsync(
@@ -282,7 +576,7 @@ public sealed class OperationalSimulationService : IOperationalSimulationService
             item.WeekStartDate == normalizedClosingWeekStartDate.AddDays(1));
     }
 
-    private static IReadOnlyList<object> BuildDiffEntries(
+    private static IReadOnlyList<object> BuildWeeklyCorrectionDiffEntries(
         WeeklyDoughClosingResponse? existingClosing,
         WeeklyCorrectionProposal proposal)
     {
@@ -293,6 +587,12 @@ public sealed class OperationalSimulationService : IOperationalSimulationService
                 Field = "LeftoverReadyBalls",
                 Before = existingClosing?.LeftoverReadyBalls,
                 After = proposal.LeftoverReadyBalls
+            },
+            new
+            {
+                Field = "LeftoverAttentionBalls",
+                Before = existingClosing?.LeftoverAttentionBalls,
+                After = proposal.LeftoverAttentionBalls
             },
             new
             {
@@ -309,9 +609,21 @@ public sealed class OperationalSimulationService : IOperationalSimulationService
         ];
     }
 
+    private static string ResolveActorUserId(string? actorUserId)
+    {
+        return string.IsNullOrWhiteSpace(actorUserId)
+            ? "mcp-simulate"
+            : actorUserId.Trim();
+    }
+
     private static string Serialize<T>(T value)
     {
         return JsonSerializer.Serialize(value, JsonOptions);
+    }
+
+    private static string SerializeIntent(OperationalIntent intent)
+    {
+        return JsonSerializer.Serialize(intent, intent.GetType(), JsonOptions);
     }
 
     private static DateOnly NormalizeClosingWeekStart(DateOnly referenceDate)

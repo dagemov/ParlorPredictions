@@ -2,10 +2,17 @@ namespace ParlorPrediction.Domain.Entities;
 
 public sealed class OperationalAuditEntry
 {
+    public const int ActionTypeMaxLength = 100;
+    public const int UserIdMaxLength = 450;
+
+    private OperationalAuditEntry()
+    {
+    }
+
     private OperationalAuditEntry(
         Guid id,
         Guid correlationId,
-        string eventType,
+        string actionType,
         string actorUserId,
         string sourceText,
         string normalizedIntentJson,
@@ -18,7 +25,7 @@ public sealed class OperationalAuditEntry
     {
         Id = id;
         CorrelationId = correlationId;
-        EventType = eventType;
+        ActionType = actionType;
         ActorUserId = actorUserId;
         SourceText = sourceText;
         NormalizedIntentJson = normalizedIntentJson;
@@ -27,14 +34,14 @@ public sealed class OperationalAuditEntry
         ValidationWarningsJson = validationWarningsJson;
         DraftId = draftId;
         ApprovedEntityId = approvedEntityId;
-        CreatedAtUtc = createdAtUtc;
+        TimestampUtc = createdAtUtc;
     }
 
     public Guid Id { get; private set; }
 
     public Guid CorrelationId { get; private set; }
 
-    public string EventType { get; private set; }
+    public string ActionType { get; private set; }
 
     public string ActorUserId { get; private set; }
 
@@ -52,11 +59,11 @@ public sealed class OperationalAuditEntry
 
     public Guid? ApprovedEntityId { get; private set; }
 
-    public DateTime CreatedAtUtc { get; private set; }
+    public DateTime TimestampUtc { get; private set; }
 
     public static OperationalAuditEntry Create(
         Guid correlationId,
-        string eventType,
+        string actionType,
         string actorUserId,
         string sourceText,
         string normalizedIntentJson,
@@ -72,9 +79,9 @@ public sealed class OperationalAuditEntry
             throw new ArgumentException("Correlation id is required.", nameof(correlationId));
         }
 
-        if (string.IsNullOrWhiteSpace(eventType))
+        if (string.IsNullOrWhiteSpace(actionType))
         {
-            throw new ArgumentException("Event type is required.", nameof(eventType));
+            throw new ArgumentException("Action type is required.", nameof(actionType));
         }
 
         if (string.IsNullOrWhiteSpace(actorUserId))
@@ -90,7 +97,7 @@ public sealed class OperationalAuditEntry
         return new OperationalAuditEntry(
             Guid.NewGuid(),
             correlationId,
-            eventType.Trim(),
+            actionType.Trim(),
             actorUserId.Trim(),
             sourceText.Trim(),
             normalizedIntentJson ?? string.Empty,

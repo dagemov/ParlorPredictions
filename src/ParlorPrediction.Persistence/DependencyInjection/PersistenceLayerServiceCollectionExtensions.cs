@@ -4,6 +4,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using ParlorPrediction.Application.Interfaces.Ai;
 using ParlorPrediction.Application.Interfaces.Auth;
 using ParlorPrediction.Application.Interfaces.Dough;
 using ParlorPrediction.Application.Interfaces.Persistence;
@@ -85,6 +86,8 @@ public static class PersistenceLayerServiceCollectionExtensions
         services.AddScoped<IDoughReballRecordRepository, DoughReballRecordRepository>();
         services.AddScoped<IDoughUsageTraceRepository, DoughUsageTraceRepository>();
         services.AddScoped<IDailyDoughClosingRepository, DailyDoughClosingRepository>();
+        services.AddScoped<IOperationalAuditEntryRepository, OperationalAuditEntryRepository>();
+        services.AddScoped<IOperationalDraftRepository, OperationalDraftRepository>();
         services.AddScoped<IWeeklyDoughClosingRepository, WeeklyDoughClosingRepository>();
         services.AddScoped<IManagerPrepRecommendationRepository, ManagerPrepRecommendationRepository>();
         services.AddScoped<IPrepItemReadRepository, PrepItemReadRepository>();

@@ -7,11 +7,25 @@ namespace ParlorPrediction.Application.Interfaces.Ai;
 
 public sealed class WeeklyCorrectionProposal
 {
+    public Guid? ExistingWeeklyClosingId { get; init; }
+
     public DateOnly WeekStartDate { get; init; }
+
+    public int NeededBalls { get; init; }
+
+    public int ProducedBalls { get; init; }
+
+    public int UsedBalls { get; init; }
+
+    public int LostBalls { get; init; }
 
     public int LeftoverReadyBalls { get; init; }
 
+    public int LeftoverAttentionBalls { get; init; }
+
     public int LeftoverMixedLoads { get; init; }
+
+    public string Notes { get; init; } = string.Empty;
 
     public string Reason { get; init; } = string.Empty;
 }
@@ -26,7 +40,17 @@ public sealed class DoughTaskDraftProposal
 
     public string QuantityUnit { get; init; } = string.Empty;
 
+    public string AssignedRole { get; init; } = string.Empty;
+
+    public Guid PrepItemId { get; init; }
+
+    public Guid PrepStationId { get; init; }
+
     public string Notes { get; init; } = string.Empty;
+
+    public bool AutoCompleteOnApproval { get; init; }
+
+    public int? CompletionQuantity { get; init; }
 }
 
 public sealed class OperationalValidationWarning
@@ -36,6 +60,8 @@ public sealed class OperationalValidationWarning
     public string Message { get; init; } = string.Empty;
 
     public bool RequiresHumanReview { get; init; } = true;
+
+    public bool BlocksDraft { get; init; }
 }
 
 public sealed class OperationalSimulationResult
@@ -100,4 +126,61 @@ public sealed class OperationalDraftEnvelope
     public required OperationalAuditEntry AuditEntry { get; init; }
 
     public string DiffJson { get; init; } = string.Empty;
+}
+
+public sealed class WeeklyCorrectionApprovalPayload
+{
+    public Guid? ExistingWeeklyClosingId { get; init; }
+
+    public DateOnly WeekStartDate { get; init; }
+
+    public int NeededBalls { get; init; }
+
+    public int ProducedBalls { get; init; }
+
+    public int UsedBalls { get; init; }
+
+    public int LostBalls { get; init; }
+
+    public int LeftoverReadyBalls { get; init; }
+
+    public int LeftoverAttentionBalls { get; init; }
+
+    public int LeftoverMixedLoads { get; init; }
+
+    public string? Notes { get; init; }
+
+    public string CorrectionReason { get; init; } = string.Empty;
+}
+
+public sealed class DoughTaskApprovalPayload
+{
+    public DateOnly TaskDate { get; init; }
+
+    public Guid PrepItemId { get; init; }
+
+    public Guid PrepStationId { get; init; }
+
+    public string AssignedRole { get; init; } = string.Empty;
+
+    public string TaskType { get; init; } = string.Empty;
+
+    public string QuantityUnit { get; init; } = string.Empty;
+
+    public int QuantityValue { get; init; }
+
+    public int? CompletionQuantityValue { get; init; }
+
+    public string? Notes { get; init; }
+
+    public bool AutoCompleteOnApproval { get; init; }
+}
+
+public sealed class OperationalDraftApprovalResult
+{
+    public required OperationalDraft Draft { get; init; }
+
+    public required OperationalAuditEntry AuditEntry { get; init; }
+
+    public Guid? ApprovedEntityId { get; init; }
 }
