@@ -12,13 +12,23 @@
 
 - Recommended branch name for this stream: `codex/mcp-operational-governance`
 
+## Operational Cut V1 Approved
+
+- [x] Keep the current architecture baseline.
+- [x] Do not create `ParlorPrediction.Api`.
+- [x] Do not create `ParlorPrediction.AI` yet.
+- [x] Keep existing DTOs in `ParlorPrediction.Contracts`.
+- [x] Do not introduce event sourcing yet.
+- [x] Use internal intent classification instead of splitting the solution into five bounded contexts now.
+- [x] Require the AI to simulate on top of existing system truth instead of calculating alternate inventory truth.
+
 ## Phase 0 - Governance First
 
 - [x] Create technical governance document for `AI Chat + MCP Operational Governance`.
 - [x] Create roadmap checklist for phased delivery.
-- [ ] Approve the initial MCP tool allowlist.
-- [ ] Approve roles and human approval boundary.
-- [ ] Approve backup, audit, and rollback policy.
+- [x] Approve the initial MCP tool allowlist.
+- [x] Approve roles and human approval boundary.
+- [x] Approve backup, audit, and rollback policy.
 - [ ] Freeze the first set of operational regression stories.
 
 Definition of done:
@@ -27,14 +37,14 @@ Definition of done:
 
 ## Phase 1 - Internal MCP Read-Only Foundation
 
-- [ ] Create `src/ParlorPrediction.Mcp` host project.
-- [ ] Register only read-safe tool contracts.
-- [ ] Add structured DTOs for every tool input and output.
-- [ ] Wire `read_weekly_closing` to `IWeeklyDoughClosingReadService`.
-- [ ] Wire `read_dough_inventory` to the existing inventory read path.
-- [ ] Wire `explain_weekly_goal` to application services without duplicating business logic.
+- [x] Create `src/ParlorPrediction.Mcp` host project.
+- [x] Register only read-safe and draft-safe tool contracts.
+- [x] Add structured DTOs for every tool input and output.
+- [x] Wire `read_weekly_closing` to `IWeeklyDoughClosingReadService`.
+- [x] Wire `read_dough_inventory` to the existing inventory read path.
+- [x] Wire `explain_weekly_goal` to application services without duplicating business logic.
 - [ ] Add correlation ID and tool audit envelope to every call.
-- [ ] Block any non-allowlisted tool registration by default.
+- [x] Block any non-allowlisted tool registration by default.
 
 Definition of done:
 
@@ -42,13 +52,25 @@ Definition of done:
 
 ## Phase 2 - Draft Layer
 
-- [ ] Design `OperationalDraft` persistence model.
-- [ ] Add `draft_weekly_correction`.
-- [ ] Add `draft_dough_task`.
-- [ ] Add `validate_closing_before_save`.
-- [ ] Store natural-language source text with normalized interpretation.
-- [ ] Store before snapshot and after preview in each draft.
+- [x] Create `OperationalIntentClassifier`.
+- [x] Create internal intent models:
+  - `SalesIntent`
+  - `ProductionIntent`
+  - `ConsumptionIntent`
+  - `InventoryIntent`
+  - `WeeklyClosingIntent`
+- [x] Create `OperationalSimulationService` that wraps existing truth services.
+- [x] Create diff JSON preview output.
+- [x] Create `OperationalDraft`.
+- [x] Create `OperationalAuditEntry`.
+- [x] Add `draft_weekly_correction`.
+- [x] Add `draft_dough_task`.
+- [x] Add `simulate_operational_narrative`.
+- [x] Add `validate_closing_before_save`.
+- [x] Store natural-language source text with normalized interpretation.
+- [x] Store before snapshot and after preview in each draft.
 - [ ] Return warnings for duplicate-load and carryover conflicts.
+- [ ] Persist `OperationalDraft` and `OperationalAuditEntry` through repositories and `DbContext`.
 
 Definition of done:
 
@@ -70,13 +92,15 @@ Definition of done:
 
 ## Phase 4 - Tests And SSD Hardening
 
-- [ ] Add unit tests for interpretation mapping and validation.
-- [ ] Add MCP contract tests.
+- [x] Add unit tests for interpretation mapping and validation.
+- [x] Add MCP contract tests.
 - [ ] Add audit logging tests.
 - [ ] Add authorization tests for admin-only and manager-safe paths.
 - [ ] Add duplicate-load regression tests.
 - [ ] Add prompt-injection and malformed-input negative tests.
 - [ ] Add rollback procedure tests where feasible.
+- [x] Add the real regression case:
+  - `Jun 15 - Jun 21, 2026 -> 504 ready balls -> 0 mixed loads -> Sunday load balled Monday`
 
 Definition of done:
 
@@ -120,8 +144,8 @@ Definition of done:
 
 ## Initial Regression Stories To Freeze Early
 
-- [ ] `Sun Jun 21 load -> Mon Jun 22 balling -> LeftoverReadyBalls = 504 -> LeftoverMixedLoads = 0`
-- [ ] `3 lineas sobraron -> 504 ready balls`
+- [x] `Sun Jun 21 load -> Mon Jun 22 balling -> LeftoverReadyBalls = 504 -> LeftoverMixedLoads = 0`
+- [x] `3 lineas sobraron -> 504 ready balls`
 - [ ] `Mixed load carries over but does not count as available until BallDough`
 - [ ] `Same physical dough appears in MakeDoughLoad + BallDough + DoughBatch but must count once`
 - [ ] `Manager can review dashboard state but admin-only destructive corrections stay restricted`
@@ -129,9 +153,10 @@ Definition of done:
 ## Commit Plan By Intention
 
 - [x] `docs: add AI chat and MCP operational governance`
-- [ ] `feat(mcp): scaffold internal MCP host and read-only tool contracts`
-- [ ] `test(mcp): add MCP contract and regression coverage`
-- [ ] `feat(drafts): add operational draft model and validation services`
+- [x] `feat(mcp): scaffold internal MCP host and read-only tool contracts`
+- [x] `feat(simulation): add operational intent classification and simulation services`
+- [x] `feat(drafts): add operational draft model and validation services`
+- [x] `test(mcp): add MCP contract and regression coverage`
 - [ ] `feat(approval): add admin approval, audit, backup, and rollback flow`
 - [ ] `feat(chat): add read-only operational chat adapter`
 - [ ] `feat(chat): add draft-generation chat flow`

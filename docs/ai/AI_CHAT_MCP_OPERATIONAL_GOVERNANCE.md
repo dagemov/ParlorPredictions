@@ -31,6 +31,29 @@ Not recommended as the main production path:
 
 `Codex` is excellent for design, debugging, supervised review, prompt iteration, and scenario testing. It should not be the required runtime bridge for live kitchen operations.
 
+## Operational Cut V1
+
+The approved first implementation cut is intentionally smaller than the final architecture vision.
+
+Keep as-is:
+
+- no `ParlorPrediction.Api` project
+- no separate `ParlorPrediction.AI` project yet
+- no DTO migration out of `ParlorPrediction.Contracts`
+- no event sourcing yet
+- no new bounded contexts split across the solution yet
+
+Add now:
+
+- `src/ParlorPrediction.Mcp`
+- `Application/Services/AIOrchestration`
+- `Application/Services/OperationalSimulation`
+- `Application/Services/OperationalDrafts`
+- `Domain/Entities/OperationalDraft`
+- `Domain/Entities/OperationalAuditEntry`
+
+This is the correct MVP because it extends the current architecture instead of replacing it.
+
 ## Why This Decision Is Better
 
 ### Best use of Codex / ChatGPT
@@ -130,6 +153,8 @@ The user-facing concept and the implementation order should not be identical.
 
 This order is safer because the tool boundary becomes trustworthy before the natural-language surface is exposed.
 
+For `Operational Cut V1`, implementation starts at steps `2` through `4` with a deterministic internal MVP before any boss-facing chat is exposed.
+
 ## Roles And Permissions
 
 ### Boss / Operations Lead
@@ -187,6 +212,7 @@ Initial tool allowlist:
 - `read_weekly_closing`
 - `read_dough_inventory`
 - `explain_weekly_goal`
+- `simulate_operational_narrative`
 - `draft_weekly_correction`
 - `draft_dough_task`
 - `validate_closing_before_save`
@@ -250,6 +276,12 @@ Recommended placement:
 
 The `MCP` host translates tool input into application requests. It must not invent alternate rules for carryover, batch availability, or weekly closing math.
 
+The same rule applies to the AI orchestration layer:
+
+- the AI does not calculate another truth
+- the AI classifies, simulates, drafts, and explains on top of existing services
+- `WeeklyClosing`, inventory, weekly goal, and carryover math remain owned by current application logic
+
 ## Recommended Internal Components
 
 ### 1. MCP Host Project
@@ -270,11 +302,13 @@ Responsibility:
 
 Suggested future application services:
 
+- `OperationalNarrativeInterpreter`
+- `OperationalIntentClassifier`
+- `OperationalSimulationService`
 - `WeeklyClosingExplanationService`
 - `WeeklyCorrectionDraftService`
 - `DoughTaskDraftService`
 - `ClosingValidationService`
-- `OperationalNarrativeInterpreter`
 
 Responsibility:
 
@@ -283,6 +317,14 @@ Responsibility:
 - build structured drafts
 - never save final corrections directly
 
+Internal intent classes for v1:
+
+- `SalesIntent`
+- `ProductionIntent`
+- `ConsumptionIntent`
+- `InventoryIntent`
+- `WeeklyClosingIntent`
+
 ### 3. Draft Store
 
 Recommended future persistence concept:
@@ -290,6 +332,8 @@ Recommended future persistence concept:
 - `OperationalDraft`
 - `OperationalDraftDecision`
 - `OperationalAuditEntry`
+
+For `Operational Cut V1`, persistence can remain minimal at first as long as draft and audit structures are defined cleanly and the save workflow is still blocked behind human approval.
 
 Each draft should store:
 
@@ -338,6 +382,14 @@ Before every important correction:
 7. Save through existing application use cases.
 8. Record audit trail.
 9. Generate or link rollback procedure.
+
+For `Operational Cut V1`, the audit trail minimum is:
+
+- `OperationalDraft`
+- `OperationalAuditEntry`
+- diff JSON preview
+- validation warning JSON
+- human approval still outside the model toolset
 
 Minimum audit fields:
 
@@ -410,6 +462,21 @@ For the week `Jun 15 - Jun 21, 2026`, the authoritative corrected state is:
 - reason: `Recovered Sunday load balled Monday morning.`
 
 This exact scenario should become one of the first MCP regression fixtures.
+
+## MVP Decision Summary
+
+The approved MVP is not a chatbot-first release.
+
+It is:
+
+- internal `MCP`
+- deterministic intent classification
+- simulation over existing truth
+- draft generation
+- diff preview
+- minimal audit model
+
+The chat UI comes later.
 
 ## Learning Model
 
