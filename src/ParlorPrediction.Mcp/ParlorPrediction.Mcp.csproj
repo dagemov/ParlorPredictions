@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ParlorPrediction.Application\ParlorPrediction.Application.csproj" />
+    <ProjectReference Include="..\ParlorPrediction.Contracts\ParlorPrediction.Contracts.csproj" />
+    <ProjectReference Include="..\ParlorPrediction.Domain\ParlorPrediction.Domain.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
