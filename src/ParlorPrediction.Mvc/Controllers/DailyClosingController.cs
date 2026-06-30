@@ -220,6 +220,10 @@ public sealed class DailyClosingController : Controller
             ProjectedSurplus = insights.ProjectedSurplus,
             HasSurplusWarning = insights.HasSurplusWarning,
             HasShortageWarning = insights.HasShortageWarning,
+            TotalTracedUsedBallsOnClosedDays = insights.TotalTracedUsedBallsOnClosedDays,
+            TraceReconciliationDifferenceBalls = insights.TraceReconciliationDifferenceBalls,
+            HasTraceReconciliationWarning = insights.HasTraceReconciliationWarning,
+            TraceReconciliationMessage = insights.TraceReconciliationMessage,
             Recommendation = insights.Recommendation,
             Days = weekSummary.Days
                 .Select(MapDayCard)

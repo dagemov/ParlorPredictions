@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Mvc;
 using ParlorPrediction.Application.Interfaces.Dough;
@@ -35,6 +36,7 @@ public sealed class PrepController : Controller
     private readonly IPrepWeeklyDoughCalendarService _prepWeeklyDoughCalendarService;
     private readonly IPrepTaskReadService _prepTaskReadService;
     private readonly IPrepTaskService _prepTaskService;
+    private readonly IWebHostEnvironment _webHostEnvironment;
 
     public PrepController(
         IDailyDoughClosingReadService dailyDoughClosingReadService,
@@ -45,7 +47,8 @@ public sealed class PrepController : Controller
         IDoughPrepRecommendationService doughPrepRecommendationService,
         IPrepWeeklyDoughCalendarService prepWeeklyDoughCalendarService,
         IPrepTaskReadService prepTaskReadService,
-        IPrepTaskService prepTaskService)
+        IPrepTaskService prepTaskService,
+        IWebHostEnvironment webHostEnvironment)
     {
         _dailyDoughClosingReadService = dailyDoughClosingReadService;
         _doughPrepCalculationService = doughPrepCalculationService;
@@ -56,6 +59,7 @@ public sealed class PrepController : Controller
         _prepWeeklyDoughCalendarService = prepWeeklyDoughCalendarService;
         _prepTaskReadService = prepTaskReadService;
         _prepTaskService = prepTaskService;
+        _webHostEnvironment = webHostEnvironment;
     }
 
     [HttpGet("")]
@@ -84,6 +88,159 @@ public sealed class PrepController : Controller
             cancellationToken);
 
         return View(pageModel);
+    }
+
+    [AllowAnonymous]
+    [HttpGet("dough/debug")]
+    public async Task<IActionResult> DoughDebug(
+        DateOnly? targetDate,
+        int historicalWeeksToUse = DefaultHistoricalWeeksToUse,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_webHostEnvironment.IsDevelopment())
+        {
+            return NotFound();
+        }
+
+        var selectedDate = targetDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var normalizedHistoricalWeeks = NormalizeHistoricalWeeks(historicalWeeksToUse);
+        var productionPlanning = await _doughProductionPlanningService.PlanAsync(
+            new DoughProductionPlanningRequest
+            {
+                ProductionDate = selectedDate,
+                DaysAhead = DefaultPlanningDaysAhead
+            },
+            cancellationToken);
+        var weeklyCalendar = await _prepWeeklyDoughCalendarService.GetWeekAsync(
+            selectedDate,
+            normalizedHistoricalWeeks,
+            cancellationToken);
+
+        Contracts.Responses.DoughClosing.DailyClosingOperationalInsightsResponse? dailyInsights = null;
+        try
+        {
+            dailyInsights = await _dailyDoughClosingReadService.GetOperationalInsightsAsync(
+                new GetDailyClosingWeekSummaryRequest
+                {
+                    ReferenceDate = selectedDate,
+                    HistoricalWeeksToUse = normalizedHistoricalWeeks
+                },
+                cancellationToken);
+        }
+        catch (Exception exception) when (IsRecoverableDoughQualityException(exception))
+        {
+            dailyInsights = null;
+        }
+
+        return Json(new
+        {
+            Runtime = new
+            {
+                Environment = _webHostEnvironment.EnvironmentName,
+                ProcessId = Environment.ProcessId,
+                StartedAtLocal = System.Diagnostics.Process.GetCurrentProcess().StartTime,
+                AssemblyPath = Environment.ProcessPath,
+                AssemblyLastWriteTimeLocal = Environment.ProcessPath is null
+                    ? (DateTime?)null
+                    : System.IO.File.GetLastWriteTime(Environment.ProcessPath)
+            },
+            CardSources = new[]
+            {
+                new
+                {
+                    Card = "Ready Now",
+                    View = "Views/Prep/_DoughProductionPlanningPartial.cshtml",
+                    Property = "weeklyGoal.ReadyNowBalls",
+                    Service = nameof(IPrepWeeklyDoughCalendarService),
+                    Formula = "weeklyCalendar.ReadyNowBalls",
+                    Fallback = "planning.ReadyBalls"
+                },
+                new
+                {
+                    Card = "Still Missing This Week",
+                    View = "Views/Prep/_DoughProductionPlanningPartial.cshtml",
+                    Property = "weeklyGoal.DoughStillMissingThisWeekBalls",
+                    Service = nameof(IPrepWeeklyDoughCalendarService),
+                    Formula = "max(weekTotalNeeded - actualUsedClosedDays - readyNow, 0)",
+                    Fallback = "planning.MissingBallsForProductionWindow"
+                },
+                new
+                {
+                    Card = "Mixed But Not Balled",
+                    View = "Views/Prep/_DoughProductionPlanningPartial.cshtml",
+                    Property = "weeklyGoal.MixedButNotBalledBalls",
+                    Service = nameof(IPrepWeeklyDoughCalendarService),
+                    Formula = "liveUnballedBalls plus carryover fallback only when no live unballed batch exists",
+                    Fallback = "planning.UnballedBalls"
+                },
+                new
+                {
+                    Card = "Future Balls",
+                    View = "Views/Prep/_DoughProductionPlanningPartial.cshtml",
+                    Property = "weeklyGoal.FutureBalls",
+                    Service = nameof(IPrepWeeklyDoughCalendarService),
+                    Formula = "mixedButNotBalledBalls + stillFermentingBallsForDisplay",
+                    Fallback = "mixedButNotBalledBalls + stillFermentingBalls"
+                },
+                new
+                {
+                    Card = "Produced This Week",
+                    View = "Views/Prep/_DoughProductionPlanningPartial.cshtml",
+                    Property = "weeklyGoal.ProducedThisWeekBalls",
+                    Service = nameof(IPrepWeeklyDoughCalendarService),
+                    Formula = "completed BallDough tasks between operational week start and target date",
+                    Fallback = "none"
+                }
+            },
+            WorkDate = selectedDate,
+            WeeklyCalendar = new
+            {
+                SourceService = nameof(IPrepWeeklyDoughCalendarService),
+                weeklyCalendar.WeekStartDate,
+                weeklyCalendar.WeekEndDate,
+                WeeklyNeed = weeklyCalendar.WeekTotalNeededBalls,
+                ReadyNow = weeklyCalendar.ReadyNowBalls,
+                ProducedThisWeek = weeklyCalendar.ProducedThisWeekBalls,
+                MixedButNotBalled = weeklyCalendar.MixedButNotBalledBalls,
+                MixedButNotBalledLoads = weeklyCalendar.MixedButNotBalledLoads,
+                StillFermenting = weeklyCalendar.StillFermentingBalls,
+                FutureBalls = weeklyCalendar.FutureBalls,
+                StillMissing = weeklyCalendar.StillMissingThisWeekBalls,
+                ActualUsedClosedDays = weeklyCalendar.ActualUsedBallsThisWeek,
+                PreviousWeekFinished = weeklyCalendar.PreviousWeekFinishedBalls,
+                HasClosingCarryover = weeklyCalendar.HasClosingCarryover,
+                CarryoverAvailableBalls = weeklyCalendar.CarryoverAvailableBalls,
+                CarryoverMixedButNotBalledLoads = weeklyCalendar.CarryoverMixedButNotBalledLoads
+            },
+            ProductionPlanning = new
+            {
+                SourceService = nameof(IDoughProductionPlanningService),
+                productionPlanning.ProductionDate,
+                WeeklyNeedForHorizon = productionPlanning.TotalFutureRequiredBalls,
+                ReadyNow = productionPlanning.ReadyBalls,
+                StillFermenting = productionPlanning.FermentingBalls,
+                MixedButNotBalled = productionPlanning.UnballedBalls,
+                MissingForProductionWindow = productionPlanning.MissingBallsForProductionWindow,
+                productionPlanning.RecommendedLoadsToMakeToday,
+                productionPlanning.RecommendedCasesToMakeToday,
+                productionPlanning.RecommendedBallsToBallToday
+            },
+            DailyClosingInsights = dailyInsights is null
+                ? null
+                : new
+                {
+                    SourceService = nameof(IDailyDoughClosingReadService),
+                    dailyInsights.ReferenceDate,
+                    dailyInsights.WeekStartDate,
+                    dailyInsights.WeekEndDate,
+                    dailyInsights.TotalActualUsedBalls,
+                    dailyInsights.CurrentAvailableBalls,
+                    dailyInsights.StillFermentingBalls,
+                    dailyInsights.MixedButNotBalledBalls,
+                    dailyInsights.RemainingForecastNeed,
+                    dailyInsights.ProjectedSurplus
+                }
+        });
     }
 
     [HttpGet("dough/kitchen-sheet")]
@@ -934,6 +1091,10 @@ public sealed class PrepController : Controller
             ProjectedSurplus = insights.ProjectedSurplus,
             HasSurplusWarning = insights.HasSurplusWarning,
             HasShortageWarning = insights.HasShortageWarning,
+            TotalTracedUsedBallsOnClosedDays = insights.TotalTracedUsedBallsOnClosedDays,
+            TraceReconciliationDifferenceBalls = insights.TraceReconciliationDifferenceBalls,
+            HasTraceReconciliationWarning = insights.HasTraceReconciliationWarning,
+            TraceReconciliationMessage = insights.TraceReconciliationMessage,
             Recommendation = insights.Recommendation
         };
     }

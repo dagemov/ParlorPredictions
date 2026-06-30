@@ -53,6 +53,15 @@ internal sealed class InMemoryDoughUsageTraceRepository : IDoughUsageTraceReposi
                 .ToArray());
     }
 
+    public void Update(DoughUsageTrace trace)
+    {
+        var existingIndex = Items.FindIndex(item => item.Id == trace.Id);
+        if (existingIndex >= 0)
+        {
+            Items[existingIndex] = trace;
+        }
+    }
+
     public void Remove(DoughUsageTrace trace)
     {
         Items.Remove(trace);

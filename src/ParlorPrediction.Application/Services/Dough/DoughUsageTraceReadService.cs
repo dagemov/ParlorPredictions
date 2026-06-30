@@ -68,7 +68,7 @@ public sealed class DoughUsageTraceReadService : IDoughUsageTraceReadService
         }
 
         var destination = ParseDestination(request.Destination, nameof(request.Destination));
-        var sources = await _doughSourceProjectionService.GetRemainingBySourceAsync(request.UsageDate, cancellationToken);
+        var sources = await _doughSourceProjectionService.GetTraceableRemainingBySourceAsync(request.UsageDate, cancellationToken);
 
         var options = sources
             .Where(source => source.CountsAsAvailable && source.RemainingBalls > 0)

@@ -13,12 +13,16 @@ namespace ParlorPrediction.Application.Services.Prep;
 
 public sealed class PrepTaskService : IPrepTaskService
 {
+    private const string MakeDoughLoadLedgerSourceType = "MakeDoughLoad";
+    private const string BallDoughLedgerSourceType = "BallDough";
+
     private readonly IDoughBatchRepository _doughBatchRepository;
     private readonly IDoughBatchQualityRepository _doughBatchQualityRepository;
     private readonly IDoughInventorySnapshotRepository _doughInventorySnapshotRepository;
     private readonly IDoughPrepRecommendationReadRepository _doughPrepRecommendationReadRepository;
     private readonly IPrepItemReadRepository _prepItemReadRepository;
     private readonly IPrepTaskRepository _prepTaskRepository;
+    private readonly IProductionLedgerRepository? _productionLedgerRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IUserRepository _userRepository;
 
@@ -30,7 +34,8 @@ public sealed class PrepTaskService : IPrepTaskService
         IPrepItemReadRepository prepItemReadRepository,
         IPrepTaskRepository prepTaskRepository,
         IUnitOfWork unitOfWork,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        IProductionLedgerRepository? productionLedgerRepository = null)
     {
         _doughBatchRepository = doughBatchRepository;
         _doughBatchQualityRepository = doughBatchQualityRepository;
@@ -38,6 +43,7 @@ public sealed class PrepTaskService : IPrepTaskService
         _doughPrepRecommendationReadRepository = doughPrepRecommendationReadRepository;
         _prepItemReadRepository = prepItemReadRepository;
         _prepTaskRepository = prepTaskRepository;
+        _productionLedgerRepository = productionLedgerRepository;
         _unitOfWork = unitOfWork;
         _userRepository = userRepository;
     }
@@ -244,6 +250,16 @@ public sealed class PrepTaskService : IPrepTaskService
             case PrepTaskType.MakeDoughLoad:
             {
                 var createdBallTasks = await CreateBallDoughFollowUpAsync(task, storedCompletedQuantity, cancellationToken);
+                await AppendProductionLedgerEntryAsync(
+                    task.TaskDate,
+                    MakeDoughLoadLedgerSourceType,
+                    task.Id,
+                    completedBallsEquivalent,
+                    0,
+                    0,
+                    0,
+                    request.Notes,
+                    cancellationToken);
                 message = createdBallTasks == 1
                     ? "Dough load completed. A ball dough task was created for tomorrow."
                     : $"Dough load completed. {createdBallTasks} ball dough tasks were created for tomorrow.";
@@ -253,6 +269,16 @@ public sealed class PrepTaskService : IPrepTaskService
             case PrepTaskType.BallDough:
             {
                 await ApplyBallDoughCompletionAsync(task, user.Id, completedBallsEquivalent, request.Notes, cancellationToken);
+                await AppendProductionLedgerEntryAsync(
+                    task.TaskDate,
+                    BallDoughLedgerSourceType,
+                    task.Id,
+                    0,
+                    completedBallsEquivalent,
+                    0,
+                    0,
+                    request.Notes,
+                    cancellationToken);
                 message = "Ball dough completed. These balls now count as available inventory.";
                 break;
             }
@@ -373,6 +399,36 @@ public sealed class PrepTaskService : IPrepTaskService
             managerNote: notes);
 
         await _doughBatchQualityRepository.AddAsync(qualityRecord, cancellationToken);
+    }
+
+    private async Task AppendProductionLedgerEntryAsync(
+        DateOnly occurredOn,
+        string sourceType,
+        Guid sourceEntityId,
+        int totalBallsCreated,
+        int ballsCompleted,
+        int ballsReballed,
+        int ballsDiscarded,
+        string? notes,
+        CancellationToken cancellationToken)
+    {
+        if (_productionLedgerRepository is null)
+        {
+            return;
+        }
+
+        await _productionLedgerRepository.AddAsync(
+            new ProductionLedger(
+                Guid.NewGuid(),
+                occurredOn,
+                sourceType,
+                sourceEntityId,
+                totalBallsCreated,
+                ballsCompleted,
+                ballsReballed,
+                ballsDiscarded,
+                notes),
+            cancellationToken);
     }
 
     private async Task UpsertInventorySnapshotAsync(

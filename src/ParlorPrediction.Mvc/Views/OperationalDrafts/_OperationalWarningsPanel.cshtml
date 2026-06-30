@@ -1,0 +1,40 @@
+@model OperationalDraftPreviewPanelViewModel
+
+<article class="rounded-[22px] border border-outline-variant bg-white p-5 shadow-sm">
+    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.16em] text-on-surface-variant">6. Warnings / Conflicts</p>
+
+    @if (Model.Preview.ValidationWarnings.Count == 0)
+    {
+        <div class="mt-4 rounded-[20px] border border-[#2e6e14] bg-[#eff8e7] px-5 py-4 text-base font-semibold text-[#2e6e14]">
+            No warnings were returned by the current preview.
+        </div>
+    }
+    else
+    {
+        <div class="mt-4 space-y-3">
+            @foreach (var warning in Model.Preview.ValidationWarnings)
+            {
+                var toneClass = warning.BlocksDraft
+                    ? "border-error bg-[#fdeceb] text-error"
+                    : warning.RequiresHumanReview
+                        ? "border-[#c87917] bg-[#fff3e2] text-[#9b5200]"
+                        : "border-outline-variant bg-surface-container-low text-on-surface";
+
+                <div class="rounded-[20px] border px-5 py-4 @toneClass">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-extrabold uppercase tracking-[0.14em]">@warning.Code</span>
+                        @if (warning.BlocksDraft)
+                        {
+                            <span class="inline-flex rounded-full bg-white/70 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.12em]">Blocks Draft</span>
+                        }
+                        else if (warning.RequiresHumanReview)
+                        {
+                            <span class="inline-flex rounded-full bg-white/70 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.12em]">Human Review</span>
+                        }
+                    </div>
+                    <p class="mt-2 mb-0 text-sm leading-6">@warning.Message</p>
+                </div>
+            }
+        </div>
+    }
+</article>

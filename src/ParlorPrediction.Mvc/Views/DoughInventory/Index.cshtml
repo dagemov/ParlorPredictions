@@ -1,0 +1,290 @@
+@model DoughInventoryPageViewModel
+@{
+    ViewData["Title"] = "Dough Inventory";
+    var summary = Model.Summary;
+    var largestImpact = new[]
+    {
+        summary.ReadyNowBalls,
+        summary.UseFirstBalls,
+        summary.AttentionBalls,
+        summary.MixedButNotBalledBalls,
+        summary.UsedTodayBalls,
+        summary.LostOrDiscardedBalls,
+        summary.StillMissingBalls
+    }.DefaultIfEmpty(0).Max();
+
+    int ImpactWidth(int value)
+    {
+        if (value <= 0)
+        {
+            return 0;
+        }
+
+        return largestImpact <= 0
+            ? 100
+            : Math.Clamp((int)Math.Round(value * 100d / largestImpact), 8, 100);
+    }
+}
+
+<section class="space-y-gutter">
+    <section class="rounded-[28px] border border-outline-variant bg-white p-8 shadow-sm">
+        <div class="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Operational Analytics</p>
+                <h1 class="mt-3 text-4xl font-black tracking-[-0.05em] text-primary lg:text-6xl">Dough Inventory</h1>
+                <p class="mt-4 max-w-4xl text-xl leading-9 text-on-surface-variant">
+                    Review the live dough picture without mixing it with historical production totals.
+                    Ready Now stays separate from Mixed But Not Balled, and each source card shows the remaining real dough by date.
+                </p>
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+                <a asp-controller="Prep"
+                   asp-action="Dough"
+                   asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
+                   asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse"
+                   class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest no-underline">
+                    <span class="material-symbols-outlined">arrow_back</span>
+                    Back To Dough Prep
+                </a>
+                <a asp-controller="DoughUsage"
+                   asp-action="Create"
+                   asp-route-date="@Model.TargetDate.ToString("yyyy-MM-dd")"
+                   class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl bg-primary text-on-primary font-bold hover:opacity-90 transition-opacity no-underline">
+                    <span class="material-symbols-outlined">inventory_2</span>
+                    Record Dough Used
+                </a>
+            </div>
+        </div>
+
+        <form asp-action="Index" asp-controller="DoughInventory" method="get" class="mt-8 grid gap-4 md:grid-cols-[minmax(0,260px)_minmax(0,220px)_auto] md:items-end">
+            <div>
+                <label class="mb-2 block text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant" for="targetDate">Work date</label>
+                <input id="targetDate"
+                       name="targetDate"
+                       type="date"
+                       value="@Model.TargetDate.ToString("yyyy-MM-dd")"
+                       class="h-touch-target-min w-full rounded-xl border border-outline-variant bg-white px-4" />
+            </div>
+
+            <div>
+                <label class="mb-2 block text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant" for="historicalWeeksToUse">Historical weeks</label>
+                <input id="historicalWeeksToUse"
+                       name="historicalWeeksToUse"
+                       type="number"
+                       min="1"
+                       value="@Model.HistoricalWeeksToUse"
+                       class="h-touch-target-min w-full rounded-xl border border-outline-variant bg-white px-4" />
+            </div>
+
+            <button type="submit" class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest">
+                <span class="material-symbols-outlined">monitoring</span>
+                Load Inventory
+            </button>
+        </form>
+    </section>
+
+    <section class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <article class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Weekly Goal</p>
+            <strong class="mt-5 block text-6xl font-black leading-none tracking-[-0.06em] text-primary">@summary.WeeklyGoalBalls</strong>
+            <p class="mt-4 mb-0 text-base leading-7 text-on-surface-variant">@summary.WeekStartDate.ToString("MMM d") - @summary.WeekEndDate.ToString("MMM d") service demand.</p>
+        </article>
+        <article class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Ready Now</p>
+            <strong class="mt-5 block text-6xl font-black leading-none tracking-[-0.06em] text-[#2e6e14]">@summary.ReadyNowBalls</strong>
+            <p class="mt-4 mb-0 text-base leading-7 text-on-surface-variant">Balls physically ready right now. Mixed But Not Balled stays out of this total.</p>
+        </article>
+        <article class="rounded-[24px] border-2 border-secondary-container bg-white p-6 shadow-sm">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Still Missing</p>
+            <strong class="mt-5 block text-6xl font-black leading-none tracking-[-0.06em] text-secondary">@summary.StillMissingBalls</strong>
+            <p class="mt-4 mb-0 text-base leading-7 text-on-surface-variant">Weekly need minus Ready Now. Future Dough remains visible, but it does not reduce this card.</p>
+        </article>
+        <article class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Used Today</p>
+            <strong class="mt-5 block text-6xl font-black leading-none tracking-[-0.06em] text-on-surface">@summary.UsedTodayBalls</strong>
+            <p class="mt-4 mb-0 text-base leading-7 text-on-surface-variant">Daily Closing is authoritative for closed days. Otherwise this uses live Dough Usage traces.</p>
+        </article>
+    </section>
+
+    <section class="grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
+        <article class="rounded-[28px] border border-outline-variant bg-white p-8 shadow-sm">
+            <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div>
+                    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Inventory Impact</p>
+                    <h2 class="mt-2 text-3xl font-black tracking-[-0.04em] text-primary">What is affecting dough availability today</h2>
+                    <p class="mt-3 text-base leading-7 text-on-surface-variant">Each bar comes from the same live projection that feeds Dough Prep Home and the source cards below.</p>
+                </div>
+                <div class="rounded-2xl bg-surface-container px-5 py-4">
+                    <span class="block text-xs font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Tracked live balls</span>
+                    <strong class="block text-4xl font-black tracking-[-0.05em] text-primary">@summary.RemainingTrackedBalls</strong>
+                </div>
+            </div>
+
+            <div class="mt-8 space-y-5">
+                <div>
+                    <div class="mb-2 flex items-center justify-between gap-3">
+                        <span class="text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Ready Now</span>
+                        <strong class="text-xl font-black text-[#2e6e14]">@summary.ReadyNowBalls</strong>
+                    </div>
+                    <div class="h-4 overflow-hidden rounded-full bg-surface-container">
+                        <div class="h-full rounded-full bg-[#2e6e14]" style="width: @(ImpactWidth(summary.ReadyNowBalls))%;"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="mb-2 flex items-center justify-between gap-3">
+                        <span class="text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Use First</span>
+                        <strong class="text-xl font-black text-secondary">@summary.UseFirstBalls</strong>
+                    </div>
+                    <div class="h-4 overflow-hidden rounded-full bg-surface-container">
+                        <div class="h-full rounded-full bg-secondary-container" style="width: @(ImpactWidth(summary.UseFirstBalls))%;"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="mb-2 flex items-center justify-between gap-3">
+                        <span class="text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Attention Dough</span>
+                        <strong class="text-xl font-black text-error">@summary.AttentionBalls</strong>
+                    </div>
+                    <div class="h-4 overflow-hidden rounded-full bg-surface-container">
+                        <div class="h-full rounded-full bg-error" style="width: @(ImpactWidth(summary.AttentionBalls))%;"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="mb-2 flex items-center justify-between gap-3">
+                        <span class="text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Mixed But Not Balled</span>
+                        <strong class="text-xl font-black text-[#9b5200]">@summary.MixedButNotBalledBalls</strong>
+                    </div>
+                    <div class="h-4 overflow-hidden rounded-full bg-surface-container">
+                        <div class="h-full rounded-full bg-[#f19b3f]" style="width: @(ImpactWidth(summary.MixedButNotBalledBalls))%;"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="mb-2 flex items-center justify-between gap-3">
+                        <span class="text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Used Today</span>
+                        <strong class="text-xl font-black text-primary">@summary.UsedTodayBalls</strong>
+                    </div>
+                    <div class="h-4 overflow-hidden rounded-full bg-surface-container">
+                        <div class="h-full rounded-full bg-primary" style="width: @(ImpactWidth(summary.UsedTodayBalls))%;"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="mb-2 flex items-center justify-between gap-3">
+                        <span class="text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Lost / Discarded This Week</span>
+                        <strong class="text-xl font-black text-on-surface">@summary.LostOrDiscardedBalls</strong>
+                    </div>
+                    <div class="h-4 overflow-hidden rounded-full bg-surface-container">
+                        <div class="h-full rounded-full bg-on-surface-variant" style="width: @(ImpactWidth(summary.LostOrDiscardedBalls))%;"></div>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <article class="rounded-[28px] border border-outline-variant bg-white p-8 shadow-sm">
+            <div>
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Operational Notes</p>
+                <h2 class="mt-2 text-3xl font-black tracking-[-0.04em] text-primary">What the team should do next</h2>
+            </div>
+
+            <div class="mt-6 space-y-4">
+                <div class="rounded-[20px] bg-surface-container-low p-5">
+                    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Future Dough</p>
+                    <strong class="mt-3 block text-4xl font-black tracking-[-0.05em] text-primary">@summary.FutureBalls</strong>
+                    <p class="mt-3 mb-0 text-base leading-7 text-on-surface-variant">Future Dough is visible for planning, but it does not inflate Ready Now.</p>
+                </div>
+                <div class="rounded-[20px] bg-surface-container-low p-5">
+                    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Closing Window</p>
+                    <strong class="mt-3 block text-4xl font-black tracking-[-0.05em] text-on-surface">@summary.WeekStartDate.ToString("MMM d")</strong>
+                    <p class="mt-3 mb-0 text-base leading-7 text-on-surface-variant">Weekly Closing remains Mon-Sun, even though daily service days stay Tue-Sun.</p>
+                </div>
+                <div class="rounded-[20px] border border-secondary-fixed bg-secondary-fixed/20 p-5">
+                    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-secondary-fixed-variant">Use First Rule</p>
+                    <p class="mt-3 mb-0 text-base leading-7 text-on-secondary-fixed-variant">Reballed and MustUseNextDay dough rise to the top of the source list so the kitchen can clear the oldest live dough first.</p>
+                </div>
+            </div>
+        </article>
+    </section>
+
+    <section class="rounded-[28px] border border-outline-variant bg-white p-8 shadow-sm">
+        <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Remaining By Source</p>
+                <h2 class="mt-2 text-3xl font-black tracking-[-0.04em] text-primary">Live dough by source date</h2>
+                <p class="mt-3 text-base leading-7 text-on-surface-variant">These cards only show dough that still exists physically and can still affect operations.</p>
+            </div>
+            <div class="rounded-2xl bg-surface-container px-5 py-4">
+                <span class="block text-xs font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Active sources</span>
+                <strong class="block text-4xl font-black tracking-[-0.05em] text-primary">@Model.Sources.Count</strong>
+            </div>
+        </div>
+
+        @if (Model.Sources.Count == 0)
+        {
+            <div class="mt-8 rounded-[22px] border border-dashed border-outline-variant bg-surface-container-low p-6 text-lg text-on-surface-variant">
+                No live dough sources remain for @Model.TargetDate.ToString("MMM d, yyyy").
+            </div>
+        }
+        else
+        {
+            <div class="mt-8 grid gap-5 xl:grid-cols-2">
+                @foreach (var source in Model.Sources)
+                {
+                    <article class="rounded-[24px] border border-outline-variant bg-surface-container-low p-6 transition-transform hover:-translate-y-1">
+                        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div>
+                                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Batch Origin</p>
+                                <h3 class="mt-2 mb-0 text-2xl font-black tracking-[-0.03em] text-primary">@source.Title</h3>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="inline-flex rounded-full px-4 py-2 text-xs font-extrabold uppercase tracking-[0.18em] @source.StatusBadgeClass">@source.DisplaySourceType</span>
+                                <span class="inline-flex rounded-full px-4 py-2 text-xs font-extrabold uppercase tracking-[0.18em] @source.RecommendationBadgeClass">@source.DisplayRecommendedAction</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 grid gap-4 md:grid-cols-3">
+                            <div class="rounded-[20px] border border-outline-variant bg-white p-4">
+                                <p class="m-0 text-xs font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Remaining balls</p>
+                                <strong class="mt-2 block text-4xl font-black tracking-[-0.05em] text-primary">@source.RemainingBalls</strong>
+                            </div>
+                            <div class="rounded-[20px] border border-outline-variant bg-white p-4">
+                                <p class="m-0 text-xs font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Already used</p>
+                                <strong class="mt-2 block text-4xl font-black tracking-[-0.05em] text-on-surface">@source.UsedBalls</strong>
+                            </div>
+                            <div class="rounded-[20px] border border-outline-variant bg-white p-4">
+                                <p class="m-0 text-xs font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Age</p>
+                                <strong class="mt-2 block text-4xl font-black tracking-[-0.05em] text-secondary">@source.AgeDays</strong>
+                            </div>
+                        </div>
+
+                        <div class="mt-5">
+                            <div class="mb-2 flex items-center justify-between gap-3 text-xs font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">
+                                <span>Remaining from original source</span>
+                                <span>@source.RemainingPercent%</span>
+                            </div>
+                            <div class="h-3 overflow-hidden rounded-full bg-white">
+                                <div class="h-full rounded-full bg-primary" style="width: @source.RemainingPercent%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 grid gap-3 text-sm text-on-surface-variant md:grid-cols-2">
+                            <span>Original balls: @source.OriginalBalls</span>
+                            <span>Created or balled: @source.CreatedOrBalledAt.ToLocalTime().ToString("MMM d, h:mm tt")</span>
+                            @if (source.MustUseByDate.HasValue)
+                            {
+                                <span>Must use by: @source.MustUseByDate.Value.ToString("MMM d, yyyy")</span>
+                            }
+                            else
+                            {
+                                <span>Recommended action: @source.DisplayRecommendedAction</span>
+                            }
+                            <span>Physically live: @(source.CountsAsAvailable ? "Yes" : "No")</span>
+                        </div>
+
+                        <div class="mt-5 rounded-[20px] bg-white px-5 py-4 text-on-surface-variant">
+                            @source.Guidance
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+</section>

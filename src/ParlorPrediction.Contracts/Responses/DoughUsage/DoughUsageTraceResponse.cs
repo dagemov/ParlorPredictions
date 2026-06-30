@@ -14,7 +14,7 @@ public sealed class DoughUsageTraceResponse
 
     public string Destination { get; set; } = string.Empty;
 
-    public int TrayCount { get; set; }
+    public decimal TrayCount { get; set; }
 
     public int BallsPerTray { get; set; }
 

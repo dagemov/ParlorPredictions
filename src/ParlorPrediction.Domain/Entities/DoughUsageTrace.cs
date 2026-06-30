@@ -18,7 +18,7 @@ public sealed class DoughUsageTrace
         DateOnly sourceDate,
         DoughQualityStatus sourceType,
         DoughUsageDestination destination,
-        int trayCount,
+        decimal trayCount,
         string createdByUserId,
         string? notes)
     {
@@ -50,7 +50,7 @@ public sealed class DoughUsageTrace
 
     public DoughUsageDestination Destination { get; private set; }
 
-    public int TrayCount { get; private set; }
+    public decimal TrayCount { get; private set; }
 
     public int BallsPerTray { get; private set; }
 
@@ -78,7 +78,7 @@ public sealed class DoughUsageTrace
         DateOnly sourceDate,
         DoughQualityStatus sourceType,
         DoughUsageDestination destination,
-        int trayCount,
+        decimal trayCount,
         string createdByUserId,
         string? notes = null,
         Guid? id = null)
@@ -95,13 +95,49 @@ public sealed class DoughUsageTrace
             notes);
     }
 
+    public static DoughUsageTrace Rehydrate(
+        Guid id,
+        DateOnly usageDate,
+        Guid sourceDoughBatchQualityRecordId,
+        DateOnly sourceDate,
+        DoughQualityStatus sourceType,
+        DoughUsageDestination destination,
+        decimal trayCount,
+        int ballsPerTray,
+        int ballsUsed,
+        string createdByUserId,
+        string updatedByUserId,
+        DateTime createdAtUtc,
+        DateTime updatedAtUtc,
+        string? notes = null)
+    {
+        var trace = new DoughUsageTrace(
+            id,
+            usageDate,
+            sourceDoughBatchQualityRecordId,
+            sourceDate,
+            sourceType,
+            destination,
+            trayCount,
+            createdByUserId,
+            notes);
+
+        trace.BallsPerTray = ballsPerTray;
+        trace.BallsUsed = ballsUsed;
+        trace.CreatedAtUtc = createdAtUtc;
+        trace.UpdatedAtUtc = updatedAtUtc;
+        trace.UpdatedByUserId = NormalizeRequired(updatedByUserId, nameof(updatedByUserId));
+
+        return trace;
+    }
+
     public void Correct(
         DateOnly usageDate,
         Guid sourceDoughBatchQualityRecordId,
         DateOnly sourceDate,
         DoughQualityStatus sourceType,
         DoughUsageDestination destination,
-        int trayCount,
+        decimal trayCount,
         string updatedByUserId,
         string? notes = null)
     {
@@ -161,16 +197,16 @@ public sealed class DoughUsageTrace
         Destination = destination;
     }
 
-    private void SetTrayCount(int trayCount)
+    private void SetTrayCount(decimal trayCount)
     {
-        if (trayCount <= 0)
+        if (trayCount <= 0m)
         {
             throw new ArgumentOutOfRangeException(nameof(trayCount), "Tray count must be greater than zero.");
         }
 
         TrayCount = trayCount;
         BallsPerTray = DoughRules.BallsPerCase;
-        BallsUsed = checked(trayCount * BallsPerTray);
+        BallsUsed = DoughRules.ConvertCaseQuantityToBalls(trayCount);
     }
 
     private static string NormalizeRequired(string value, string parameterName)

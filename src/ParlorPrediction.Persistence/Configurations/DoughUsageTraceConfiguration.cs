@@ -43,7 +43,8 @@ public sealed class DoughUsageTraceConfiguration : IEntityTypeConfiguration<Doug
             .HasMaxLength(30);
 
         builder.Property(trace => trace.TrayCount)
-            .IsRequired();
+            .IsRequired()
+            .HasColumnType("decimal(5,2)");
 
         builder.Property(trace => trace.BallsPerTray)
             .IsRequired();

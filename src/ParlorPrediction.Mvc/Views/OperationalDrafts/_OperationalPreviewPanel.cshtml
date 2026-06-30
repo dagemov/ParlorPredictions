@@ -1,0 +1,62 @@
+@model OperationalDraftPreviewPanelViewModel
+
+<div class="space-y-5">
+    <div class="grid gap-5 lg:grid-cols-4">
+        <article class="rounded-[22px] border border-outline-variant bg-surface-container-low p-5">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.16em] text-on-surface-variant">Risk Level</p>
+            <strong class="mt-3 block text-3xl font-black tracking-[-0.04em] @(Model.Preview.RiskLevel == "High" ? "text-error" : Model.Preview.RiskLevel == "Medium" ? "text-[#9b5200]" : "text-[#2e6e14]")">@Model.Preview.RiskLevel</strong>
+            <p class="mt-2 mb-0 text-sm leading-6 text-on-surface-variant">Current preview safety assessment.</p>
+        </article>
+        <article class="rounded-[22px] border border-outline-variant bg-surface-container-low p-5">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.16em] text-on-surface-variant">Conflicts</p>
+            <strong class="mt-3 block text-3xl font-black tracking-[-0.04em] @(Model.Preview.HasConflicts ? "text-error" : "text-primary")">@(Model.Preview.HasConflicts ? "Yes" : "No")</strong>
+            <p class="mt-2 mb-0 text-sm leading-6 text-on-surface-variant">Approve is blocked when conflicts exist.</p>
+        </article>
+        <article class="rounded-[22px] border border-outline-variant bg-surface-container-low p-5">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.16em] text-on-surface-variant">Snapshot Reuse</p>
+            <strong class="mt-3 block text-3xl font-black tracking-[-0.04em] text-primary">@(Model.Preview.UsedPersistedSnapshot ? "Yes" : "Replay")</strong>
+            <p class="mt-2 mb-0 text-sm leading-6 text-on-surface-variant">Preview stays deterministic unless live state drifts.</p>
+        </article>
+        <article class="rounded-[22px] border border-outline-variant bg-surface-container-low p-5">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.16em] text-on-surface-variant">Draft Status</p>
+            <strong class="mt-3 block text-3xl font-black tracking-[-0.04em] text-primary">@Model.DraftStatusDisplay</strong>
+            <p class="mt-2 mb-0 text-sm leading-6 text-on-surface-variant">The preview does not change the persisted draft status.</p>
+        </article>
+    </div>
+
+    @if (Model.Preview.StateDriftDetected)
+    {
+        <div class="rounded-[20px] border border-[#c87917] bg-[#fff3e2] px-5 py-4 text-base font-semibold text-[#9b5200]">
+            STATE_DRIFT_DETECTED: Live operational state changed after this draft was created.
+            This preview was refreshed from current simulation state. Re-run preview required before approval and review the updated diff carefully.
+        </div>
+    }
+
+    <div class="grid gap-5 xl:grid-cols-2">
+        <article class="rounded-[22px] border border-outline-variant bg-white p-5 shadow-sm">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.16em] text-on-surface-variant">Before</p>
+            <dl class="mt-4 grid gap-4 sm:grid-cols-2">
+                <div><dt class="text-xs font-extrabold uppercase tracking-[0.14em] text-on-surface-variant">Ready Now</dt><dd class="mt-1 text-2xl font-black text-primary">@Model.Preview.Before.ReadyNowBalls</dd></div>
+                <div><dt class="text-xs font-extrabold uppercase tracking-[0.14em] text-on-surface-variant">Weekly Used</dt><dd class="mt-1 text-2xl font-black text-primary">@Model.Preview.Before.WeeklyUsedBalls</dd></div>
+                <div><dt class="text-xs font-extrabold uppercase tracking-[0.14em] text-on-surface-variant">Production</dt><dd class="mt-1 text-2xl font-black text-primary">@Model.Preview.Before.ProductionBalls</dd></div>
+                <div><dt class="text-xs font-extrabold uppercase tracking-[0.14em] text-on-surface-variant">Event Consumption</dt><dd class="mt-1 text-2xl font-black text-primary">@Model.Preview.Before.ExternalEventConsumption</dd></div>
+                <div class="sm:col-span-2"><dt class="text-xs font-extrabold uppercase tracking-[0.14em] text-on-surface-variant">Balls Ready For Service</dt><dd class="mt-1 text-2xl font-black text-primary">@Model.Preview.Before.BallsReadyForService</dd></div>
+            </dl>
+        </article>
+
+        <article class="rounded-[22px] border border-outline-variant bg-white p-5 shadow-sm">
+            <p class="m-0 text-sm font-extrabold uppercase tracking-[0.16em] text-on-surface-variant">After</p>
+            <dl class="mt-4 grid gap-4 sm:grid-cols-2">
+                <div><dt class="text-xs font-extrabold uppercase tracking-[0.14em] text-on-surface-variant">Ready Now</dt><dd class="mt-1 text-2xl font-black text-primary">@Model.Preview.After.ReadyNowBalls</dd></div>
+                <div><dt class="text-xs font-extrabold uppercase tracking-[0.14em] text-on-surface-variant">Weekly Used</dt><dd class="mt-1 text-2xl font-black text-primary">@Model.Preview.After.WeeklyUsedBalls</dd></div>
+                <div><dt class="text-xs font-extrabold uppercase tracking-[0.14em] text-on-surface-variant">Production</dt><dd class="mt-1 text-2xl font-black text-primary">@Model.Preview.After.ProductionBalls</dd></div>
+                <div><dt class="text-xs font-extrabold uppercase tracking-[0.14em] text-on-surface-variant">Event Consumption</dt><dd class="mt-1 text-2xl font-black text-primary">@Model.Preview.After.ExternalEventConsumption</dd></div>
+                <div class="sm:col-span-2"><dt class="text-xs font-extrabold uppercase tracking-[0.14em] text-on-surface-variant">Balls Ready For Service</dt><dd class="mt-1 text-2xl font-black text-primary">@Model.Preview.After.BallsReadyForService</dd></div>
+            </dl>
+        </article>
+    </div>
+
+    @await Html.PartialAsync("_OperationalDiffPanel", Model)
+    @await Html.PartialAsync("_OperationalWarningsPanel", Model)
+    @await Html.PartialAsync("_OperationalApprovalActions", Model)
+</div>

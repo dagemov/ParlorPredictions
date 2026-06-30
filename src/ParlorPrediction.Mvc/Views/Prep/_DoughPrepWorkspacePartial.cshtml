@@ -83,6 +83,14 @@
                     <span class="material-symbols-outlined">inventory_2</span>
                     Record Dough Used
                 </a>
+                <a asp-controller="DoughInventory"
+                   asp-action="Index"
+                   asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
+                   asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse"
+                   class="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest no-underline">
+                    <span class="material-symbols-outlined">analytics</span>
+                    Dough Inventory
+                </a>
                 <a asp-controller="DoughUsage"
                    asp-action="ReballPlanning"
                    asp-route-date="@Model.TargetDate.ToString("yyyy-MM-dd")"

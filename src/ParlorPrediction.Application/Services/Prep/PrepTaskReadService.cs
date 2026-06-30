@@ -48,6 +48,7 @@ public sealed class PrepTaskReadService : IPrepTaskReadService
             hasStatus ? parsedStatus : null,
             hasAssignedRole ? parsedRole : null,
             request.PrepItemId,
+            request.IncludeCancelled,
             cancellationToken);
 
         return tasks

@@ -6,6 +6,7 @@ using ParlorPrediction.Application.Interfaces.Prep;
 using ParlorPrediction.Contracts.Requests.Dough;
 using ParlorPrediction.Contracts.Requests.DoughClosing;
 using ParlorPrediction.Mvc.Models;
+using ParlorPrediction.Mvc.Models.DoughInventory;
 using ParlorPrediction.Mvc.Models.DoughQuality;
 using ParlorPrediction.Mvc.Models.Home;
 using ParlorPrediction.Mvc.Models.Prep;
@@ -18,6 +19,7 @@ public class HomeController : Controller
     private const int DefaultPlanningDaysAhead = 7;
 
     private readonly IDailyDoughClosingReadService _dailyDoughClosingReadService;
+    private readonly IDoughInventoryImpactReadService _doughInventoryImpactReadService;
     private readonly IDoughProductionPlanningService _doughProductionPlanningService;
     private readonly IDoughQualityReadService _doughQualityReadService;
     private readonly IPrepWeeklyDoughCalendarService _prepWeeklyDoughCalendarService;
@@ -25,12 +27,14 @@ public class HomeController : Controller
 
     public HomeController(
         IDailyDoughClosingReadService dailyDoughClosingReadService,
+        IDoughInventoryImpactReadService doughInventoryImpactReadService,
         IDoughProductionPlanningService doughProductionPlanningService,
         IDoughQualityReadService doughQualityReadService,
         IPrepWeeklyDoughCalendarService prepWeeklyDoughCalendarService,
         IRestaurantEventReadRepository restaurantEventReadRepository)
     {
         _dailyDoughClosingReadService = dailyDoughClosingReadService;
+        _doughInventoryImpactReadService = doughInventoryImpactReadService;
         _doughProductionPlanningService = doughProductionPlanningService;
         _doughQualityReadService = doughQualityReadService;
         _prepWeeklyDoughCalendarService = prepWeeklyDoughCalendarService;
@@ -113,6 +117,29 @@ public class HomeController : Controller
             dailyClosingInsights = new DailyClosingOperationalInsightsViewModel();
         }
 
+        var doughInventoryPreview = new DoughInventorySummaryViewModel
+        {
+            ReferenceDate = selectedDate
+        };
+        try
+        {
+            var inventoryImpact = await _doughInventoryImpactReadService.GetInventoryImpactAsync(
+                new GetDoughInventoryImpactRequest
+                {
+                    ReferenceDate = selectedDate,
+                    HistoricalWeeksToUse = normalizedHistoricalWeeks
+                },
+                cancellationToken);
+            doughInventoryPreview = DoughInventoryViewModelMapper.MapSummary(inventoryImpact);
+        }
+        catch (Exception exception) when (IsRecoverableDoughQualityException(exception))
+        {
+            doughInventoryPreview = new DoughInventorySummaryViewModel
+            {
+                ReferenceDate = selectedDate
+            };
+        }
+
         return View(new OperationalHomePageViewModel
         {
             IsAuthenticatedExperience = true,
@@ -149,7 +176,8 @@ public class HomeController : Controller
                     Notes = item.Notes
                 })
                 .ToArray(),
-            DailyClosingInsights = dailyClosingInsights
+            DailyClosingInsights = dailyClosingInsights,
+            DoughInventoryPreview = doughInventoryPreview
         });
     }
 
@@ -244,6 +272,10 @@ public class HomeController : Controller
             ProjectedSurplus = insights.ProjectedSurplus,
             HasSurplusWarning = insights.HasSurplusWarning,
             HasShortageWarning = insights.HasShortageWarning,
+            TotalTracedUsedBallsOnClosedDays = insights.TotalTracedUsedBallsOnClosedDays,
+            TraceReconciliationDifferenceBalls = insights.TraceReconciliationDifferenceBalls,
+            HasTraceReconciliationWarning = insights.HasTraceReconciliationWarning,
+            TraceReconciliationMessage = insights.TraceReconciliationMessage,
             Recommendation = insights.Recommendation
         };
     }

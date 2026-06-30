@@ -1,0 +1,63 @@
+@model OperationalDraftPreviewPanelViewModel
+
+<article class="rounded-[22px] border border-outline-variant bg-white p-5 shadow-sm">
+    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.16em] text-on-surface-variant">7. Approval Controls</p>
+
+    @if (!string.IsNullOrWhiteSpace(Model.ApprovalBlockedReason))
+    {
+        <div class="mt-4 rounded-[20px] border border-error bg-[#fdeceb] px-5 py-4 text-base font-semibold text-error">
+            @Model.ApprovalBlockedReason
+        </div>
+    }
+
+    <div class="mt-5 grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+        <form asp-action="Approve" asp-route-id="@Model.DraftId" method="post" class="rounded-[20px] border border-outline-variant bg-surface-container-low p-5">
+            @Html.AntiForgeryToken()
+            <div class="flex h-full flex-col justify-between gap-4">
+                <div>
+                    <h3 class="m-0 text-xl font-black tracking-[-0.03em] text-primary">Approve</h3>
+                    <p class="mt-2 mb-0 text-sm leading-6 text-on-surface-variant">
+                        Approval writes only through the existing application services after this review step.
+                    </p>
+                </div>
+                <button type="submit"
+                        class="inline-flex h-touch-target-min items-center justify-center rounded-xl px-6 text-sm font-extrabold uppercase tracking-[0.14em] @(Model.CanApprove ? "bg-primary text-white" : "cursor-not-allowed bg-surface-container-high text-on-surface-variant")"
+                        @(Model.CanApprove ? null : "disabled")>
+                    Approve
+                </button>
+            </div>
+        </form>
+
+        <form asp-action="Reject" asp-route-id="@Model.DraftId" method="post" class="rounded-[20px] border border-outline-variant bg-surface-container-low p-5">
+            @Html.AntiForgeryToken()
+            <div class="space-y-4">
+                <div>
+                    <h3 class="m-0 text-xl font-black tracking-[-0.03em] text-primary">Reject / Request Correction</h3>
+                    <p class="mt-2 mb-0 text-sm leading-6 text-on-surface-variant">
+                        Save a human reason when this draft should not move forward as-is.
+                    </p>
+                </div>
+                <label class="block">
+                    <span class="mb-2 block text-sm font-extrabold uppercase tracking-[0.14em] text-on-surface-variant">Reason</span>
+                    <textarea name="reason"
+                              rows="4"
+                              class="w-full rounded-xl border border-outline-variant bg-white px-4 py-3 text-sm text-on-surface"
+                              placeholder="Explain why this draft should be rejected or corrected."
+                              @(Model.CanReject ? null : "disabled")></textarea>
+                </label>
+                <div class="flex flex-wrap gap-3">
+                    <button type="submit"
+                            class="inline-flex h-touch-target-min items-center justify-center rounded-xl bg-[#8f2f2f] px-6 text-sm font-extrabold uppercase tracking-[0.14em] text-white @(Model.CanReject ? string.Empty : "cursor-not-allowed opacity-60")"
+                            @(Model.CanReject ? null : "disabled")>
+                        Reject
+                    </button>
+                    <button type="submit"
+                            class="inline-flex h-touch-target-min items-center justify-center rounded-xl border border-outline-variant px-6 text-sm font-extrabold uppercase tracking-[0.14em] text-primary @(Model.CanReject ? string.Empty : "cursor-not-allowed opacity-60")"
+                            @(Model.CanReject ? null : "disabled")>
+                        Request Correction
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</article>

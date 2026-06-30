@@ -154,7 +154,7 @@ public sealed class DoughRegistrationFlowTests
     }
 
     [Fact]
-    public async Task ExampleA_WeeklyNeed1063_With432ReadyAnd168Mixed_StillMissing463()
+    public async Task ExampleA_WeeklyNeed1063_With432ReadyAnd168Mixed_StillMissing631()
     {
         var tuesday = new DateOnly(2026, 6, 9);
         var fixture = CreateCalendarFixture(tuesday, useCanonicalWeekNeed: true);
@@ -170,7 +170,7 @@ public sealed class DoughRegistrationFlowTests
 
         Assert.Equal(432, result.ReadyNowBalls);
         Assert.Equal(168, result.MixedButNotBalledBalls);
-        Assert.Equal(463, result.StillMissingThisWeekBalls);
+        Assert.Equal(631, result.StillMissingThisWeekBalls);
     }
 
     private static void SetCarryover(CalendarFixture fixture, int carryoverReady)
@@ -201,10 +201,15 @@ public sealed class DoughRegistrationFlowTests
         var qualityRecords = new InMemoryDoughBatchQualityRepository();
         var lossRecords = new InMemoryDoughLossRecordRepository();
         var usageTraces = new InMemoryDoughUsageTraceRepository();
-        var sourceProjectionService = new DoughSourceProjectionService(qualityRecords, usageTraces);
+        var sourceProjectionService = new DoughSourceProjectionService(
+            qualityRecords,
+            dailyClosings,
+            usageTraces,
+            weeklyClosingRead);
         var availabilityProjectionService = new DoughAvailabilityProjectionService(
             dailyClosings,
             sourceProjectionService,
+            usageTraces,
             inventorySnapshots,
             lossRecords,
             tasks,
@@ -372,6 +377,27 @@ public sealed class DoughRegistrationFlowTests
             return Task.FromResult(Items.FirstOrDefault(item => item.ClosingDate == closingDate));
         }
 
+        public Task<IReadOnlyList<DailyDoughClosing>> SearchAsync(
+            DateOnly? closingDateFrom,
+            DateOnly? closingDateTo,
+            CancellationToken cancellationToken = default)
+        {
+            IEnumerable<DailyDoughClosing> query = Items;
+
+            if (closingDateFrom.HasValue)
+            {
+                query = query.Where(item => item.ClosingDate >= closingDateFrom.Value);
+            }
+
+            if (closingDateTo.HasValue)
+            {
+                query = query.Where(item => item.ClosingDate <= closingDateTo.Value);
+            }
+
+            return Task.FromResult<IReadOnlyList<DailyDoughClosing>>(
+                query.OrderBy(item => item.ClosingDate).ToArray());
+        }
+
         public Task<IReadOnlyList<DailyDoughClosing>> ListByWeekStartDateAsync(
             DateOnly weekStartDate,
             CancellationToken cancellationToken = default)
@@ -390,7 +416,33 @@ public sealed class DoughRegistrationFlowTests
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyCollection<DoughBatch>>(
-                Batches.Where(batch => batch.BatchDate <= productionDate).ToArray());
+                Batches.Where(batch => batch.BatchDate <= productionDate && !batch.IsVoided).ToArray());
+        }
+
+        public Task<IReadOnlyCollection<DoughBatch>> SearchForCorrectionAsync(
+            DateOnly? batchDateFrom,
+            DateOnly? batchDateTo,
+            bool includeVoided,
+            CancellationToken cancellationToken = default)
+        {
+            IEnumerable<DoughBatch> query = Batches;
+
+            if (batchDateFrom.HasValue)
+            {
+                query = query.Where(batch => batch.BatchDate >= batchDateFrom.Value);
+            }
+
+            if (batchDateTo.HasValue)
+            {
+                query = query.Where(batch => batch.BatchDate <= batchDateTo.Value);
+            }
+
+            if (!includeVoided)
+            {
+                query = query.Where(batch => !batch.IsVoided);
+            }
+
+            return Task.FromResult<IReadOnlyCollection<DoughBatch>>(query.ToArray());
         }
     }
 
@@ -447,6 +499,7 @@ public sealed class DoughRegistrationFlowTests
             PrepTaskStatus? status,
             ApplicationRole? assignedRole,
             Guid? prepItemId,
+            bool includeCancelled = false,
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<PrepTask>>(Tasks.ToArray());

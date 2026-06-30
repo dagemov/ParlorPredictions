@@ -55,6 +55,14 @@ public sealed class DoughBatchConfiguration : IEntityTypeConfiguration<DoughBatc
         builder.Property(batch => batch.Notes)
             .HasMaxLength(DoughBatch.NotesMaxLength);
 
+        builder.Property(batch => batch.IsVoided)
+            .HasDefaultValue(false);
+
+        builder.Property(batch => batch.VoidedAtUtc);
+
+        builder.Property(batch => batch.VoidReason)
+            .HasMaxLength(DoughBatch.NotesMaxLength);
+
         builder.Property(batch => batch.CreatedAtUtc)
             .HasDefaultValueSql("GETUTCDATE()");
 

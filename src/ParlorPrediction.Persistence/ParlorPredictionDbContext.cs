@@ -44,6 +44,16 @@ public sealed class ParlorPredictionDbContext : IdentityDbContext<User>
 
     public DbSet<DailyDoughClosing> DailyDoughClosings => Set<DailyDoughClosing>();
 
+    public DbSet<ProductionLedger> ProductionLedgers => Set<ProductionLedger>();
+
+    public DbSet<ConsumptionLedger> ConsumptionLedgers => Set<ConsumptionLedger>();
+
+    public DbSet<InventoryTransformationLedger> InventoryTransformationLedgers => Set<InventoryTransformationLedger>();
+
+    public DbSet<OperationalAuditEntry> OperationalAuditEntries => Set<OperationalAuditEntry>();
+
+    public DbSet<OperationalDraft> OperationalDrafts => Set<OperationalDraft>();
+
     public DbSet<WeeklyDoughClosing> WeeklyDoughClosings => Set<WeeklyDoughClosing>();
 
     protected override void OnModelCreating(ModelBuilder builder)

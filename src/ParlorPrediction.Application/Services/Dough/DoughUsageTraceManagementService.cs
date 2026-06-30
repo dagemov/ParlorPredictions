@@ -85,6 +85,7 @@ public sealed class DoughUsageTraceManagementService : IDoughUsageTraceManagemen
             user.Id,
             request.Notes);
 
+        _doughUsageTraceRepository.Update(trace);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Map(trace);
@@ -202,9 +203,9 @@ public sealed class DoughUsageTraceManagementService : IDoughUsageTraceManagemen
         return destination;
     }
 
-    private static int CalculateBallsUsed(int trayCount)
+    private static int CalculateBallsUsed(decimal trayCount)
     {
-        return DoughRules.ConvertToBalls(trayCount, DoughQuantityUnit.Cases);
+        return DoughRules.ConvertCaseQuantityToBalls(trayCount);
     }
 
     private static DoughUsageTraceResponse Map(DoughUsageTrace trace)

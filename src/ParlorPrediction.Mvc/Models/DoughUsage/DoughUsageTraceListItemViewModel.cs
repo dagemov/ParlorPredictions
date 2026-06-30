@@ -12,7 +12,7 @@ public sealed class DoughUsageTraceListItemViewModel
 
     public string Destination { get; set; } = string.Empty;
 
-    public int TrayCount { get; set; }
+    public decimal TrayCount { get; set; }
 
     public int BallsUsed { get; set; }
 
@@ -23,4 +23,8 @@ public sealed class DoughUsageTraceListItemViewModel
     public string DisplayDestination => DoughUsageDisplayText.Format(Destination);
 
     public string DisplaySourceType => DoughUsageDisplayText.Format(SourceType);
+
+    public string DisplayTrayCount => TrayCount.ToString("0.##");
+
+    public string CaseLabel => TrayCount == 1m ? "case" : "cases";
 }

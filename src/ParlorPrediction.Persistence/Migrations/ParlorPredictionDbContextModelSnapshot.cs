@@ -155,6 +155,63 @@ namespace ParlorPrediction.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.ConsumptionLedger", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int>("EventBalls")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateOnly>("OccurredOn")
+                        .HasColumnType("date");
+
+                    b.Property<int>("SalesBalls")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ServiceUsageBalls")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SourceEntityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredOn");
+
+                    b.HasIndex("SourceType", "SourceEntityId", "CreatedAtUtc");
+
+                    b.ToTable("ConsumptionLedgers", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ConsumptionLedgers_EventBalls_NonNegative", "[EventBalls] >= 0");
+
+                            t.HasCheckConstraint("CK_ConsumptionLedgers_SalesBalls_NonNegative", "[SalesBalls] >= 0");
+
+                            t.HasCheckConstraint("CK_ConsumptionLedgers_ServiceUsageBalls_NonNegative", "[ServiceUsageBalls] >= 0");
+
+                            t.HasCheckConstraint("CK_ConsumptionLedgers_SourceType_NotEmpty", "LEN(LTRIM(RTRIM([SourceType]))) > 0");
+                        });
+                });
+
             modelBuilder.Entity("ParlorPrediction.Domain.Entities.DailyDoughClosing", b =>
                 {
                     b.Property<Guid>("Id")
@@ -260,6 +317,11 @@ namespace ParlorPrediction.Persistence.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
+                    b.Property<bool>("IsVoided")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -274,6 +336,13 @@ namespace ParlorPrediction.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("VoidedAtUtc")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
@@ -838,8 +907,8 @@ namespace ParlorPrediction.Persistence.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
-                    b.Property<int>("TrayCount")
-                        .HasColumnType("int");
+                    b.Property<decimal>("TrayCount")
+                        .HasColumnType("decimal(5,2)");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .ValueGeneratedOnAdd()
@@ -877,6 +946,58 @@ namespace ParlorPrediction.Persistence.Migrations
                             t.HasCheckConstraint("CK_DoughUsageTraces_SourceType_Allowed", "[SourceType] <> 'Discarded'");
 
                             t.HasCheckConstraint("CK_DoughUsageTraces_TrayCount_Positive", "[TrayCount] > 0");
+                        });
+                });
+
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.InventoryTransformationLedger", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("BallsDiscarded")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BallsReclassified")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BallsRecovered")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateOnly>("OccurredOn")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("SourceEntityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredOn");
+
+                    b.HasIndex("SourceType", "SourceEntityId", "CreatedAtUtc");
+
+                    b.ToTable("InventoryTransformationLedgers", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_InventoryTransformationLedgers_BallsDiscarded_NonNegative", "[BallsDiscarded] >= 0");
+
+                            t.HasCheckConstraint("CK_InventoryTransformationLedgers_BallsReclassified_NonNegative", "[BallsReclassified] >= 0");
+
+                            t.HasCheckConstraint("CK_InventoryTransformationLedgers_BallsRecovered_NonNegative", "[BallsRecovered] >= 0");
+
+                            t.HasCheckConstraint("CK_InventoryTransformationLedgers_SourceType_NotEmpty", "LEN(LTRIM(RTRIM([SourceType]))) > 0");
                         });
                 });
 
@@ -935,6 +1056,159 @@ namespace ParlorPrediction.Persistence.Migrations
                             t.HasCheckConstraint("CK_ManagerPrepRecommendations_RecommendedCases_NonNegative", "[RecommendedCases] >= 0");
 
                             t.HasCheckConstraint("CK_ManagerPrepRecommendations_RecommendedLoads_NonNegative", "[RecommendedLoads] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.OperationalAuditEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ActorUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("AfterPreviewJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("ApprovedEntityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BeforeSnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("CorrelationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("DraftId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("NormalizedIntentJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SourceText")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("TimestampUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("ValidationWarningsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CorrelationId");
+
+                    b.HasIndex("DraftId");
+
+                    b.HasIndex("TimestampUtc");
+
+                    b.ToTable("OperationalAuditEntries", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_OperationalAuditEntries_ActionType_NotEmpty", "LEN(LTRIM(RTRIM([ActionType]))) > 0");
+
+                            t.HasCheckConstraint("CK_OperationalAuditEntries_ActorUserId_NotEmpty", "LEN(LTRIM(RTRIM([ActorUserId]))) > 0");
+
+                            t.HasCheckConstraint("CK_OperationalAuditEntries_SourceText_NotEmpty", "LEN(LTRIM(RTRIM([SourceText]))) > 0");
+                        });
+                });
+
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.OperationalDraft", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AfterPreviewJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("ApprovedEntityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BeforeSnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("CorrelationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("DraftPayloadJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DraftType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("NormalizedIntentJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ReviewedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReviewedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("SourceText")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasDefaultValue("Pending");
+
+                    b.Property<string>("StatusReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("ValidationWarningsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CorrelationId");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("OperationalDrafts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_OperationalDrafts_CreatedBy_NotEmpty", "LEN(LTRIM(RTRIM([CreatedBy]))) > 0");
+
+                            t.HasCheckConstraint("CK_OperationalDrafts_DraftType_NotEmpty", "LEN(LTRIM(RTRIM([DraftType]))) > 0");
+
+                            t.HasCheckConstraint("CK_OperationalDrafts_SourceText_NotEmpty", "LEN(LTRIM(RTRIM([SourceText]))) > 0");
                         });
                 });
 
@@ -1195,6 +1469,63 @@ namespace ParlorPrediction.Persistence.Migrations
                             t.HasCheckConstraint("CK_PrepTasks_QuantityRecommended_NonNegative", "[QuantityRecommended] >= 0");
 
                             t.HasCheckConstraint("CK_PrepTasks_TaskTypeUnit", "([TaskType] = 'GenericDough' AND [QuantityUnit] = 'Balls') OR ([TaskType] = 'MakeDoughLoad' AND [QuantityUnit] = 'FullLoads') OR ([TaskType] = 'BallDough' AND [QuantityUnit] = 'Balls')");
+                        });
+                });
+
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.ProductionLedger", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("BallsCompleted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BallsDiscarded")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BallsReballed")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateOnly>("OccurredOn")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("SourceEntityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<int>("TotalBallsCreated")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredOn");
+
+                    b.HasIndex("SourceType", "SourceEntityId", "CreatedAtUtc");
+
+                    b.ToTable("ProductionLedgers", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ProductionLedgers_BallsCompleted_NonNegative", "[BallsCompleted] >= 0");
+
+                            t.HasCheckConstraint("CK_ProductionLedgers_BallsDiscarded_NonNegative", "[BallsDiscarded] >= 0");
+
+                            t.HasCheckConstraint("CK_ProductionLedgers_BallsReballed_NonNegative", "[BallsReballed] >= 0");
+
+                            t.HasCheckConstraint("CK_ProductionLedgers_SourceType_NotEmpty", "LEN(LTRIM(RTRIM([SourceType]))) > 0");
+
+                            t.HasCheckConstraint("CK_ProductionLedgers_TotalBallsCreated_NonNegative", "[TotalBallsCreated] >= 0");
                         });
                 });
 

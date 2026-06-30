@@ -114,11 +114,11 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         Assert.Equal(300, result.ReadyNowBalls);
         Assert.Equal(168, result.MixedButNotBalledBalls);
         Assert.Equal(723, result.PreviousWeekFinishedBalls);
-        Assert.Equal(132, result.StillMissingThisWeekBalls);
+        Assert.Equal(300, result.StillMissingThisWeekBalls);
     }
 
     [Fact]
-    public async Task In_Process_Dough_Reduces_Weekly_Missing_But_Does_Not_Count_As_Ready_Now()
+    public async Task In_Process_Dough_StaysInFutureDough_AndDoesNotCountAsReadyNow()
     {
         var fixture = CreateFixture(referenceDate: new DateOnly(2026, 6, 9));
         fixture.InventorySnapshots.Snapshots.Add(CreateSnapshot(
@@ -142,7 +142,27 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         Assert.Equal(24, result.ReadyNowBalls);
         Assert.Equal(0, result.StillFermentingBalls);
         Assert.Equal(336, result.MixedButNotBalledBalls);
-        Assert.Equal(240, result.StillMissingThisWeekBalls);
+        Assert.Equal(576, result.StillMissingThisWeekBalls);
+    }
+
+    [Fact]
+    public async Task Voided_Orphan_Batch_DoesNotCountAsMixedButNotBalled()
+    {
+        var referenceDate = new DateOnly(2026, 6, 9);
+        var fixture = CreateFixture(referenceDate);
+
+        var orphanBatch = new DoughBatch(
+            Guid.NewGuid(),
+            batchDate: referenceDate,
+            totalCases: DoughBatch.StandardLoadCases);
+        orphanBatch.Void("orphan batch correction");
+        fixture.Batches.Batches.Add(orphanBatch);
+
+        var result = await fixture.Service.GetWeekAsync(referenceDate, historicalWeeksToUse: 8);
+
+        Assert.Equal(0, result.MixedButNotBalledLoads);
+        Assert.Equal(0, result.MixedButNotBalledBalls);
+        Assert.Equal(0, result.FutureBalls);
     }
 
     [Fact]
@@ -172,7 +192,7 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
     }
 
     [Fact]
-    public async Task TuesdayScenario_432Ready_OneMixedLoad_DoesNotIncreaseReadyOrInflateStillMissing()
+    public async Task TuesdayScenario_432Ready_OneMixedLoad_KeepsFutureDoughSeparateFromStillMissing()
     {
         var tuesday = new DateOnly(2026, 6, 9);
         var fixture = CreateFixture(referenceDate: tuesday);
@@ -189,7 +209,7 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         Assert.Equal(168, result.MixedButNotBalledBalls);
         Assert.Equal(1, result.MixedButNotBalledLoads);
         Assert.Equal(0, result.StillFermentingBalls);
-        Assert.Equal(0, result.StillMissingThisWeekBalls);
+        Assert.Equal(168, result.StillMissingThisWeekBalls);
     }
 
     [Fact]
@@ -273,9 +293,136 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         Assert.Equal(0, result.StillMissingThisWeekBalls);
     }
 
-    private static TestFixture CreateFixture(DateOnly referenceDate)
+    [Fact]
+    public async Task OpenUsageTracesReduceReadyNowButDoNotReduceProducedThisWeek()
     {
-        var calculationService = new FixedWeeklyCalculationService(referenceDate);
+        var tuesday = new DateOnly(2026, 6, 9);
+        var fixture = CreateFixture(referenceDate: tuesday);
+        fixture.WeeklyClosingRead.Carryover = new WeeklyDoughCarryoverResponse
+        {
+            HasClosingCarryover = true,
+            CarryoverAvailableBalls = 432,
+            CarryoverReadyBalls = 432
+        };
+        fixture.InventorySnapshots.Snapshots.Add(CreateSnapshot(tuesday, availableBalls: 432));
+
+        var batch = new DoughBatch(
+            Guid.NewGuid(),
+            batchDate: tuesday,
+            totalCases: DoughBatch.StandardLoadCases);
+        batch.MarkAsBalled(new DateTime(2026, 6, 9, 18, 0, 0, DateTimeKind.Utc));
+        fixture.Batches.Batches.Add(batch);
+
+        fixture.Tasks.Tasks.Add(CreateCompletedTask(
+            taskDate: tuesday,
+            completedAtUtc: new DateTime(2026, 6, 9, 18, 0, 0, DateTimeKind.Utc),
+            quantityCompleted: 168));
+
+        fixture.UsageTraces.Items.Add(DoughUsageTrace.Create(
+            usageDate: tuesday,
+            sourceDoughBatchQualityRecordId: Guid.NewGuid(),
+            sourceDate: tuesday.AddDays(-1),
+            sourceType: DoughQualityStatus.Good,
+            destination: DoughUsageDestination.Restaurant,
+            trayCount: 1.5m,
+            createdByUserId: "manager-user"));
+
+        var result = await fixture.Service.GetWeekAsync(tuesday, historicalWeeksToUse: 8);
+
+        Assert.Equal(582, result.ReadyNowBalls);
+        Assert.Equal(168, result.ProducedThisWeekBalls);
+        Assert.Equal(0, result.FutureBalls);
+    }
+
+    [Fact]
+    public async Task OnePendingLoad_IsCountedOnce_EvenWithMakeTask_BallTask_AndUnballedBatch()
+    {
+        var referenceDate = new DateOnly(2026, 6, 17);
+        var fixture = CreateFixture(referenceDate);
+        fixture.InventorySnapshots.Snapshots.Add(CreateSnapshot(referenceDate, availableBalls: 720));
+
+        var pendingBatch = new DoughBatch(
+            Guid.NewGuid(),
+            batchDate: referenceDate,
+            totalCases: DoughBatch.StandardLoadCases);
+        fixture.Batches.Batches.Add(pendingBatch);
+
+        fixture.Tasks.Tasks.Add(CreateCompletedLoadTask(
+            taskDate: referenceDate,
+            completedAtUtc: new DateTime(2026, 6, 17, 15, 0, 0, DateTimeKind.Utc),
+            quantityCompleted: 1));
+        fixture.Tasks.Tasks.Add(CreatePendingBallTask(
+            taskDate: referenceDate.AddDays(1),
+            sourceDoughBatchId: pendingBatch.Id,
+            quantityRecommended: DoughRules.StandardBatchBalls));
+
+        var result = await fixture.Service.GetWeekAsync(referenceDate, historicalWeeksToUse: 8);
+
+        Assert.Equal(720, result.ReadyNowBalls);
+        Assert.Equal(168, result.MixedButNotBalledBalls);
+        Assert.Equal(1, result.MixedButNotBalledLoads);
+        Assert.Equal(168, result.FutureBalls);
+    }
+
+    [Fact]
+    public async Task ReadyNow720_Future168_StillMissing223_ForFourLoadsAndFourReballedCases()
+    {
+        var referenceDate = new DateOnly(2026, 6, 17);
+        var readyFromCompletedLoads = 4 * DoughRules.StandardBatchBalls;
+        var readyFromReballedCases = 4 * DoughRules.BallsPerCase;
+        var fixture = CreateFixture(
+            referenceDate,
+            new SingleDayRequiredBallsCalculationService(referenceDate, requiredBalls: 943));
+        fixture.InventorySnapshots.Snapshots.Add(CreateSnapshot(
+            referenceDate,
+            availableBalls: readyFromCompletedLoads + readyFromReballedCases));
+
+        fixture.QualityRecords.Records.Add(CreateQualityRecord(
+            sourceDate: referenceDate.AddDays(-3),
+            createdOrBalledAtUtc: new DateTime(2026, 6, 14, 10, 0, 0, DateTimeKind.Utc),
+            quantityBalls: 168,
+            status: DoughQualityStatus.Good));
+        fixture.QualityRecords.Records.Add(CreateQualityRecord(
+            sourceDate: referenceDate.AddDays(-2),
+            createdOrBalledAtUtc: new DateTime(2026, 6, 15, 10, 0, 0, DateTimeKind.Utc),
+            quantityBalls: 168,
+            status: DoughQualityStatus.Good));
+        fixture.QualityRecords.Records.Add(CreateQualityRecord(
+            sourceDate: referenceDate.AddDays(-1),
+            createdOrBalledAtUtc: new DateTime(2026, 6, 16, 10, 0, 0, DateTimeKind.Utc),
+            quantityBalls: 168,
+            status: DoughQualityStatus.Good));
+        fixture.QualityRecords.Records.Add(CreateQualityRecord(
+            sourceDate: referenceDate,
+            createdOrBalledAtUtc: new DateTime(2026, 6, 17, 10, 0, 0, DateTimeKind.Utc),
+            quantityBalls: 168,
+            status: DoughQualityStatus.Good));
+        fixture.QualityRecords.Records.Add(CreateQualityRecord(
+            sourceDate: referenceDate,
+            createdOrBalledAtUtc: new DateTime(2026, 6, 17, 11, 0, 0, DateTimeKind.Utc),
+            quantityBalls: 48,
+            status: DoughQualityStatus.Reballed));
+
+        fixture.Batches.Batches.Add(new DoughBatch(
+            Guid.NewGuid(),
+            batchDate: referenceDate,
+            totalCases: DoughBatch.StandardLoadCases));
+
+        var result = await fixture.Service.GetWeekAsync(referenceDate, historicalWeeksToUse: 8);
+
+        Assert.Equal(672, readyFromCompletedLoads);
+        Assert.Equal(48, readyFromReballedCases);
+        Assert.Equal(720, readyFromCompletedLoads + readyFromReballedCases);
+        Assert.Equal(720, result.ReadyNowBalls);
+        Assert.Equal(168, result.MixedButNotBalledBalls);
+        Assert.Equal(1, result.MixedButNotBalledLoads);
+        Assert.Equal(168, result.FutureBalls);
+        Assert.Equal(223, result.StillMissingThisWeekBalls);
+    }
+
+    private static TestFixture CreateFixture(DateOnly referenceDate, IDoughPrepCalculationService? calculationService = null)
+    {
+        calculationService ??= new FixedWeeklyCalculationService(referenceDate);
         var batches = new InMemoryDoughBatchReadRepository();
         var inventorySnapshots = new InMemoryDoughInventoryReadRepository();
         var tasks = new InMemoryPrepTaskRepository();
@@ -284,10 +431,15 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         var qualityRecords = new InMemoryDoughBatchQualityRepository();
         var lossRecords = new InMemoryDoughLossRecordRepository();
         var usageTraces = new InMemoryDoughUsageTraceRepository();
-        var sourceProjectionService = new DoughSourceProjectionService(qualityRecords, usageTraces);
+        var sourceProjectionService = new DoughSourceProjectionService(
+            qualityRecords,
+            dailyClosings,
+            usageTraces,
+            weeklyClosingRead);
         var availabilityProjectionService = new DoughAvailabilityProjectionService(
             dailyClosings,
             sourceProjectionService,
+            usageTraces,
             inventorySnapshots,
             lossRecords,
             tasks,
@@ -301,6 +453,7 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
             dailyClosings,
             qualityRecords,
             lossRecords,
+            usageTraces,
             new PrepWeeklyDoughCalendarService(
                 availabilityProjectionService,
                 calculationService,
@@ -341,6 +494,54 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         return task;
     }
 
+    private static PrepTask CreateCompletedLoadTask(
+        DateOnly taskDate,
+        DateTime completedAtUtc,
+        int quantityCompleted)
+    {
+        var task = PrepTask.Create(
+            taskDate,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            ApplicationRole.PizzaMaker,
+            quantityRecommended: quantityCompleted,
+            taskType: PrepTaskType.MakeDoughLoad,
+            quantityUnit: DoughQuantityUnit.FullLoads);
+
+        task.Complete("user-1", quantityCompleted, completedAtUtc: completedAtUtc);
+        return task;
+    }
+
+    private static PrepTask CreatePendingBallTask(
+        DateOnly taskDate,
+        Guid sourceDoughBatchId,
+        int quantityRecommended)
+    {
+        return PrepTask.Create(
+            taskDate,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            ApplicationRole.PizzaMaker,
+            quantityRecommended: quantityRecommended,
+            taskType: PrepTaskType.BallDough,
+            quantityUnit: DoughQuantityUnit.Balls,
+            sourceDoughBatchId: sourceDoughBatchId);
+    }
+
+    private static DoughBatchQualityRecord CreateQualityRecord(
+        DateOnly sourceDate,
+        DateTime createdOrBalledAtUtc,
+        int quantityBalls,
+        DoughQualityStatus status)
+    {
+        return DoughBatchQualityRecord.Create(
+            sourceDate,
+            createdOrBalledAtUtc,
+            quantityBalls,
+            createdByUserId: "manager-user",
+            initialStatus: status);
+    }
+
     private sealed record TestFixture(
         InMemoryDoughBatchReadRepository Batches,
         InMemoryDoughInventoryReadRepository InventorySnapshots,
@@ -349,6 +550,7 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         InMemoryDailyDoughClosingRepository DailyClosings,
         InMemoryDoughBatchQualityRepository QualityRecords,
         InMemoryDoughLossRecordRepository LossRecords,
+        InMemoryDoughUsageTraceRepository UsageTraces,
         PrepWeeklyDoughCalendarService Service);
 
     private sealed class StubWeeklyDoughClosingReadService : IWeeklyDoughClosingReadService
@@ -390,6 +592,27 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
             return Task.FromResult(Items.FirstOrDefault(item => item.ClosingDate == closingDate));
         }
 
+        public Task<IReadOnlyList<DailyDoughClosing>> SearchAsync(
+            DateOnly? closingDateFrom,
+            DateOnly? closingDateTo,
+            CancellationToken cancellationToken = default)
+        {
+            IEnumerable<DailyDoughClosing> query = Items;
+
+            if (closingDateFrom.HasValue)
+            {
+                query = query.Where(item => item.ClosingDate >= closingDateFrom.Value);
+            }
+
+            if (closingDateTo.HasValue)
+            {
+                query = query.Where(item => item.ClosingDate <= closingDateTo.Value);
+            }
+
+            return Task.FromResult<IReadOnlyList<DailyDoughClosing>>(
+                query.OrderBy(item => item.ClosingDate).ToArray());
+        }
+
         public Task<IReadOnlyList<DailyDoughClosing>> ListByWeekStartDateAsync(
             DateOnly weekStartDate,
             CancellationToken cancellationToken = default)
@@ -428,6 +651,41 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         }
     }
 
+    private sealed class SingleDayRequiredBallsCalculationService : IDoughPrepCalculationService
+    {
+        private readonly DateOnly _targetDate;
+        private readonly int _requiredBalls;
+
+        public SingleDayRequiredBallsCalculationService(DateOnly targetDate, int requiredBalls)
+        {
+            _targetDate = targetDate;
+            _requiredBalls = requiredBalls;
+        }
+
+        public Task<DoughPrepCalculationResult> CalculateAsync(
+            CalculateDoughPrepRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var requiredBalls = request.TargetDate == _targetDate
+                ? _requiredBalls
+                : 0;
+
+            return Task.FromResult(new DoughPrepCalculationResult
+            {
+                TargetDate = request.TargetDate,
+                HistoricalAverageBalls = requiredBalls,
+                EventEstimatedBalls = 0,
+                RequiredBalls = requiredBalls,
+                AvailableBalls = 0,
+                CompletedBalls = 0,
+                MissingBalls = requiredBalls,
+                RecommendedCases = 0,
+                RecommendedLoads = 0,
+                Reason = "single-day-required-balls-test"
+            });
+        }
+    }
+
     private sealed class InMemoryDoughBatchReadRepository : IDoughBatchReadRepository
     {
         public List<DoughBatch> Batches { get; } = [];
@@ -438,8 +696,34 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
         {
             return Task.FromResult<IReadOnlyCollection<DoughBatch>>(
                 Batches
-                    .Where(batch => batch.BatchDate <= productionDate)
+                    .Where(batch => batch.BatchDate <= productionDate && !batch.IsVoided)
                     .ToArray());
+        }
+
+        public Task<IReadOnlyCollection<DoughBatch>> SearchForCorrectionAsync(
+            DateOnly? batchDateFrom,
+            DateOnly? batchDateTo,
+            bool includeVoided,
+            CancellationToken cancellationToken = default)
+        {
+            IEnumerable<DoughBatch> query = Batches;
+
+            if (batchDateFrom.HasValue)
+            {
+                query = query.Where(batch => batch.BatchDate >= batchDateFrom.Value);
+            }
+
+            if (batchDateTo.HasValue)
+            {
+                query = query.Where(batch => batch.BatchDate <= batchDateTo.Value);
+            }
+
+            if (!includeVoided)
+            {
+                query = query.Where(batch => !batch.IsVoided);
+            }
+
+            return Task.FromResult<IReadOnlyCollection<DoughBatch>>(query.ToArray());
         }
     }
 
@@ -493,7 +777,7 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
                     .ToArray());
         }
 
-        public Task<IReadOnlyList<PrepTask>> SearchDoughTasksAsync(DateOnly? taskDate, PrepTaskStatus? status, ApplicationRole? assignedRole, Guid? prepItemId, CancellationToken cancellationToken = default)
+        public Task<IReadOnlyList<PrepTask>> SearchDoughTasksAsync(DateOnly? taskDate, PrepTaskStatus? status, ApplicationRole? assignedRole, Guid? prepItemId, bool includeCancelled = false, CancellationToken cancellationToken = default)
         {
             IEnumerable<PrepTask> query = Tasks;
 

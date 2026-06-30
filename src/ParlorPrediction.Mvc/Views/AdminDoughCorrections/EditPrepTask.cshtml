@@ -1,0 +1,90 @@
+@model ParlorPrediction.Mvc.Models.AdminDoughCorrections.AdminPrepTaskCorrectionFormViewModel
+@{
+    ViewData["Title"] = "Correct Prep Task";
+}
+
+<section class="space-y-gutter">
+    <header class="rounded-[28px] border border-outline-variant bg-white p-8 shadow-sm">
+        <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Admin Correction</p>
+        <h1 class="mt-3 text-4xl font-black tracking-[-0.05em] text-primary">Correct completed prep task</h1>
+        <p class="mt-4 max-w-4xl text-xl leading-9 text-on-surface-variant">Use this only when the recorded task does not match reality. This screen does not rebuild downstream inventory automatically.</p>
+    </header>
+
+    <form method="post" class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm space-y-5">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="ReferenceDate" />
+        <div asp-validation-summary="ModelOnly" class="rounded-xl border border-error bg-[#fdeceb] px-4 py-3 text-sm text-error"></div>
+
+        <div class="grid gap-5 md:grid-cols-2">
+            <label class="block">
+                <span class="mb-2 block text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Task Id</span>
+                <input value="@Model.PrepTaskId" class="h-touch-target-min w-full rounded-xl border border-outline-variant bg-surface-container-low px-4 font-mono" disabled />
+            </label>
+            <label class="block">
+                <span class="mb-2 block text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Work date</span>
+                <input asp-for="TaskDate" type="date" class="h-touch-target-min w-full rounded-xl border border-outline-variant bg-white px-4" />
+            </label>
+            <label class="block">
+                <span class="mb-2 block text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Task type</span>
+                <select asp-for="TaskType" class="h-touch-target-min w-full rounded-xl border border-outline-variant bg-white px-4">
+                    @foreach (var option in Model.TaskTypeOptions)
+                    {
+                        <option value="@option">@option</option>
+                    }
+                </select>
+            </label>
+            <label class="block">
+                <span class="mb-2 block text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Unit</span>
+                <select asp-for="QuantityUnit" class="h-touch-target-min w-full rounded-xl border border-outline-variant bg-white px-4">
+                    @foreach (var option in Model.QuantityUnitOptions)
+                    {
+                        <option value="@option">@option</option>
+                    }
+                </select>
+            </label>
+            <label class="block">
+                <span class="mb-2 block text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Recommended quantity</span>
+                <input asp-for="QuantityRecommended" type="number" min="1" class="h-touch-target-min w-full rounded-xl border border-outline-variant bg-white px-4" />
+            </label>
+            <label class="block">
+                <span class="mb-2 block text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Status</span>
+                <select asp-for="Status" class="h-touch-target-min w-full rounded-xl border border-outline-variant bg-white px-4">
+                    @foreach (var option in Model.StatusOptions)
+                    {
+                        <option value="@option">@option</option>
+                    }
+                </select>
+            </label>
+            <label class="block">
+                <span class="mb-2 block text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Completed quantity</span>
+                <input asp-for="QuantityCompleted" type="number" min="0" class="h-touch-target-min w-full rounded-xl border border-outline-variant bg-white px-4" />
+            </label>
+            <label class="block">
+                <span class="mb-2 block text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Completed at</span>
+                <input asp-for="CompletedAtLocal" type="datetime-local" class="h-touch-target-min w-full rounded-xl border border-outline-variant bg-white px-4" />
+            </label>
+            <label class="block">
+                <span class="mb-2 block text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Completed by user id</span>
+                <input asp-for="CompletedByUserId" class="h-touch-target-min w-full rounded-xl border border-outline-variant bg-white px-4 font-mono" />
+            </label>
+            <label class="block">
+                <span class="mb-2 block text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Source task id</span>
+                <input asp-for="SourcePrepTaskId" class="h-touch-target-min w-full rounded-xl border border-outline-variant bg-white px-4 font-mono" />
+            </label>
+            <label class="block md:col-span-2">
+                <span class="mb-2 block text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Source batch id</span>
+                <input asp-for="SourceDoughBatchId" class="h-touch-target-min w-full rounded-xl border border-outline-variant bg-white px-4 font-mono" />
+            </label>
+        </div>
+
+        <label class="block">
+            <span class="mb-2 block text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Notes</span>
+            <textarea asp-for="Notes" rows="4" class="w-full rounded-xl border border-outline-variant bg-white px-4 py-3"></textarea>
+        </label>
+
+        <div class="flex flex-wrap gap-3">
+            <button type="submit" class="inline-flex h-touch-target-min items-center rounded-xl bg-primary px-5 text-sm font-extrabold uppercase tracking-[0.14em] text-white">Save correction</button>
+            <a asp-action="Index" asp-route-referenceDate="@Model.ReferenceDate.ToString("yyyy-MM-dd")" class="inline-flex h-touch-target-min items-center rounded-xl border border-outline-variant px-5 text-sm font-extrabold uppercase tracking-[0.14em] text-primary no-underline">Cancel</a>
+        </div>
+    </form>
+</section>

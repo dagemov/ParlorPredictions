@@ -10,6 +10,9 @@ namespace ParlorPrediction.Application.Services.Dough;
 
 public sealed class DailyDoughClosingManagementService : IDailyDoughClosingManagementService
 {
+    private const string DailyClosingLedgerSourceType = "DailyClosing";
+
+    private readonly IConsumptionLedgerRepository? _consumptionLedgerRepository;
     private readonly IDailyDoughClosingRepository _dailyDoughClosingRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IUserRepository _userRepository;
@@ -17,8 +20,10 @@ public sealed class DailyDoughClosingManagementService : IDailyDoughClosingManag
     public DailyDoughClosingManagementService(
         IDailyDoughClosingRepository dailyDoughClosingRepository,
         IUnitOfWork unitOfWork,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        IConsumptionLedgerRepository? consumptionLedgerRepository = null)
     {
+        _consumptionLedgerRepository = consumptionLedgerRepository;
         _dailyDoughClosingRepository = dailyDoughClosingRepository;
         _unitOfWork = unitOfWork;
         _userRepository = userRepository;
@@ -49,6 +54,7 @@ public sealed class DailyDoughClosingManagementService : IDailyDoughClosingManag
             request.Notes);
 
         await _dailyDoughClosingRepository.AddAsync(closing, cancellationToken);
+        await AppendConsumptionLedgerEntryAsync(closing, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Map(closing);
@@ -71,8 +77,32 @@ public sealed class DailyDoughClosingManagementService : IDailyDoughClosingManag
             request.Notes,
             request.CorrectionNote);
 
+        await AppendConsumptionLedgerEntryAsync(closing, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Map(closing);
+    }
+
+    private async Task AppendConsumptionLedgerEntryAsync(
+        DailyDoughClosing closing,
+        CancellationToken cancellationToken)
+    {
+        if (_consumptionLedgerRepository is null)
+        {
+            return;
+        }
+
+        await _consumptionLedgerRepository.AddAsync(
+            new ConsumptionLedger(
+                Guid.NewGuid(),
+                closing.ClosingDate,
+                DailyClosingLedgerSourceType,
+                closing.Id,
+                closing.ActualUsedBalls,
+                0,
+                closing.ActualUsedBalls,
+                true,
+                closing.CorrectionNote ?? closing.Notes),
+            cancellationToken);
     }
 
     private async Task<User> GetRequiredAuthorizedUserAsync(string userId, CancellationToken cancellationToken)

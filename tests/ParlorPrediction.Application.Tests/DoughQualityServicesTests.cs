@@ -3,6 +3,8 @@ using ParlorPrediction.Application.Interfaces.Auth;
 using ParlorPrediction.Application.Interfaces.Dough;
 using ParlorPrediction.Application.Interfaces.Persistence;
 using ParlorPrediction.Application.Services.Dough;
+using ParlorPrediction.Contracts.Requests.DoughClosing;
+using ParlorPrediction.Contracts.Responses.DoughClosing;
 using ParlorPrediction.Contracts.Requests.DoughQuality;
 using ParlorPrediction.Domain.Entities;
 using ParlorPrediction.Domain.Enums;
@@ -16,13 +18,14 @@ public sealed class DoughQualityServicesTests
     public async Task GetSummaryAsync_AttentionCountsAsAvailable()
     {
         var qualityRepository = new InMemoryDoughBatchQualityRepository();
+        var dailyClosingRepository = new InMemoryDailyDoughClosingRepository();
         var usageTraceRepository = new InMemoryDoughUsageTraceRepository();
         await qualityRepository.AddAsync(CreateRecord(120, DoughQualityStatus.Good, "admin-user"));
         await qualityRepository.AddAsync(CreateRecord(80, DoughQualityStatus.Attention, "admin-user"));
 
         var service = new DoughQualityReadService(
             qualityRepository,
-            new DoughSourceProjectionService(qualityRepository, usageTraceRepository),
+            new DoughSourceProjectionService(qualityRepository, dailyClosingRepository, usageTraceRepository, new StubWeeklyDoughClosingReadService()),
             new InMemoryDoughLossRecordRepository());
 
         var summary = await service.GetSummaryAsync();
@@ -35,13 +38,14 @@ public sealed class DoughQualityServicesTests
     public async Task GetSummaryAsync_DiscardedDoesNotCountAsAvailable()
     {
         var qualityRepository = new InMemoryDoughBatchQualityRepository();
+        var dailyClosingRepository = new InMemoryDailyDoughClosingRepository();
         var usageTraceRepository = new InMemoryDoughUsageTraceRepository();
         await qualityRepository.AddAsync(CreateRecord(100, DoughQualityStatus.Good, "admin-user"));
         await qualityRepository.AddAsync(CreateRecord(40, DoughQualityStatus.Discarded, "admin-user", discardReason: DoughLossReason.ManagerDecision));
 
         var service = new DoughQualityReadService(
             qualityRepository,
-            new DoughSourceProjectionService(qualityRepository, usageTraceRepository),
+            new DoughSourceProjectionService(qualityRepository, dailyClosingRepository, usageTraceRepository, new StubWeeklyDoughClosingReadService()),
             new InMemoryDoughLossRecordRepository());
 
         var summary = await service.GetSummaryAsync();
@@ -283,6 +287,28 @@ public sealed class DoughQualityServicesTests
         }
     }
 
+    private sealed class InMemoryDailyDoughClosingRepository : IDailyDoughClosingRepository
+    {
+        public Task AddAsync(DailyDoughClosing closing, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task<DailyDoughClosing?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+            => Task.FromResult<DailyDoughClosing?>(null);
+
+        public Task<DailyDoughClosing?> GetByClosingDateAsync(DateOnly closingDate, CancellationToken cancellationToken = default)
+            => Task.FromResult<DailyDoughClosing?>(null);
+
+        public Task<IReadOnlyList<DailyDoughClosing>> SearchAsync(
+            DateOnly? closingDateFrom,
+            DateOnly? closingDateTo,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<DailyDoughClosing>>(Array.Empty<DailyDoughClosing>());
+
+        public Task<IReadOnlyList<DailyDoughClosing>> ListByWeekStartDateAsync(
+            DateOnly weekStartDate,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<DailyDoughClosing>>(Array.Empty<DailyDoughClosing>());
+    }
+
     private sealed class InMemoryDoughReballRecordRepository : IDoughReballRecordRepository
     {
         public List<DoughReballRecord> Items { get; } = [];
@@ -300,6 +326,23 @@ public sealed class DoughQualityServicesTests
         public Task BeginTransactionAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task CommitTransactionAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task RollbackTransactionAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    private sealed class StubWeeklyDoughClosingReadService : IWeeklyDoughClosingReadService
+    {
+        public Task<IReadOnlyList<WeeklyDoughClosingResponse>> GetWeeklyClosingsAsync(
+            GetWeeklyClosingsRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<WeeklyDoughClosingResponse>>(Array.Empty<WeeklyDoughClosingResponse>());
+        }
+
+        public Task<WeeklyDoughCarryoverResponse> GetCarryoverForWeekAsync(
+            GetWeeklyDoughCarryoverRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new WeeklyDoughCarryoverResponse());
+        }
     }
 
     private sealed class StubUserRepository : IUserRepository

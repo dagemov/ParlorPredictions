@@ -13,15 +13,18 @@ public sealed class DailyDoughClosingReadService : IDailyDoughClosingReadService
 
     private readonly IDailyDoughClosingRepository _dailyDoughClosingRepository;
     private readonly IDoughPrepCalculationService _doughPrepCalculationService;
+    private readonly IDoughUsageTraceRepository _doughUsageTraceRepository;
     private readonly IPrepWeeklyDoughCalendarService _prepWeeklyDoughCalendarService;
 
     public DailyDoughClosingReadService(
         IDailyDoughClosingRepository dailyDoughClosingRepository,
         IDoughPrepCalculationService doughPrepCalculationService,
+        IDoughUsageTraceRepository doughUsageTraceRepository,
         IPrepWeeklyDoughCalendarService prepWeeklyDoughCalendarService)
     {
         _dailyDoughClosingRepository = dailyDoughClosingRepository;
         _doughPrepCalculationService = doughPrepCalculationService;
+        _doughUsageTraceRepository = doughUsageTraceRepository;
         _prepWeeklyDoughCalendarService = prepWeeklyDoughCalendarService;
     }
 
@@ -106,6 +109,11 @@ public sealed class DailyDoughClosingReadService : IDailyDoughClosingReadService
             request.ReferenceDate,
             historicalWeeksToUse,
             cancellationToken);
+        var traces = await _doughUsageTraceRepository.SearchAsync(
+            weekSummary.WeekStartDate,
+            request.ReferenceDate,
+            null,
+            cancellationToken);
 
         var remainingForecastNeed = weekSummary.Days
             .Where(day => day.Date >= request.ReferenceDate)
@@ -119,6 +127,9 @@ public sealed class DailyDoughClosingReadService : IDailyDoughClosingReadService
         var stillFermenting = weeklyCalendar.StillFermentingBalls;
         var mixedNotBalled = weeklyCalendar.MixedButNotBalledBalls;
         var projectedSurplus = currentAvailable + stillFermenting + mixedNotBalled - adjustedRemainingForecastNeed;
+        var tracedUsedBallsOnClosedDays = SumTraceBallsOnClosedDays(weekSummary, traces);
+        var traceReconciliationDifference = weekSummary.TotalActualUsedBalls - tracedUsedBallsOnClosedDays;
+        var hasTraceReconciliationWarning = weekSummary.ClosedDaysCount > 0 && traceReconciliationDifference != 0;
 
         return new DailyClosingOperationalInsightsResponse
         {
@@ -139,6 +150,15 @@ public sealed class DailyDoughClosingReadService : IDailyDoughClosingReadService
             ProjectedSurplus = projectedSurplus,
             HasSurplusWarning = projectedSurplus > 0,
             HasShortageWarning = projectedSurplus < 0,
+            TotalTracedUsedBallsOnClosedDays = tracedUsedBallsOnClosedDays,
+            TraceReconciliationDifferenceBalls = traceReconciliationDifference,
+            HasTraceReconciliationWarning = hasTraceReconciliationWarning,
+            TraceReconciliationMessage = hasTraceReconciliationWarning
+                ? BuildTraceReconciliationMessage(
+                    weekSummary.TotalActualUsedBalls,
+                    tracedUsedBallsOnClosedDays,
+                    traceReconciliationDifference)
+                : null,
             Recommendation = BuildRecommendation(projectedSurplus, weekSummary.AccumulatedVariance)
         };
     }
@@ -187,6 +207,35 @@ public sealed class DailyDoughClosingReadService : IDailyDoughClosingReadService
         }
 
         return "Production pace looks aligned with forecast.";
+    }
+
+    private static int SumTraceBallsOnClosedDays(
+        DailyClosingWeekSummaryResponse weekSummary,
+        IReadOnlyList<DoughUsageTrace> traces)
+    {
+        var closedDates = weekSummary.Days
+            .Where(day => day.IsClosed)
+            .Select(day => day.Date)
+            .ToHashSet();
+
+        return traces
+            .Where(trace => closedDates.Contains(trace.UsageDate))
+            .Sum(trace => trace.BallsUsed);
+    }
+
+    private static string BuildTraceReconciliationMessage(
+        int actualUsedBalls,
+        int tracedUsedBalls,
+        int traceReconciliationDifference)
+    {
+        var absoluteDifference = Math.Abs(traceReconciliationDifference);
+
+        if (traceReconciliationDifference > 0)
+        {
+            return $"Daily Closing shows {actualUsedBalls} balls used on closed days, but usage traces only explain {tracedUsedBalls}. Add or correct {absoluteDifference} traced balls so source tracking matches the closing total.";
+        }
+
+        return $"Usage traces explain {tracedUsedBalls} balls on closed days, but Daily Closing only shows {actualUsedBalls}. Remove or correct {absoluteDifference} traced balls, or review the closing totals.";
     }
 
     private static DateOnly GetOperationalWeekStart(DateOnly referenceDate)

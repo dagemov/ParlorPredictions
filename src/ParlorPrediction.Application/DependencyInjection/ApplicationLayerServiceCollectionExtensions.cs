@@ -5,7 +5,13 @@ using ParlorPrediction.Application.Interfaces.Dough;
 using ParlorPrediction.Application.Interfaces.Prep;
 using ParlorPrediction.Application.Services.Auth;
 using ParlorPrediction.Application.Services.Ai;
+using ParlorPrediction.Application.Services.AIOrchestration;
 using ParlorPrediction.Application.Services.Dough;
+using ParlorPrediction.Application.Services.OperationalDrafts;
+using ParlorPrediction.Application.Services.OperationalChat;
+using ParlorPrediction.Application.Services.OperationalPreview;
+using ParlorPrediction.Application.Services.OperationalProjection;
+using ParlorPrediction.Application.Services.OperationalSimulation;
 using ParlorPrediction.Application.Services.Prep;
 
 namespace ParlorPrediction.Application.DependencyInjection;
@@ -15,6 +21,15 @@ public static class ApplicationLayerServiceCollectionExtensions
     public static IServiceCollection AddApplicationLayer(this IServiceCollection services)
     {
         services.AddScoped<IAiPrepRecommendationService, AiPrepRecommendationService>();
+        services.AddScoped<IOperationalIntentClassifier, OperationalIntentClassifier>();
+        services.AddScoped<IOperationalChatService, OperationalChatService>();
+        services.AddScoped<IOperationalSimulationService, OperationalSimulationService>();
+        services.AddScoped<IOperationalDraftService, OperationalDraftService>();
+        services.AddScoped<IOperationalDraftReadService, OperationalDraftReadService>();
+        services.AddScoped<IOperationalWeekSliceService, OperationalWeekSliceService>();
+        services.AddScoped<IOperationalWeeklyGoalExplanationService, OperationalWeeklyGoalExplanationService>();
+        services.AddScoped<IOperationalPreviewService, OperationalPreviewService>();
+        services.AddScoped<IOperationalProjectionService, OperationalProjectionService>();
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IDoughDemandPlanService, DoughDemandPlanService>();
         services.AddScoped<IDoughSourceProjectionService, DoughSourceProjectionService>();
@@ -22,6 +37,8 @@ public static class ApplicationLayerServiceCollectionExtensions
         services.AddScoped<IDoughPrepCalculationService, DoughPrepCalculationService>();
         services.AddScoped<IDoughQualityManagementService, DoughQualityManagementService>();
         services.AddScoped<IDoughQualityReadService, DoughQualityReadService>();
+        services.AddScoped<IDoughCorrectionAdminService, DoughCorrectionAdminService>();
+        services.AddScoped<IDoughInventoryImpactReadService, DoughInventoryImpactReadService>();
         services.AddScoped<IDoughUsageTraceManagementService, DoughUsageTraceManagementService>();
         services.AddScoped<IDoughUsageTraceReadService, DoughUsageTraceReadService>();
         services.AddScoped<IDailyDoughClosingManagementService, DailyDoughClosingManagementService>();

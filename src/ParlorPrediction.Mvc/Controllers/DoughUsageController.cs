@@ -6,6 +6,7 @@ using ParlorPrediction.Application.Interfaces.Dough;
 using ParlorPrediction.Contracts.Requests.DoughUsage;
 using ParlorPrediction.Contracts.Responses.DoughUsage;
 using ParlorPrediction.Domain.Enums;
+using ParlorPrediction.Domain.Rules;
 using ParlorPrediction.Mvc.Models.DoughUsage;
 
 namespace ParlorPrediction.Mvc.Controllers;
@@ -335,9 +336,19 @@ public sealed class DoughUsageController : Controller
             ModelState.AddModelError(nameof(form.SourceDoughBatchQualityRecordId), "Choose the dough source that was used.");
         }
 
-        if (form.TrayCount <= 0)
+        if (form.TrayCount <= 0m)
         {
-            ModelState.AddModelError(nameof(form.TrayCount), "Tray count must be greater than zero.");
+            ModelState.AddModelError(nameof(form.TrayCount), "Cases used must be greater than zero.");
+            return;
+        }
+
+        try
+        {
+            DoughRules.ConvertCaseQuantityToBalls(form.TrayCount);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            ModelState.AddModelError(nameof(form.TrayCount), "Cases used must convert to a whole number of dough balls.");
         }
 
         if (!DoughUsageDestinationExtensions.TryParse(form.Destination, out _))

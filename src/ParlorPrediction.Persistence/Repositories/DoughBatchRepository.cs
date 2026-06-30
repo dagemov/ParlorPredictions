@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using ParlorPrediction.Application.Interfaces.Dough;
 using ParlorPrediction.Domain.Entities;
 
@@ -20,6 +19,6 @@ public sealed class DoughBatchRepository : IDoughBatchRepository
 
     public Task<DoughBatch?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return _dbContext.DoughBatches.FirstOrDefaultAsync(batch => batch.Id == id, cancellationToken);
+        return DoughBatchSqlCompatibility.GetByIdTrackedAsync(_dbContext, id, cancellationToken);
     }
 }

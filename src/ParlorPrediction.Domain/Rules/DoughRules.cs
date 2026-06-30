@@ -34,6 +34,24 @@ public static class DoughRules
         };
     }
 
+    public static int ConvertCaseQuantityToBalls(decimal caseQuantity)
+    {
+        if (caseQuantity < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(caseQuantity), "Case quantity cannot be negative.");
+        }
+
+        var balls = caseQuantity * BallsPerCase;
+        if (decimal.Truncate(balls) != balls)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(caseQuantity),
+                "Case quantity must convert to a whole number of dough balls.");
+        }
+
+        return decimal.ToInt32(balls);
+    }
+
     public static int ConvertBallsToCases(int balls)
     {
         if (balls < 0)

@@ -1,4 +1,5 @@
 using ParlorPrediction.Mvc.Models.DoughQuality;
+using ParlorPrediction.Mvc.Models.DoughInventory;
 using ParlorPrediction.Mvc.Models.Prep;
 
 namespace ParlorPrediction.Mvc.Models.Home;
@@ -26,4 +27,6 @@ public sealed class OperationalHomePageViewModel
     public IReadOnlyList<OperationalHomeEventViewModel> Events { get; set; } = Array.Empty<OperationalHomeEventViewModel>();
 
     public DailyClosingOperationalInsightsViewModel? DailyClosingInsights { get; set; }
+
+    public DoughInventorySummaryViewModel DoughInventoryPreview { get; set; } = new();
 }

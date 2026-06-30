@@ -1,0 +1,82 @@
+@model OperationalChatInputViewModel
+@{
+    ViewData["Title"] = "Operational Chat";
+}
+
+<section class="space-y-gutter max-w-7xl">
+    <header class="rounded-[28px] border border-outline-variant bg-white p-8 shadow-sm">
+        <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Operational Chat</p>
+        <h1 class="mt-3 text-4xl font-black tracking-[-0.05em] text-primary lg:text-6xl">Natural language in, safe drafts out.</h1>
+        <p class="mt-4 max-w-4xl text-xl leading-9 text-on-surface-variant">
+            This chat interprets operational narratives, separates domains, creates reviewable drafts, and routes every real decision back to the Operational Draft Review screen.
+            It never approves and never writes final production records directly.
+        </p>
+    </header>
+
+    <section class="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+        <article class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+            <div>
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Compose</p>
+                <h2 class="mt-2 text-3xl font-black tracking-[-0.04em] text-primary">Send an operational narrative</h2>
+            </div>
+
+            <form asp-action="Send"
+                  method="post"
+                  class="mt-6 space-y-5"
+                  hx-post="@Url.Action("Send", "OperationalChat")"
+                  hx-target="#operational-chat-thread"
+                  hx-swap="afterbegin">
+                @Html.AntiForgeryToken()
+
+                <label class="block">
+                    <span class="mb-2 block text-sm font-extrabold uppercase tracking-[0.14em] text-on-surface-variant">Operational Narrative</span>
+                    <textarea asp-for="SourceText"
+                              rows="8"
+                              class="w-full rounded-[20px] border border-outline-variant bg-surface-container-low px-5 py-4 text-base leading-7 text-on-surface"
+                              placeholder="Example:
+Tue: BallDough + MakeDoughLoad
+Tue: 90 balls
+Sat: Ted Vergakis event - 51-75 people - 55 balls used"></textarea>
+                    <span asp-validation-for="SourceText" class="mt-2 block text-sm font-semibold text-error"></span>
+                </label>
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-2 block text-sm font-extrabold uppercase tracking-[0.14em] text-on-surface-variant">Reference Date</span>
+                        <input asp-for="ReferenceDate"
+                               type="date"
+                               class="w-full rounded-xl border border-outline-variant bg-white px-4 py-3 text-sm text-on-surface" />
+                    </label>
+                    <label class="block">
+                        <span class="mb-2 block text-sm font-extrabold uppercase tracking-[0.14em] text-on-surface-variant">Target Week Start</span>
+                        <input asp-for="TargetWeekStartDate"
+                               type="date"
+                               class="w-full rounded-xl border border-outline-variant bg-white px-4 py-3 text-sm text-on-surface" />
+                    </label>
+                </div>
+
+                <div class="rounded-[20px] border border-outline-variant bg-surface-container-low px-5 py-4 text-sm leading-6 text-on-surface-variant">
+                    Chat stays read, simulate, and draft only. Approval remains outside this screen in Operational Draft Review.
+                </div>
+
+                <button type="submit"
+                        class="inline-flex h-touch-target-min items-center justify-center rounded-xl bg-primary px-6 text-sm font-extrabold uppercase tracking-[0.14em] text-white">
+                    Send To Operational Chat
+                </button>
+            </form>
+        </article>
+
+        <article class="rounded-[24px] border border-outline-variant bg-white p-6 shadow-sm">
+            <div>
+                <p class="m-0 text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Conversation</p>
+                <h2 class="mt-2 text-3xl font-black tracking-[-0.04em] text-primary">Draft-safe interpretation</h2>
+            </div>
+
+            <div id="operational-chat-thread" class="mt-6 space-y-5">
+                <div class="rounded-[22px] border border-outline-variant bg-surface-container-low px-5 py-6 text-base leading-7 text-on-surface-variant">
+                    Send a narrative to see detected domains, warnings, created drafts, and review links.
+                </div>
+            </div>
+        </article>
+    </section>
+</section>

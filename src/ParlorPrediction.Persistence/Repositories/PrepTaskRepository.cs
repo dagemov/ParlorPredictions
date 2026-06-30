@@ -34,7 +34,10 @@ public sealed class PrepTaskRepository : IPrepTaskRepository
         return _dbContext.PrepTasks
             .Include(task => task.PrepItem)
             .Include(task => task.PrepStation)
-            .FirstOrDefaultAsync(task => task.DoughPrepRecommendationId == doughPrepRecommendationId, cancellationToken);
+            .FirstOrDefaultAsync(
+                task => task.DoughPrepRecommendationId == doughPrepRecommendationId &&
+                    task.Status != PrepTaskStatus.Cancelled,
+                cancellationToken);
     }
 
     public async Task<IReadOnlyList<PrepTask>> GetDoughTasksByDateAsync(
@@ -48,7 +51,8 @@ public sealed class PrepTaskRepository : IPrepTaskRepository
             .Include(task => task.CompletedByUser)
             .Where(task =>
                 task.TaskDate == taskDate &&
-                task.PrepItem.Code == PrepCatalogCodes.DoughItem)
+                task.PrepItem.Code == PrepCatalogCodes.DoughItem &&
+                task.Status != PrepTaskStatus.Cancelled)
             .OrderBy(task => task.Status)
             .ThenBy(task => task.CreatedAtUtc)
             .ToArrayAsync(cancellationToken);
@@ -67,7 +71,8 @@ public sealed class PrepTaskRepository : IPrepTaskRepository
             .Where(task =>
                 task.TaskDate >= startDate &&
                 task.TaskDate <= endDate &&
-                task.PrepItem.Code == PrepCatalogCodes.DoughItem)
+                task.PrepItem.Code == PrepCatalogCodes.DoughItem &&
+                task.Status != PrepTaskStatus.Cancelled)
             .OrderBy(task => task.TaskDate)
             .ThenBy(task => task.Status)
             .ThenBy(task => task.CreatedAtUtc)
@@ -79,6 +84,7 @@ public sealed class PrepTaskRepository : IPrepTaskRepository
         PrepTaskStatus? status,
         ApplicationRole? assignedRole,
         Guid? prepItemId,
+        bool includeCancelled = false,
         CancellationToken cancellationToken = default)
     {
         var query = _dbContext.PrepTasks
@@ -107,6 +113,11 @@ public sealed class PrepTaskRepository : IPrepTaskRepository
         if (prepItemId.HasValue && prepItemId.Value != Guid.Empty)
         {
             query = query.Where(task => task.PrepItemId == prepItemId.Value);
+        }
+
+        if (!includeCancelled)
+        {
+            query = query.Where(task => task.Status != PrepTaskStatus.Cancelled);
         }
 
         return await query

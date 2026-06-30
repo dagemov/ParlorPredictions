@@ -35,11 +35,7 @@ public static class DoughWeeklyInventoryCalculator
                 batch.FermentationReadyDate <= weekEndDate)
             .Sum(batch => batch.TotalBalls);
 
-        var mixedButNotBalledLoads = liveMixedButNotBalledBalls > 0
-            ? CountFullLoads(liveMixedButNotBalledBalls) + (applyCarryoverMixedFallback ? carryoverMixedLoads : 0)
-            : applyCarryoverMixedFallback
-                ? carryoverMixedLoads
-                : 0;
+        var mixedButNotBalledLoads = CountFullLoads(mixedButNotBalledBalls);
 
         var futureBalls = mixedButNotBalledBalls + stillFermentingBalls;
 
@@ -58,13 +54,11 @@ public static class DoughWeeklyInventoryCalculator
     {
         var remainingNeed = Math.Max(weekTotalNeededBalls - actualUsedBallsThisWeek, 0);
 
-        // ReadyNow already includes balled dough added on Ball Dough completion.
-        // MixedButNotBalled covers unballed loads. StillFermenting is shown separately for kitchen visibility
-        // and must not be subtracted again here or completed loads double-reduce Still Missing.
+        // Still Missing should reflect what is not covered by dough that physically exists right now.
+        // Future dough is shown separately for planning, but it must not reduce the current shortage.
         return Math.Max(
             remainingNeed
-                - inventory.ReadyNowBalls
-                - inventory.MixedButNotBalledBalls,
+                - inventory.ReadyNowBalls,
             0);
     }
 

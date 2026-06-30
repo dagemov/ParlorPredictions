@@ -36,5 +36,13 @@ public sealed class DailyClosingOperationalInsightsResponse
 
     public bool HasShortageWarning { get; set; }
 
+    public int TotalTracedUsedBallsOnClosedDays { get; set; }
+
+    public int TraceReconciliationDifferenceBalls { get; set; }
+
+    public bool HasTraceReconciliationWarning { get; set; }
+
+    public string? TraceReconciliationMessage { get; set; }
+
     public string Recommendation { get; set; } = string.Empty;
 }

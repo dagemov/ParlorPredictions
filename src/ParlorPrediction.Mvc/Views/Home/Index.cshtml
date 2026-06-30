@@ -11,6 +11,7 @@
     var stillMissingBalls = weeklyGoal?.DoughStillMissingThisWeekBalls ?? planning?.MissingBallsForProductionWindow ?? 0;
     var weeklyGoalBalls = weeklyGoal?.DoughNeededBalls ?? planning?.TotalFutureRequiredBalls ?? 0;
     var dailyInsights = Model.DailyClosingInsights;
+    var inventoryPreview = Model.DoughInventoryPreview;
 }
 
 @if (!Model.IsAuthenticatedExperience)
@@ -118,7 +119,7 @@ else
                     <span class="pb-2 text-2xl text-on-surface-variant">balls</span>
                 </div>
                 <p class="mt-5 mb-0 text-lg leading-8 text-[#b46200]">
-                    Weekly need minus actual used on closed days, Ready Now, and Mixed But Not Balled. Still Fermenting stays visible but is not subtracted twice after Ball Dough.
+                    Weekly need minus actual used on closed days and Ready Now. Future Dough stays visible, but it does not reduce this card until it becomes ready.
                 </p>
             </article>
 
@@ -193,6 +194,16 @@ else
                             @(dailyInsights.HasSurplusWarning ? $"Potential Dough Surplus: +{dailyInsights.ProjectedSurplus} Balls" : $"Potential Dough Shortage: {dailyInsights.ProjectedSurplus} Balls")
                         </p>
                         <p class="mt-2 mb-0 text-lg leading-8 text-on-surface-variant">@dailyInsights.Recommendation</p>
+                    </div>
+                }
+
+                @if (dailyInsights.HasTraceReconciliationWarning && !string.IsNullOrWhiteSpace(dailyInsights.TraceReconciliationMessage))
+                {
+                    <div class="mt-6 rounded-[20px] border border-[#d3a74b] bg-[#fff8ea] p-5">
+                        <p class="m-0 text-lg font-bold text-on-surface">
+                            Daily Closing vs traces: @(dailyInsights.TraceReconciliationDifferenceBalls > 0 ? $"+{dailyInsights.TraceReconciliationDifferenceBalls}" : dailyInsights.TraceReconciliationDifferenceBalls.ToString()) balls
+                        </p>
+                        <p class="mt-2 mb-0 text-lg leading-8 text-on-surface-variant">@dailyInsights.TraceReconciliationMessage</p>
                     </div>
                 }
             </section>
@@ -295,6 +306,65 @@ else
                     </div>
                 </div>
             </article>
+        </section>
+
+        <section class="rounded-[28px] border border-outline-variant bg-white p-7 shadow-sm">
+            <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div class="section-heading mb-0">
+                    <span class="eyebrow">Dough Inventory</span>
+                    <h2>Preview the live inventory impact</h2>
+                    <p>This is the compact view of the same projection used by the full Dough Inventory screen.</p>
+                </div>
+
+                <a asp-controller="DoughInventory"
+                   asp-action="Index"
+                   asp-route-targetDate="@Model.TargetDate.ToString("yyyy-MM-dd")"
+                   asp-route-historicalWeeksToUse="@Model.HistoricalWeeksToUse"
+                   class="inline-flex items-center justify-center gap-2 h-touch-target-min px-6 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-highest no-underline">
+                    <span class="material-symbols-outlined">monitoring</span>
+                    View Dough Inventory
+                </a>
+            </div>
+
+            <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div class="rounded-[20px] bg-surface-container-low p-5">
+                    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Ready Now</p>
+                    <strong class="mt-3 block text-4xl font-black tracking-[-0.05em] text-[#2e6e14]">@inventoryPreview.ReadyNowBalls</strong>
+                </div>
+                <div class="rounded-[20px] bg-surface-container-low p-5">
+                    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Use First</p>
+                    <strong class="mt-3 block text-4xl font-black tracking-[-0.05em] text-secondary">@inventoryPreview.UseFirstBalls</strong>
+                </div>
+                <div class="rounded-[20px] bg-surface-container-low p-5">
+                    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Mixed But Not Balled</p>
+                    <strong class="mt-3 block text-4xl font-black tracking-[-0.05em] text-[#9b5200]">@inventoryPreview.MixedButNotBalledBalls</strong>
+                </div>
+                <div class="rounded-[20px] bg-surface-container-low p-5">
+                    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Used Today</p>
+                    <strong class="mt-3 block text-4xl font-black tracking-[-0.05em] text-primary">@inventoryPreview.UsedTodayBalls</strong>
+                </div>
+            </div>
+
+            <div class="mt-6 grid gap-4 xl:grid-cols-[1.1fr_.9fr]">
+                <div class="rounded-[22px] border border-outline-variant bg-surface-container-low p-5">
+                    <div class="flex items-center justify-between gap-3">
+                        <span class="text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Still Missing</span>
+                        <strong class="text-2xl font-black text-secondary">@inventoryPreview.StillMissingBalls</strong>
+                    </div>
+                    <div class="mt-3 h-3 overflow-hidden rounded-full bg-white">
+                        <div class="h-full rounded-full bg-secondary-container" style="width: @(inventoryPreview.WeeklyGoalBalls <= 0 ? 0 : Math.Clamp((int)Math.Round(inventoryPreview.StillMissingBalls * 100d / inventoryPreview.WeeklyGoalBalls), 0, 100))%;"></div>
+                    </div>
+                </div>
+                <div class="rounded-[22px] border border-outline-variant bg-surface-container-low p-5">
+                    <div class="flex items-center justify-between gap-3">
+                        <span class="text-sm font-extrabold uppercase tracking-[0.18em] text-on-surface-variant">Lost / Discarded This Week</span>
+                        <strong class="text-2xl font-black text-on-surface">@inventoryPreview.LostOrDiscardedBalls</strong>
+                    </div>
+                    <div class="mt-3 h-3 overflow-hidden rounded-full bg-white">
+                        <div class="h-full rounded-full bg-on-surface-variant" style="width: @(inventoryPreview.WeeklyGoalBalls <= 0 ? 0 : Math.Clamp((int)Math.Round(inventoryPreview.LostOrDiscardedBalls * 100d / inventoryPreview.WeeklyGoalBalls), 0, 100))%;"></div>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <section class="rounded-[28px] border border-outline-variant bg-white p-7 shadow-sm">
