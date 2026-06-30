@@ -10,9 +10,18 @@ namespace ParlorPrediction.Application.Services.Dough;
 
 public sealed class DoughQualityManagementService : IDoughQualityManagementService
 {
+    private const string ReballRecoveredProductionSourceType = "ReballRecovered";
+    private const string ReballDiscardedProductionSourceType = "ReballDiscarded";
+    private const string DiscardedProductionSourceType = "Discarded";
+    private const string ReballRecoveredTransformationSourceType = "ReballRecovered";
+    private const string ReballDiscardedTransformationSourceType = "ReballDiscarded";
+    private const string DiscardCorrectionTransformationSourceType = "DiscardCorrection";
+
     private readonly IDoughBatchQualityRepository _doughBatchQualityRepository;
     private readonly IDoughLossRecordRepository _doughLossRecordRepository;
     private readonly IDoughReballRecordRepository _doughReballRecordRepository;
+    private readonly IInventoryTransformationLedgerRepository? _inventoryTransformationLedgerRepository;
+    private readonly IProductionLedgerRepository? _productionLedgerRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IUserRepository _userRepository;
 
@@ -21,11 +30,15 @@ public sealed class DoughQualityManagementService : IDoughQualityManagementServi
         IDoughLossRecordRepository doughLossRecordRepository,
         IDoughReballRecordRepository doughReballRecordRepository,
         IUnitOfWork unitOfWork,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        IProductionLedgerRepository? productionLedgerRepository = null,
+        IInventoryTransformationLedgerRepository? inventoryTransformationLedgerRepository = null)
     {
         _doughBatchQualityRepository = doughBatchQualityRepository;
         _doughLossRecordRepository = doughLossRecordRepository;
         _doughReballRecordRepository = doughReballRecordRepository;
+        _inventoryTransformationLedgerRepository = inventoryTransformationLedgerRepository;
+        _productionLedgerRepository = productionLedgerRepository;
         _unitOfWork = unitOfWork;
         _userRepository = userRepository;
     }
@@ -64,6 +77,13 @@ public sealed class DoughQualityManagementService : IDoughQualityManagementServi
                     record.SourceDate,
                     user.Id,
                     request.ManagerNote),
+                cancellationToken);
+
+            await AppendDiscardLedgersAsync(
+                record.SourceDate,
+                record.Id,
+                record.QuantityBalls,
+                request.ManagerNote,
                 cancellationToken);
         }
 
@@ -124,6 +144,13 @@ public sealed class DoughQualityManagementService : IDoughQualityManagementServi
                     user.Id,
                     request.ManagerNote),
                 cancellationToken);
+
+            await AppendDiscardLedgersAsync(
+                DateOnly.FromDateTime(request.EffectiveAtUtc ?? DateTime.UtcNow),
+                record.Id,
+                record.QuantityBalls,
+                request.ManagerNote,
+                cancellationToken);
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -153,6 +180,13 @@ public sealed class DoughQualityManagementService : IDoughQualityManagementServi
                 DateOnly.FromDateTime(discardedAt),
                 user.Id,
                 request.ManagerNote),
+            cancellationToken);
+
+        await AppendDiscardLedgersAsync(
+            DateOnly.FromDateTime(discardedAt),
+            record.Id,
+            record.QuantityBalls,
+            request.ManagerNote,
             cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -189,17 +223,17 @@ public sealed class DoughQualityManagementService : IDoughQualityManagementServi
             {
                 record.ApplyPartialReball(request.QuantityRecoveredBalls, reballDate, user.Id, request.ManagerNote);
 
-                await _doughReballRecordRepository.AddAsync(
-                    DoughReballRecord.Create(
-                        record.Id,
-                        quantityBeforeReball,
-                        request.QuantityRecoveredBalls,
-                        DateOnly.FromDateTime(reballDate),
-                        ReballResult.PartialRecovered,
-                        user.Id,
-                        record.MustUseByDate,
-                        request.ManagerNote),
-                    cancellationToken);
+                var reballRecord = DoughReballRecord.Create(
+                    record.Id,
+                    quantityBeforeReball,
+                    request.QuantityRecoveredBalls,
+                    DateOnly.FromDateTime(reballDate),
+                    ReballResult.PartialRecovered,
+                    user.Id,
+                    record.MustUseByDate,
+                    request.ManagerNote);
+
+                await _doughReballRecordRepository.AddAsync(reballRecord, cancellationToken);
 
                 var quantityLostBalls = quantityBeforeReball - request.QuantityRecoveredBalls;
                 if (quantityLostBalls > 0)
@@ -215,6 +249,14 @@ public sealed class DoughQualityManagementService : IDoughQualityManagementServi
                         cancellationToken);
                 }
 
+                await AppendReballLedgersAsync(
+                    DateOnly.FromDateTime(reballDate),
+                    reballRecord.Id,
+                    request.QuantityRecoveredBalls,
+                    quantityLostBalls,
+                    request.ManagerNote,
+                    cancellationToken);
+
                 break;
             }
 
@@ -223,17 +265,17 @@ public sealed class DoughQualityManagementService : IDoughQualityManagementServi
                 var discardReason = ParseLossReason(request.DiscardReason ?? string.Empty, nameof(request.DiscardReason));
                 record.Discard(discardReason, reballDate, user.Id, request.ManagerNote);
 
-                await _doughReballRecordRepository.AddAsync(
-                    DoughReballRecord.Create(
-                        record.Id,
-                        quantityBeforeReball,
-                        0,
-                        DateOnly.FromDateTime(reballDate),
-                        ReballResult.Discarded,
-                        user.Id,
-                        null,
-                        request.ManagerNote),
-                    cancellationToken);
+                var reballRecord = DoughReballRecord.Create(
+                    record.Id,
+                    quantityBeforeReball,
+                    0,
+                    DateOnly.FromDateTime(reballDate),
+                    ReballResult.Discarded,
+                    user.Id,
+                    null,
+                    request.ManagerNote);
+
+                await _doughReballRecordRepository.AddAsync(reballRecord, cancellationToken);
 
                 await _doughLossRecordRepository.AddAsync(
                     DoughLossRecord.Create(
@@ -245,6 +287,13 @@ public sealed class DoughQualityManagementService : IDoughQualityManagementServi
                         request.ManagerNote),
                     cancellationToken);
 
+                await AppendReballDiscardLedgersAsync(
+                    DateOnly.FromDateTime(reballDate),
+                    reballRecord.Id,
+                    quantityBeforeReball,
+                    request.ManagerNote,
+                    cancellationToken);
+
                 break;
             }
 
@@ -254,6 +303,124 @@ public sealed class DoughQualityManagementService : IDoughQualityManagementServi
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Map(record);
+    }
+
+    private async Task AppendDiscardLedgersAsync(
+        DateOnly occurredOn,
+        Guid sourceEntityId,
+        int ballsDiscarded,
+        string? notes,
+        CancellationToken cancellationToken)
+    {
+        if (_productionLedgerRepository is not null)
+        {
+            await _productionLedgerRepository.AddAsync(
+                new ProductionLedger(
+                    Guid.NewGuid(),
+                    occurredOn,
+                    DiscardedProductionSourceType,
+                    sourceEntityId,
+                    0,
+                    0,
+                    0,
+                    ballsDiscarded,
+                    notes),
+                cancellationToken);
+        }
+
+        if (_inventoryTransformationLedgerRepository is not null)
+        {
+            await _inventoryTransformationLedgerRepository.AddAsync(
+                new InventoryTransformationLedger(
+                    Guid.NewGuid(),
+                    occurredOn,
+                    DiscardCorrectionTransformationSourceType,
+                    sourceEntityId,
+                    0,
+                    ballsDiscarded,
+                    0,
+                    notes),
+                cancellationToken);
+        }
+    }
+
+    private async Task AppendReballLedgersAsync(
+        DateOnly occurredOn,
+        Guid sourceEntityId,
+        int ballsRecovered,
+        int ballsDiscarded,
+        string? notes,
+        CancellationToken cancellationToken)
+    {
+        if (_productionLedgerRepository is not null)
+        {
+            await _productionLedgerRepository.AddAsync(
+                new ProductionLedger(
+                    Guid.NewGuid(),
+                    occurredOn,
+                    ReballRecoveredProductionSourceType,
+                    sourceEntityId,
+                    0,
+                    0,
+                    ballsRecovered,
+                    ballsDiscarded,
+                    notes),
+                cancellationToken);
+        }
+
+        if (_inventoryTransformationLedgerRepository is not null)
+        {
+            await _inventoryTransformationLedgerRepository.AddAsync(
+                new InventoryTransformationLedger(
+                    Guid.NewGuid(),
+                    occurredOn,
+                    ReballRecoveredTransformationSourceType,
+                    sourceEntityId,
+                    ballsRecovered,
+                    ballsDiscarded,
+                    0,
+                    notes),
+                cancellationToken);
+        }
+    }
+
+    private async Task AppendReballDiscardLedgersAsync(
+        DateOnly occurredOn,
+        Guid sourceEntityId,
+        int ballsDiscarded,
+        string? notes,
+        CancellationToken cancellationToken)
+    {
+        if (_productionLedgerRepository is not null)
+        {
+            await _productionLedgerRepository.AddAsync(
+                new ProductionLedger(
+                    Guid.NewGuid(),
+                    occurredOn,
+                    ReballDiscardedProductionSourceType,
+                    sourceEntityId,
+                    0,
+                    0,
+                    0,
+                    ballsDiscarded,
+                    notes),
+                cancellationToken);
+        }
+
+        if (_inventoryTransformationLedgerRepository is not null)
+        {
+            await _inventoryTransformationLedgerRepository.AddAsync(
+                new InventoryTransformationLedger(
+                    Guid.NewGuid(),
+                    occurredOn,
+                    ReballDiscardedTransformationSourceType,
+                    sourceEntityId,
+                    0,
+                    ballsDiscarded,
+                    0,
+                    notes),
+                cancellationToken);
+        }
     }
 
     private async Task<User> GetRequiredActiveUserAsync(string userId, CancellationToken cancellationToken)

@@ -8,8 +8,11 @@ public sealed class McpToolAllowlist
         McpToolNames.ReadDoughInventory,
         McpToolNames.ExplainWeeklyGoal,
         McpToolNames.SimulateOperationalNarrative,
+        McpToolNames.SimulateOperationalProjection,
+        McpToolNames.PreviewOperationalDraft,
         McpToolNames.DraftWeeklyCorrection,
         McpToolNames.DraftDoughTask,
+        McpToolNames.DraftProjectionBasedAdjustment,
         McpToolNames.ValidateClosingBeforeSave
     };
 

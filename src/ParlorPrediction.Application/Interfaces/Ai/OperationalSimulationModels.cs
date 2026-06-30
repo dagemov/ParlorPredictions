@@ -32,6 +32,8 @@ public sealed class WeeklyCorrectionProposal
 
 public sealed class DoughTaskDraftProposal
 {
+    public Guid? ExistingPrepTaskId { get; init; }
+
     public DateOnly TaskDate { get; init; }
 
     public string TaskType { get; init; } = string.Empty;
@@ -51,6 +53,46 @@ public sealed class DoughTaskDraftProposal
     public bool AutoCompleteOnApproval { get; init; }
 
     public int? CompletionQuantity { get; init; }
+}
+
+public sealed class DailyClosingDraftProposal
+{
+    public Guid? ExistingDailyClosingId { get; init; }
+
+    public DateOnly ClosingDate { get; init; }
+
+    public int ForecastNeededBalls { get; init; }
+
+    public int ActualUsedBalls { get; init; }
+
+    public IReadOnlyList<OperationalUsageComponent> UsageBreakdown { get; init; } = Array.Empty<OperationalUsageComponent>();
+
+    public string Notes { get; init; } = string.Empty;
+
+    public string? CorrectionNote { get; init; }
+}
+
+public sealed class RestaurantEventDraftProposal
+{
+    public Guid? ExistingRestaurantEventId { get; init; }
+
+    public DateOnly EventDate { get; init; }
+
+    public string Name { get; init; } = string.Empty;
+
+    public int EstimatedPizzas { get; init; }
+
+    public int EstimatedDoughBalls { get; init; }
+
+    public int ExpectedPeopleMinimum { get; init; }
+
+    public int ExpectedPeopleMaximum { get; init; }
+
+    public bool AllowShortFermentation { get; init; }
+
+    public int? PreviousNarrativeDoughBalls { get; init; }
+
+    public string Notes { get; init; } = string.Empty;
 }
 
 public sealed class OperationalValidationWarning
@@ -87,6 +129,14 @@ public sealed class OperationalSimulationResult
     public WeeklyCorrectionProposal? WeeklyCorrectionProposal { get; init; }
 
     public DoughTaskDraftProposal? DoughTaskDraftProposal { get; init; }
+
+    public DailyClosingDraftProposal? DailyClosingDraftProposal { get; init; }
+
+    public RestaurantEventDraftProposal? RestaurantEventDraftProposal { get; init; }
+
+    public OperationalProjectionResult? OperationalProjection { get; init; }
+
+    public ProjectionAdjustmentDraftProposal? ProjectionAdjustmentDraftProposal { get; init; }
 
     public WeeklyDoughClosingResponse? ExistingWeeklyClosing { get; init; }
 
@@ -155,6 +205,8 @@ public sealed class WeeklyCorrectionApprovalPayload
 
 public sealed class DoughTaskApprovalPayload
 {
+    public Guid? ExistingPrepTaskId { get; init; }
+
     public DateOnly TaskDate { get; init; }
 
     public Guid PrepItemId { get; init; }
@@ -174,6 +226,48 @@ public sealed class DoughTaskApprovalPayload
     public string? Notes { get; init; }
 
     public bool AutoCompleteOnApproval { get; init; }
+}
+
+public sealed class DailyClosingApprovalPayload
+{
+    public Guid? ExistingDailyClosingId { get; init; }
+
+    public DateOnly ClosingDate { get; init; }
+
+    public int ForecastNeededBalls { get; init; }
+
+    public int ActualUsedBalls { get; init; }
+
+    public IReadOnlyList<OperationalUsageComponent> UsageBreakdown { get; init; } = Array.Empty<OperationalUsageComponent>();
+
+    public string? Notes { get; init; }
+
+    public string? CorrectionNote { get; init; }
+}
+
+public sealed class RestaurantEventApprovalPayload
+{
+    public Guid? ExistingRestaurantEventId { get; init; }
+
+    public DateOnly EventDate { get; init; }
+
+    public string Name { get; init; } = string.Empty;
+
+    public int EstimatedPizzas { get; init; }
+
+    public int EstimatedDoughBalls { get; init; }
+
+    public int ExpectedPeopleMinimum { get; init; }
+
+    public int ExpectedPeopleMaximum { get; init; }
+
+    public bool AllowShortFermentation { get; init; }
+
+    public string? Notes { get; init; }
+
+    public bool IsActive { get; init; } = true;
+
+    public int? PreviousNarrativeDoughBalls { get; init; }
 }
 
 public sealed class OperationalDraftApprovalResult

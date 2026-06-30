@@ -381,6 +381,7 @@ public sealed class PrepTasksController : Controller
 
         items.AddRange(
             Enum.GetNames<PrepTaskStatus>()
+                .Where(statusName => !string.Equals(statusName, nameof(PrepTaskStatus.Cancelled), StringComparison.OrdinalIgnoreCase))
                 .Select(statusName => new SelectListItem(
                     statusName,
                     statusName,

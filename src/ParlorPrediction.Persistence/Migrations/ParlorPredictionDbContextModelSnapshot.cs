@@ -155,6 +155,63 @@ namespace ParlorPrediction.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.ConsumptionLedger", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int>("EventBalls")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateOnly>("OccurredOn")
+                        .HasColumnType("date");
+
+                    b.Property<int>("SalesBalls")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ServiceUsageBalls")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SourceEntityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredOn");
+
+                    b.HasIndex("SourceType", "SourceEntityId", "CreatedAtUtc");
+
+                    b.ToTable("ConsumptionLedgers", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ConsumptionLedgers_EventBalls_NonNegative", "[EventBalls] >= 0");
+
+                            t.HasCheckConstraint("CK_ConsumptionLedgers_SalesBalls_NonNegative", "[SalesBalls] >= 0");
+
+                            t.HasCheckConstraint("CK_ConsumptionLedgers_ServiceUsageBalls_NonNegative", "[ServiceUsageBalls] >= 0");
+
+                            t.HasCheckConstraint("CK_ConsumptionLedgers_SourceType_NotEmpty", "LEN(LTRIM(RTRIM([SourceType]))) > 0");
+                        });
+                });
+
             modelBuilder.Entity("ParlorPrediction.Domain.Entities.DailyDoughClosing", b =>
                 {
                     b.Property<Guid>("Id")
@@ -892,6 +949,58 @@ namespace ParlorPrediction.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.InventoryTransformationLedger", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("BallsDiscarded")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BallsReclassified")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BallsRecovered")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateOnly>("OccurredOn")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("SourceEntityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredOn");
+
+                    b.HasIndex("SourceType", "SourceEntityId", "CreatedAtUtc");
+
+                    b.ToTable("InventoryTransformationLedgers", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_InventoryTransformationLedgers_BallsDiscarded_NonNegative", "[BallsDiscarded] >= 0");
+
+                            t.HasCheckConstraint("CK_InventoryTransformationLedgers_BallsReclassified_NonNegative", "[BallsReclassified] >= 0");
+
+                            t.HasCheckConstraint("CK_InventoryTransformationLedgers_BallsRecovered_NonNegative", "[BallsRecovered] >= 0");
+
+                            t.HasCheckConstraint("CK_InventoryTransformationLedgers_SourceType_NotEmpty", "LEN(LTRIM(RTRIM([SourceType]))) > 0");
+                        });
+                });
+
             modelBuilder.Entity("ParlorPrediction.Domain.Entities.ManagerPrepRecommendation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1360,6 +1469,63 @@ namespace ParlorPrediction.Persistence.Migrations
                             t.HasCheckConstraint("CK_PrepTasks_QuantityRecommended_NonNegative", "[QuantityRecommended] >= 0");
 
                             t.HasCheckConstraint("CK_PrepTasks_TaskTypeUnit", "([TaskType] = 'GenericDough' AND [QuantityUnit] = 'Balls') OR ([TaskType] = 'MakeDoughLoad' AND [QuantityUnit] = 'FullLoads') OR ([TaskType] = 'BallDough' AND [QuantityUnit] = 'Balls')");
+                        });
+                });
+
+            modelBuilder.Entity("ParlorPrediction.Domain.Entities.ProductionLedger", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("BallsCompleted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BallsDiscarded")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BallsReballed")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateOnly>("OccurredOn")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("SourceEntityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<int>("TotalBallsCreated")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredOn");
+
+                    b.HasIndex("SourceType", "SourceEntityId", "CreatedAtUtc");
+
+                    b.ToTable("ProductionLedgers", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ProductionLedgers_BallsCompleted_NonNegative", "[BallsCompleted] >= 0");
+
+                            t.HasCheckConstraint("CK_ProductionLedgers_BallsDiscarded_NonNegative", "[BallsDiscarded] >= 0");
+
+                            t.HasCheckConstraint("CK_ProductionLedgers_BallsReballed_NonNegative", "[BallsReballed] >= 0");
+
+                            t.HasCheckConstraint("CK_ProductionLedgers_SourceType_NotEmpty", "LEN(LTRIM(RTRIM([SourceType]))) > 0");
+
+                            t.HasCheckConstraint("CK_ProductionLedgers_TotalBallsCreated_NonNegative", "[TotalBallsCreated] >= 0");
                         });
                 });
 

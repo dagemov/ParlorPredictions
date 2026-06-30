@@ -49,6 +49,22 @@ public sealed class AdminPanelController : Controller
                     IconClass = "fa-solid fa-magnifying-glass-chart",
                     Controller = "DoughQuality",
                     Action = "Review"
+                },
+                new()
+                {
+                    Title = "Operational Draft Review",
+                    Description = "Review AI and MCP operational drafts, preview diffs, and approve only safe changes.",
+                    IconClass = "fa-solid fa-clipboard-list",
+                    Controller = "OperationalDrafts",
+                    Action = "Index"
+                },
+                new()
+                {
+                    Title = "Operational Chat",
+                    Description = "Interpret manager narratives, split operational domains, and create draft-safe review links.",
+                    IconClass = "fa-solid fa-comments",
+                    Controller = "OperationalChat",
+                    Action = "Index"
                 }
             ],
             DataLinks =

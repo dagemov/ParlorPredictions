@@ -777,7 +777,7 @@ public sealed class PrepWeeklyDoughCalendarServiceTests
                     .ToArray());
         }
 
-        public Task<IReadOnlyList<PrepTask>> SearchDoughTasksAsync(DateOnly? taskDate, PrepTaskStatus? status, ApplicationRole? assignedRole, Guid? prepItemId, CancellationToken cancellationToken = default)
+        public Task<IReadOnlyList<PrepTask>> SearchDoughTasksAsync(DateOnly? taskDate, PrepTaskStatus? status, ApplicationRole? assignedRole, Guid? prepItemId, bool includeCancelled = false, CancellationToken cancellationToken = default)
         {
             IEnumerable<PrepTask> query = Tasks;
 

@@ -1,5 +1,11 @@
 # End-To-End Weekly Carryover Flow
 
+## Related Operational History
+
+For the reconstructed real kitchen timeline behind the two already-closed June weeks, see:
+
+- [2026-06-23 Weekly Closing Operational History](./2026-06-23_WEEKLY_CLOSING_OPERATIONAL_HISTORY.md)
+
 ## Purpose
 
 This document validates the real end-to-end flow for:

@@ -23,6 +23,7 @@ public interface IPrepTaskRepository
         PrepTaskStatus? status,
         ApplicationRole? assignedRole,
         Guid? prepItemId,
+        bool includeCancelled = false,
         CancellationToken cancellationToken = default);
 
     void Remove(PrepTask task);

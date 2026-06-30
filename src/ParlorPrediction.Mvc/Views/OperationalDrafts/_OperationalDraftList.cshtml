@@ -1,0 +1,58 @@
+@model OperationalDraftListPageViewModel
+
+@if (Model.Drafts.Count == 0)
+{
+    <div class="rounded-[20px] border border-outline-variant bg-surface-container-low px-5 py-6 text-base font-semibold text-on-surface-variant">
+        No operational drafts are waiting for review right now.
+    </div>
+}
+else
+{
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-left">
+            <thead>
+                <tr class="border-b border-outline-variant text-sm font-extrabold uppercase tracking-[0.14em] text-on-surface-variant">
+                    <th class="px-3 py-3">Draft Type</th>
+                    <th class="px-3 py-3">Date</th>
+                    <th class="px-3 py-3">Correlation Id</th>
+                    <th class="px-3 py-3">Status</th>
+                    <th class="px-3 py-3">Risk</th>
+                    <th class="px-3 py-3">Conflicts</th>
+                    <th class="px-3 py-3">Created By</th>
+                    <th class="px-3 py-3">Review</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var draft in Model.Drafts)
+            {
+                var riskTone = draft.RiskLevel == "High"
+                    ? "bg-[#fdeceb] text-error"
+                    : draft.RiskLevel == "Medium"
+                        ? "bg-[#fff3e2] text-[#9b5200]"
+                        : "bg-[#eff8e7] text-[#2e6e14]";
+
+                <tr class="border-b border-outline-variant/60 align-top text-sm text-on-surface">
+                    <td class="px-3 py-3">
+                        <div class="font-semibold">@draft.DraftTypeDisplay</div>
+                        @if (draft.StateDriftDetected)
+                        {
+                            <div class="mt-1 text-xs font-extrabold uppercase tracking-[0.14em] text-[#9b5200]">State Drift Detected</div>
+                        }
+                    </td>
+                    <td class="px-3 py-3">@draft.CreatedAtLocal.ToString("MMM d, yyyy h:mm tt")</td>
+                    <td class="px-3 py-3 font-mono text-xs">@draft.CorrelationId</td>
+                    <td class="px-3 py-3">@draft.StatusDisplay</td>
+                    <td class="px-3 py-3">
+                        <span class="inline-flex rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-[0.12em] @riskTone">@draft.RiskLevel</span>
+                    </td>
+                    <td class="px-3 py-3">@(draft.HasConflicts ? "Yes" : "No")</td>
+                    <td class="px-3 py-3">@draft.CreatedBy</td>
+                    <td class="px-3 py-3">
+                        <a asp-action="Details" asp-route-id="@draft.DraftId" class="font-extrabold text-primary no-underline">Review</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

@@ -8,6 +8,9 @@ using ParlorPrediction.Application.Services.Ai;
 using ParlorPrediction.Application.Services.AIOrchestration;
 using ParlorPrediction.Application.Services.Dough;
 using ParlorPrediction.Application.Services.OperationalDrafts;
+using ParlorPrediction.Application.Services.OperationalChat;
+using ParlorPrediction.Application.Services.OperationalPreview;
+using ParlorPrediction.Application.Services.OperationalProjection;
 using ParlorPrediction.Application.Services.OperationalSimulation;
 using ParlorPrediction.Application.Services.Prep;
 
@@ -19,9 +22,14 @@ public static class ApplicationLayerServiceCollectionExtensions
     {
         services.AddScoped<IAiPrepRecommendationService, AiPrepRecommendationService>();
         services.AddScoped<IOperationalIntentClassifier, OperationalIntentClassifier>();
+        services.AddScoped<IOperationalChatService, OperationalChatService>();
         services.AddScoped<IOperationalSimulationService, OperationalSimulationService>();
         services.AddScoped<IOperationalDraftService, OperationalDraftService>();
+        services.AddScoped<IOperationalDraftReadService, OperationalDraftReadService>();
+        services.AddScoped<IOperationalWeekSliceService, OperationalWeekSliceService>();
         services.AddScoped<IOperationalWeeklyGoalExplanationService, OperationalWeeklyGoalExplanationService>();
+        services.AddScoped<IOperationalPreviewService, OperationalPreviewService>();
+        services.AddScoped<IOperationalProjectionService, OperationalProjectionService>();
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IDoughDemandPlanService, DoughDemandPlanService>();
         services.AddScoped<IDoughSourceProjectionService, DoughSourceProjectionService>();

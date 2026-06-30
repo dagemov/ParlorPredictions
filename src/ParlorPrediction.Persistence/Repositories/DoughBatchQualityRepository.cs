@@ -29,7 +29,7 @@ public sealed class DoughBatchQualityRepository : IDoughBatchQualityRepository
 
     public async Task<IReadOnlyList<DoughBatchQualityRecord>> ListAsync(CancellationToken cancellationToken = default)
     {
-        return await _dbContext.DoughBatchQualityRecords
+        return await ApplyOperationalVisibilityFilter(_dbContext.DoughBatchQualityRecords)
             .AsNoTracking()
             .Include(record => record.ReballRecords)
             .OrderByDescending(record => record.SourceDate)
@@ -47,9 +47,8 @@ public sealed class DoughBatchQualityRepository : IDoughBatchQualityRepository
         DoughQualityStatus? currentStatus,
         CancellationToken cancellationToken = default)
     {
-        var query = _dbContext.DoughBatchQualityRecords
-            .AsNoTracking()
-            .AsQueryable();
+        var query = ApplyOperationalVisibilityFilter(_dbContext.DoughBatchQualityRecords)
+            .AsNoTracking();
 
         if (sourceDateFrom.HasValue)
         {
@@ -94,5 +93,14 @@ public sealed class DoughBatchQualityRepository : IDoughBatchQualityRepository
             .OrderByDescending(record => record.SourceDate)
             .ThenByDescending(record => record.CreatedOrBalledAt)
             .ToArrayAsync(cancellationToken);
+    }
+
+    private static IQueryable<DoughBatchQualityRecord> ApplyOperationalVisibilityFilter(
+        IQueryable<DoughBatchQualityRecord> query)
+    {
+        return query.Where(record =>
+            !record.OriginalDoughTaskId.HasValue ||
+            record.OriginalDoughTask == null ||
+            record.OriginalDoughTask.Status != PrepTaskStatus.Cancelled);
     }
 }

@@ -414,6 +414,7 @@ public sealed class DoughAvailabilityProjectionServiceTests
             PrepTaskStatus? status,
             ApplicationRole? assignedRole,
             Guid? prepItemId,
+            bool includeCancelled = false,
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<PrepTask>>(Tasks.ToArray());

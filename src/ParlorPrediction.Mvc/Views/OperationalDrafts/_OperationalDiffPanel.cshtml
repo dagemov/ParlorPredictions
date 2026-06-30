@@ -1,0 +1,36 @@
+@model OperationalDraftPreviewPanelViewModel
+
+<article class="rounded-[22px] border border-outline-variant bg-white p-5 shadow-sm">
+    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.16em] text-on-surface-variant">5. Diff</p>
+    <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div class="rounded-xl border border-outline-variant bg-surface-container-low p-4">
+            <div class="text-xs font-extrabold uppercase tracking-[0.12em] text-on-surface-variant">ReadyNow Delta</div>
+            <div class="mt-2 text-2xl font-black text-primary">@Model.Preview.Diff.ReadyNowDelta</div>
+        </div>
+        <div class="rounded-xl border border-outline-variant bg-surface-container-low p-4">
+            <div class="text-xs font-extrabold uppercase tracking-[0.12em] text-on-surface-variant">WeeklyUsed Delta</div>
+            <div class="mt-2 text-2xl font-black text-primary">@Model.Preview.Diff.WeeklyUsedDelta</div>
+        </div>
+        <div class="rounded-xl border border-outline-variant bg-surface-container-low p-4">
+            <div class="text-xs font-extrabold uppercase tracking-[0.12em] text-on-surface-variant">Production Delta</div>
+            <div class="mt-2 text-2xl font-black text-primary">@Model.Preview.Diff.ProductionDelta</div>
+        </div>
+        <div class="rounded-xl border border-outline-variant bg-surface-container-low p-4">
+            <div class="text-xs font-extrabold uppercase tracking-[0.12em] text-on-surface-variant">Event Delta</div>
+            <div class="mt-2 text-2xl font-black text-primary">@Model.Preview.Diff.ExternalEventConsumptionDelta</div>
+        </div>
+        <div class="rounded-xl border border-outline-variant bg-surface-container-low p-4">
+            <div class="text-xs font-extrabold uppercase tracking-[0.12em] text-on-surface-variant">Service Delta</div>
+            <div class="mt-2 text-2xl font-black text-primary">@Model.Preview.Diff.BallsReadyForServiceDelta</div>
+        </div>
+    </div>
+
+    <div class="mt-4 rounded-[20px] border border-outline-variant bg-surface-container-low p-5">
+        <ul class="m-0 list-disc space-y-2 pl-5 text-sm leading-6 text-on-surface">
+            @foreach (var change in Model.Preview.Diff.Changes)
+            {
+                <li>@change</li>
+            }
+        </ul>
+    </div>
+</article>

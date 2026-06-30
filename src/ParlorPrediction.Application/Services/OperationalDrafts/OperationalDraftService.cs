@@ -3,6 +3,7 @@ using ParlorPrediction.Application.Interfaces.Ai;
 using ParlorPrediction.Application.Interfaces.Dough;
 using ParlorPrediction.Application.Interfaces.Persistence;
 using ParlorPrediction.Application.Interfaces.Prep;
+using ParlorPrediction.Contracts.Requests.Dough;
 using ParlorPrediction.Contracts.Requests.DoughClosing;
 using ParlorPrediction.Contracts.Requests.Prep;
 using ParlorPrediction.Domain.Entities;
@@ -13,29 +14,42 @@ namespace ParlorPrediction.Application.Services.OperationalDrafts;
 public sealed class OperationalDraftService : IOperationalDraftService
 {
     private const string WeeklyCorrectionDraftType = "WeeklyCorrection";
+    private const string WeeklyClosingPreviewDraftType = "WeeklyClosingPreview";
     private const string DoughTaskDraftType = "DoughTask";
+    private const string DailyClosingDraftType = "DailyClosing";
+    private const string RestaurantEventDraftType = "RestaurantEvent";
+    private const string ProjectionAdjustmentDraftType = "ProjectionAdjustment";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly IOperationalAuditEntryRepository _operationalAuditEntryRepository;
     private readonly IOperationalDraftRepository _operationalDraftRepository;
+    private readonly IDailyDoughClosingManagementService _dailyDoughClosingManagementService;
+    private readonly IOperationalPreviewService _operationalPreviewService;
     private readonly IOperationalSimulationService _operationalSimulationService;
     private readonly IPrepTaskService _prepTaskService;
+    private readonly IRestaurantEventManagementService _restaurantEventManagementService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IWeeklyDoughClosingManagementService _weeklyDoughClosingManagementService;
 
     public OperationalDraftService(
         IOperationalAuditEntryRepository operationalAuditEntryRepository,
         IOperationalDraftRepository operationalDraftRepository,
+        IDailyDoughClosingManagementService dailyDoughClosingManagementService,
+        IOperationalPreviewService operationalPreviewService,
         IOperationalSimulationService operationalSimulationService,
         IPrepTaskService prepTaskService,
+        IRestaurantEventManagementService restaurantEventManagementService,
         IUnitOfWork unitOfWork,
         IWeeklyDoughClosingManagementService weeklyDoughClosingManagementService)
     {
         _operationalAuditEntryRepository = operationalAuditEntryRepository;
         _operationalDraftRepository = operationalDraftRepository;
+        _dailyDoughClosingManagementService = dailyDoughClosingManagementService;
+        _operationalPreviewService = operationalPreviewService;
         _operationalSimulationService = operationalSimulationService;
         _prepTaskService = prepTaskService;
+        _restaurantEventManagementService = restaurantEventManagementService;
         _unitOfWork = unitOfWork;
         _weeklyDoughClosingManagementService = weeklyDoughClosingManagementService;
     }
@@ -84,6 +98,7 @@ public sealed class OperationalDraftService : IOperationalDraftService
 
                 return new DoughTaskApprovalPayload
                 {
+                    ExistingPrepTaskId = proposal.ExistingPrepTaskId,
                     TaskDate = proposal.TaskDate,
                     PrepItemId = proposal.PrepItemId,
                     PrepStationId = proposal.PrepStationId,
@@ -96,6 +111,166 @@ public sealed class OperationalDraftService : IOperationalDraftService
                     AutoCompleteOnApproval = proposal.AutoCompleteOnApproval
                 };
             },
+            cancellationToken);
+    }
+
+    public Task<OperationalDraftEnvelope> CreateDoughTaskDraftAsync(
+        OperationalDoughTaskDraftRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return CreateStructuredDraftAsync(
+            () => _operationalSimulationService.SimulateDoughTaskAsync(request, cancellationToken),
+            DoughTaskDraftType,
+            simulation =>
+            {
+                var proposal = simulation.DoughTaskDraftProposal
+                    ?? throw new InvalidOperationException("The structured dough task request did not produce a draft proposal.");
+
+                return new DoughTaskApprovalPayload
+                {
+                    ExistingPrepTaskId = proposal.ExistingPrepTaskId,
+                    TaskDate = proposal.TaskDate,
+                    PrepItemId = proposal.PrepItemId,
+                    PrepStationId = proposal.PrepStationId,
+                    AssignedRole = proposal.AssignedRole,
+                    TaskType = proposal.TaskType,
+                    QuantityUnit = proposal.QuantityUnit,
+                    QuantityValue = proposal.Quantity,
+                    CompletionQuantityValue = proposal.CompletionQuantity,
+                    Notes = proposal.Notes,
+                    AutoCompleteOnApproval = proposal.AutoCompleteOnApproval
+                };
+            },
+            request.ActorUserId,
+            cancellationToken);
+    }
+
+    public Task<OperationalDraftEnvelope> CreateDailyClosingDraftAsync(
+        OperationalDailyClosingDraftRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return CreateStructuredDraftAsync(
+            () => _operationalSimulationService.SimulateDailyClosingAsync(request, cancellationToken),
+            DailyClosingDraftType,
+            simulation =>
+            {
+                var proposal = simulation.DailyClosingDraftProposal
+                    ?? throw new InvalidOperationException("The daily closing request did not produce a draft proposal.");
+
+                return new DailyClosingApprovalPayload
+                {
+                    ExistingDailyClosingId = proposal.ExistingDailyClosingId,
+                    ClosingDate = proposal.ClosingDate,
+                    ForecastNeededBalls = proposal.ForecastNeededBalls,
+                    ActualUsedBalls = proposal.ActualUsedBalls,
+                    UsageBreakdown = proposal.UsageBreakdown,
+                    Notes = proposal.Notes,
+                    CorrectionNote = proposal.CorrectionNote
+                };
+            },
+            request.ActorUserId,
+            cancellationToken);
+    }
+
+    public Task<OperationalDraftEnvelope> CreateRestaurantEventDraftAsync(
+        OperationalEventDraftRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return CreateStructuredDraftAsync(
+            () => _operationalSimulationService.SimulateRestaurantEventAsync(request, cancellationToken),
+            RestaurantEventDraftType,
+            simulation =>
+            {
+                var proposal = simulation.RestaurantEventDraftProposal
+                    ?? throw new InvalidOperationException("The restaurant event request did not produce a draft proposal.");
+
+                return new RestaurantEventApprovalPayload
+                {
+                    ExistingRestaurantEventId = proposal.ExistingRestaurantEventId,
+                    EventDate = proposal.EventDate,
+                    Name = proposal.Name,
+                    EstimatedPizzas = proposal.EstimatedPizzas,
+                    EstimatedDoughBalls = proposal.EstimatedDoughBalls,
+                    ExpectedPeopleMinimum = proposal.ExpectedPeopleMinimum,
+                    ExpectedPeopleMaximum = proposal.ExpectedPeopleMaximum,
+                    AllowShortFermentation = proposal.AllowShortFermentation,
+                    Notes = proposal.Notes,
+                    PreviousNarrativeDoughBalls = proposal.PreviousNarrativeDoughBalls
+                };
+            },
+            request.ActorUserId,
+            cancellationToken);
+    }
+
+    public Task<OperationalDraftEnvelope> CreateProjectionAdjustmentDraftAsync(
+        OperationalProjectionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return CreateStructuredDraftAsync(
+            () => _operationalSimulationService.SimulateOperationalProjectionAsync(request, cancellationToken),
+            ProjectionAdjustmentDraftType,
+            simulation =>
+            {
+                var proposal = simulation.ProjectionAdjustmentDraftProposal
+                    ?? throw new InvalidOperationException("The projection request did not produce an adjustment draft proposal.");
+
+                return new ProjectionAdjustmentDraftPayload
+                {
+                    ReferenceDate = proposal.ReferenceDate,
+                    WeekStartDate = proposal.WeekStartDate,
+                    WeekEndDate = proposal.WeekEndDate,
+                    ReadyNowBalls = proposal.ReadyNowBalls,
+                    BallsReadyForService = proposal.BallsReadyForService,
+                    RemainingWeekDemandBalls = proposal.RemainingWeekDemandBalls,
+                    ProjectedCoverageBalls = proposal.ProjectedCoverageBalls,
+                    ProjectedShortageBalls = proposal.ProjectedShortageBalls,
+                    SuggestedAdditionalBallDoughBalls = proposal.SuggestedAdditionalBallDoughBalls,
+                    SuggestedAdditionalMakeDoughLoads = proposal.SuggestedAdditionalMakeDoughLoads,
+                    Notes = proposal.Notes
+                };
+            },
+            request.ActorUserId,
+            cancellationToken);
+    }
+
+    public Task<OperationalDraftEnvelope> CreateWeeklyClosingPreviewDraftAsync(
+        OperationalWeeklyClosingPreviewRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return CreateStructuredDraftAsync(
+            () => _operationalSimulationService.SimulateWeeklyClosingPreviewAsync(request, cancellationToken),
+            WeeklyClosingPreviewDraftType,
+            simulation =>
+            {
+                var proposal = simulation.WeeklyCorrectionProposal
+                    ?? throw new InvalidOperationException("The weekly closing preview did not produce a weekly correction proposal.");
+
+                return new WeeklyCorrectionApprovalPayload
+                {
+                    ExistingWeeklyClosingId = proposal.ExistingWeeklyClosingId,
+                    WeekStartDate = proposal.WeekStartDate,
+                    NeededBalls = proposal.NeededBalls,
+                    ProducedBalls = proposal.ProducedBalls,
+                    UsedBalls = proposal.UsedBalls,
+                    LostBalls = proposal.LostBalls,
+                    LeftoverReadyBalls = proposal.LeftoverReadyBalls,
+                    LeftoverAttentionBalls = proposal.LeftoverAttentionBalls,
+                    LeftoverMixedLoads = proposal.LeftoverMixedLoads,
+                    Notes = proposal.Notes,
+                    CorrectionReason = proposal.Reason
+                };
+            },
+            request.ActorUserId,
             cancellationToken);
     }
 
@@ -144,6 +319,8 @@ public sealed class OperationalDraftService : IOperationalDraftService
 
         var draft = await GetRequiredDraftAsync(draftId, cancellationToken);
         EnsureDraftCanBeApproved(draft);
+        var preview = await _operationalPreviewService.BuildPreviewAsync(draft.Id, cancellationToken);
+        EnsurePreviewAllowsApproval(preview);
 
         Guid? approvedEntityId = null;
         OperationalAuditEntry auditEntry;
@@ -180,15 +357,19 @@ public sealed class OperationalDraftService : IOperationalDraftService
     public async Task<OperationalDraftEnvelope> RejectDraftAsync(
         Guid draftId,
         string reason,
+        string? reviewedByUserId = null,
         CancellationToken cancellationToken = default)
     {
         var draft = await GetRequiredDraftAsync(draftId, cancellationToken);
-        draft.Reject(reason);
+        var actorUserId = string.IsNullOrWhiteSpace(reviewedByUserId)
+            ? draft.CreatedBy
+            : reviewedByUserId.Trim();
+        draft.Reject(reason, actorUserId);
 
         var auditEntry = CreateAuditEntry(
             draft,
             "OperationalDraftRejected",
-            draft.CreatedBy);
+            actorUserId);
 
         await _operationalAuditEntryRepository.AddAsync(auditEntry, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -266,7 +447,10 @@ public sealed class OperationalDraftService : IOperationalDraftService
         return draft.DraftType switch
         {
             WeeklyCorrectionDraftType => await ApplyWeeklyCorrectionApprovalAsync(draft, userId, cancellationToken),
+            WeeklyClosingPreviewDraftType => await ApplyWeeklyCorrectionApprovalAsync(draft, userId, cancellationToken),
             DoughTaskDraftType => await ApplyDoughTaskApprovalAsync(draft, userId, cancellationToken),
+            DailyClosingDraftType => await ApplyDailyClosingApprovalAsync(draft, userId, cancellationToken),
+            RestaurantEventDraftType => await ApplyRestaurantEventApprovalAsync(draft, userId, cancellationToken),
             _ => throw new InvalidOperationException($"The draft type '{draft.DraftType}' is not supported by the MVP approval flow.")
         };
     }
@@ -327,6 +511,43 @@ public sealed class OperationalDraftService : IOperationalDraftService
         CancellationToken cancellationToken)
     {
         var payload = DeserializePayload<DoughTaskApprovalPayload>(draft.DraftPayloadJson);
+
+        if (payload.ExistingPrepTaskId.HasValue)
+        {
+            if (payload.AutoCompleteOnApproval)
+            {
+                await _prepTaskService.CompleteAsync(
+                    new CompletePrepTaskRequest
+                    {
+                        PrepTaskId = payload.ExistingPrepTaskId.Value,
+                        CompletedByUserId = userId,
+                        QuantityUnit = payload.QuantityUnit,
+                        QuantityValue = payload.CompletionQuantityValue ?? payload.QuantityValue,
+                        Notes = payload.Notes
+                    },
+                    cancellationToken);
+
+                return payload.ExistingPrepTaskId.Value;
+            }
+
+            var updatedTask = await _prepTaskService.UpdateManualAsync(
+                payload.ExistingPrepTaskId.Value,
+                new SavePrepTaskRequest
+                {
+                    TaskDate = payload.TaskDate,
+                    PrepItemId = payload.PrepItemId,
+                    PrepStationId = payload.PrepStationId,
+                    AssignedRole = payload.AssignedRole,
+                    TaskType = payload.TaskType,
+                    QuantityUnit = payload.QuantityUnit,
+                    QuantityValue = payload.QuantityValue,
+                    Notes = payload.Notes
+                },
+                cancellationToken);
+
+            return updatedTask.PrepTaskId;
+        }
+
         var createdTask = await _prepTaskService.CreateManualAsync(
             new SavePrepTaskRequest
             {
@@ -358,6 +579,77 @@ public sealed class OperationalDraftService : IOperationalDraftService
         return createdTask.PrepTaskId;
     }
 
+    private async Task<Guid?> ApplyDailyClosingApprovalAsync(
+        OperationalDraft draft,
+        string userId,
+        CancellationToken cancellationToken)
+    {
+        var payload = DeserializePayload<DailyClosingApprovalPayload>(draft.DraftPayloadJson);
+
+        if (payload.ExistingDailyClosingId.HasValue)
+        {
+            var corrected = await _dailyDoughClosingManagementService.CorrectDailyClosingAsync(
+                new CorrectDailyDoughClosingRequest
+                {
+                    DailyDoughClosingId = payload.ExistingDailyClosingId.Value,
+                    ForecastNeededBalls = payload.ForecastNeededBalls,
+                    ActualUsedBalls = payload.ActualUsedBalls,
+                    Notes = payload.Notes,
+                    CorrectionNote = payload.CorrectionNote,
+                    CorrectedByUserId = userId,
+                    CorrectedAtUtc = DateTime.UtcNow
+                },
+                cancellationToken);
+
+            return corrected.Id;
+        }
+
+        var created = await _dailyDoughClosingManagementService.CreateDailyClosingAsync(
+            new CreateDailyDoughClosingRequest
+            {
+                ClosingDate = payload.ClosingDate,
+                ForecastNeededBalls = payload.ForecastNeededBalls,
+                ActualUsedBalls = payload.ActualUsedBalls,
+                Notes = payload.Notes,
+                ClosedByUserId = userId,
+                ClosedAtUtc = DateTime.UtcNow
+            },
+            cancellationToken);
+
+        return created.Id;
+    }
+
+    private async Task<Guid?> ApplyRestaurantEventApprovalAsync(
+        OperationalDraft draft,
+        string userId,
+        CancellationToken cancellationToken)
+    {
+        var payload = DeserializePayload<RestaurantEventApprovalPayload>(draft.DraftPayloadJson);
+        var notes = BuildRestaurantEventApprovalNotes(payload);
+        var request = new SaveRestaurantEventRequest
+        {
+            EventDate = payload.EventDate,
+            Name = payload.Name,
+            EstimatedPizzas = payload.EstimatedPizzas,
+            EstimatedDoughBalls = payload.EstimatedDoughBalls,
+            AllowShortFermentation = payload.AllowShortFermentation,
+            Notes = notes,
+            IsActive = payload.IsActive
+        };
+
+        if (payload.ExistingRestaurantEventId.HasValue)
+        {
+            await _restaurantEventManagementService.UpdateAsync(
+                payload.ExistingRestaurantEventId.Value,
+                request,
+                cancellationToken);
+
+            return payload.ExistingRestaurantEventId.Value;
+        }
+
+        return await _restaurantEventManagementService.CreateAsync(request, cancellationToken);
+    }
+
     private async Task<OperationalDraft> GetRequiredDraftAsync(Guid draftId, CancellationToken cancellationToken)
     {
         if (draftId == Guid.Empty)
@@ -380,6 +672,19 @@ public sealed class OperationalDraftService : IOperationalDraftService
         if (HasBlockingWarnings(warnings))
         {
             throw new InvalidOperationException("Drafts with blocking validation warnings cannot be approved.");
+        }
+    }
+
+    private static void EnsurePreviewAllowsApproval(OperationalPreviewResult preview)
+    {
+        if (preview.HasConflicts)
+        {
+            throw new InvalidOperationException("Draft approval is blocked because the operational preview contains conflicts.");
+        }
+
+        if (string.Equals(preview.RiskLevel, "High", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Draft approval is blocked because the operational preview risk level is High.");
         }
     }
 
@@ -434,5 +739,96 @@ public sealed class OperationalDraftService : IOperationalDraftService
     private static string SerializeIntent(OperationalIntent intent)
     {
         return JsonSerializer.Serialize(intent, intent.GetType(), JsonOptions);
+    }
+
+    private async Task<OperationalDraftEnvelope> CreateStructuredDraftAsync(
+        Func<Task<OperationalSimulationResult>> simulationFactory,
+        string draftType,
+        Func<OperationalSimulationResult, object> payloadFactory,
+        string? actorUserId,
+        CancellationToken cancellationToken)
+    {
+        var simulation = await simulationFactory();
+        return await PersistDraftFromSimulationAsync(
+            simulation,
+            draftType,
+            payloadFactory,
+            actorUserId,
+            cancellationToken);
+    }
+
+    private async Task<OperationalDraftEnvelope> PersistDraftFromSimulationAsync(
+        OperationalSimulationResult simulation,
+        string draftType,
+        Func<OperationalSimulationResult, object> payloadFactory,
+        string? actorUserId,
+        CancellationToken cancellationToken)
+    {
+        var resolvedActorUserId = ResolveActorUserId(actorUserId);
+
+        if (HasBlockingWarnings(simulation.ValidationWarnings))
+        {
+            var blockedAuditEntry = OperationalAuditEntry.Create(
+                simulation.CorrelationId,
+                $"{draftType}DraftBlocked",
+                resolvedActorUserId,
+                simulation.SourceText,
+                SerializeIntent(simulation.Intent),
+                simulation.BeforeSnapshotJson,
+                simulation.AfterPreviewJson,
+                simulation.ValidationWarningsJson,
+                draftId: null);
+
+            await _operationalAuditEntryRepository.AddAsync(blockedAuditEntry, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            throw new InvalidOperationException("The current narrative produced blocking validation warnings, so no draft was persisted.");
+        }
+
+        var draftPayloadJson = JsonSerializer.Serialize(payloadFactory(simulation), JsonOptions);
+        var draft = OperationalDraft.Create(
+            simulation.CorrelationId,
+            draftType,
+            simulation.SourceText,
+            SerializeIntent(simulation.Intent),
+            simulation.BeforeSnapshotJson,
+            simulation.AfterPreviewJson,
+            simulation.ValidationWarningsJson,
+            draftPayloadJson,
+            resolvedActorUserId);
+        var auditEntry = CreateAuditEntry(
+            draft,
+            $"{draftType}DraftCreated",
+            resolvedActorUserId);
+
+        await _operationalDraftRepository.AddAsync(draft, cancellationToken);
+        await _operationalAuditEntryRepository.AddAsync(auditEntry, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return new OperationalDraftEnvelope
+        {
+            Draft = draft,
+            AuditEntry = auditEntry,
+            DiffJson = simulation.DiffJson
+        };
+    }
+
+    private static string? BuildRestaurantEventApprovalNotes(RestaurantEventApprovalPayload payload)
+    {
+        var noteParts = new List<string>();
+
+        if (payload.ExpectedPeopleMinimum > 0 || payload.ExpectedPeopleMaximum > 0)
+        {
+            noteParts.Add($"Attendance range: {payload.ExpectedPeopleMinimum}-{payload.ExpectedPeopleMaximum} people.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(payload.Notes))
+        {
+            noteParts.Add(payload.Notes.Trim());
+        }
+
+        return noteParts.Count == 0
+            ? null
+            : string.Join(" ", noteParts);
     }
 }

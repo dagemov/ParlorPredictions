@@ -10,6 +10,26 @@ public interface IOperationalDraftService
         OperationalNarrativeRequest request,
         CancellationToken cancellationToken = default);
 
+    Task<OperationalDraftEnvelope> CreateDoughTaskDraftAsync(
+        OperationalDoughTaskDraftRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<OperationalDraftEnvelope> CreateDailyClosingDraftAsync(
+        OperationalDailyClosingDraftRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<OperationalDraftEnvelope> CreateRestaurantEventDraftAsync(
+        OperationalEventDraftRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<OperationalDraftEnvelope> CreateProjectionAdjustmentDraftAsync(
+        OperationalProjectionRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<OperationalDraftEnvelope> CreateWeeklyClosingPreviewDraftAsync(
+        OperationalWeeklyClosingPreviewRequest request,
+        CancellationToken cancellationToken = default);
+
     Task<ClosingValidationResult> ValidateClosingBeforeSaveAsync(
         OperationalNarrativeRequest request,
         CancellationToken cancellationToken = default);
@@ -26,5 +46,6 @@ public interface IOperationalDraftService
     Task<OperationalDraftEnvelope> RejectDraftAsync(
         Guid draftId,
         string reason,
+        string? reviewedByUserId = null,
         CancellationToken cancellationToken = default);
 }

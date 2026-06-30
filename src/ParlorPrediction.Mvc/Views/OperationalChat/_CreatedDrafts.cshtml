@@ -1,0 +1,45 @@
+@model OperationalChatTurnViewModel
+
+<section class="rounded-[20px] border border-outline-variant bg-surface-container-low p-5">
+    <p class="m-0 text-sm font-extrabold uppercase tracking-[0.16em] text-on-surface-variant">Created Drafts</p>
+
+    @if (Model.CreatedDrafts.Count == 0)
+    {
+        <p class="mt-4 mb-0 text-sm leading-6 text-on-surface-variant">No drafts were created in this turn.</p>
+    }
+    else
+    {
+        <div class="mt-4 space-y-3">
+            @foreach (var draft in Model.CreatedDrafts)
+            {
+                var riskTone = draft.RiskLevel == "High"
+                    ? "bg-[#fdeceb] text-error"
+                    : draft.RiskLevel == "Medium"
+                        ? "bg-[#fff3e2] text-[#9b5200]"
+                        : "bg-[#eff8e7] text-[#2e6e14]";
+
+                <article class="rounded-[18px] border border-outline-variant bg-white p-4">
+                    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                            <h4 class="m-0 text-lg font-black tracking-[-0.02em] text-primary">@draft.DraftTypeDisplay</h4>
+                            <p class="mt-2 mb-0 text-sm leading-6 text-on-surface-variant">Status: @draft.DraftStatusDisplay</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="inline-flex rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-[0.12em] @riskTone">@draft.RiskLevel Risk</span>
+                            <span class="inline-flex rounded-full bg-surface-container-high px-3 py-1 text-xs font-extrabold uppercase tracking-[0.12em] text-on-surface">
+                                @(draft.HasConflicts ? "Conflicts" : "No Conflicts")
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex flex-wrap items-center gap-3">
+                        <a href="@draft.ReviewPath"
+                           class="inline-flex h-touch-target-min items-center justify-center rounded-xl bg-primary px-5 text-sm font-extrabold uppercase tracking-[0.14em] text-white no-underline">
+                            Review Draft
+                        </a>
+                        <span class="text-sm font-semibold text-on-surface-variant">@draft.WarningCount warning(s)</span>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</section>

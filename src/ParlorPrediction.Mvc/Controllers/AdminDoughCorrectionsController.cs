@@ -262,7 +262,12 @@ public sealed class AdminDoughCorrectionsController : Controller
                 HistoricalWeeksToUse = 8
             },
             cancellationToken);
-        var prepTasks = await _prepTaskReadService.SearchAsync(new SearchPrepTasksRequest(), cancellationToken);
+        var prepTasks = await _prepTaskReadService.SearchAsync(
+            new SearchPrepTasksRequest
+            {
+                IncludeCancelled = true
+            },
+            cancellationToken);
         var batches = await _doughBatchReadRepository.SearchForCorrectionAsync(referenceDate.AddDays(-21), referenceDate, includeVoided: true, cancellationToken);
         var usageTraces = await _doughUsageTraceReadService.SearchAsync(
             new SearchDoughUsageTracesRequest

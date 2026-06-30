@@ -9,4 +9,6 @@ public sealed class SearchPrepTasksRequest
     public string? AssignedRole { get; init; }
 
     public Guid? PrepItemId { get; init; }
+
+    public bool IncludeCancelled { get; init; }
 }

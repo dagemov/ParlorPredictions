@@ -38,8 +38,28 @@ public sealed class ExplainWeeklyGoalToolRequest
     public int HistoricalWeeksToUse { get; init; } = 8;
 }
 
+public class SimulateOperationalProjectionToolRequest
+{
+    public Guid? CorrelationId { get; init; }
+
+    public DateOnly ReferenceDate { get; init; }
+
+    public int HistoricalWeeksToUse { get; init; } = 8;
+
+    public string? Notes { get; init; }
+
+    public string? ActorUserId { get; init; }
+}
+
+public sealed class PreviewOperationalDraftToolRequest
+{
+    public Guid DraftId { get; init; }
+}
+
 public sealed class DraftWeeklyCorrectionToolRequest : SimulateOperationalNarrativeToolRequest;
 
 public sealed class DraftDoughTaskToolRequest : SimulateOperationalNarrativeToolRequest;
+
+public sealed class DraftProjectionBasedAdjustmentToolRequest : SimulateOperationalProjectionToolRequest;
 
 public sealed class ValidateClosingBeforeSaveToolRequest : SimulateOperationalNarrativeToolRequest;

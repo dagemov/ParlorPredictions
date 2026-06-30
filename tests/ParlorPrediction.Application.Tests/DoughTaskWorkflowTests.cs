@@ -428,7 +428,7 @@ public sealed class DoughTaskWorkflowTests
             return Task.FromResult<IReadOnlyList<PrepTask>>(Tasks.Where(task => task.TaskDate >= startDate && task.TaskDate <= endDate).ToArray());
         }
 
-        public Task<IReadOnlyList<PrepTask>> SearchDoughTasksAsync(DateOnly? taskDate, PrepTaskStatus? status, ApplicationRole? assignedRole, Guid? prepItemId, CancellationToken cancellationToken = default)
+        public Task<IReadOnlyList<PrepTask>> SearchDoughTasksAsync(DateOnly? taskDate, PrepTaskStatus? status, ApplicationRole? assignedRole, Guid? prepItemId, bool includeCancelled = false, CancellationToken cancellationToken = default)
         {
             IEnumerable<PrepTask> query = Tasks;
 

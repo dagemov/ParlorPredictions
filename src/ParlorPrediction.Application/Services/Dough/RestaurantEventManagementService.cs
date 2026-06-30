@@ -8,13 +8,18 @@ namespace ParlorPrediction.Application.Services.Dough;
 
 public sealed class RestaurantEventManagementService : IRestaurantEventManagementService
 {
+    private const string RestaurantEventLedgerSourceType = "RestaurantEvent";
+
+    private readonly IConsumptionLedgerRepository? _consumptionLedgerRepository;
     private readonly IRestaurantEventRepository _restaurantEventRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public RestaurantEventManagementService(
         IRestaurantEventRepository restaurantEventRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IConsumptionLedgerRepository? consumptionLedgerRepository = null)
     {
+        _consumptionLedgerRepository = consumptionLedgerRepository;
         _restaurantEventRepository = restaurantEventRepository;
         _unitOfWork = unitOfWork;
     }
@@ -63,6 +68,7 @@ public sealed class RestaurantEventManagementService : IRestaurantEventManagemen
             request.Notes);
 
         await _restaurantEventRepository.AddAsync(restaurantEvent, cancellationToken);
+        await AppendConsumptionLedgerEntryAsync(restaurantEvent, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return restaurantEvent.Id;
@@ -87,6 +93,7 @@ public sealed class RestaurantEventManagementService : IRestaurantEventManagemen
             request.IsActive,
             request.Notes);
 
+        await AppendConsumptionLedgerEntryAsync(restaurantEvent, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
@@ -107,7 +114,31 @@ public sealed class RestaurantEventManagementService : IRestaurantEventManagemen
             restaurantEvent.Deactivate();
         }
 
+        await AppendConsumptionLedgerEntryAsync(restaurantEvent, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task AppendConsumptionLedgerEntryAsync(
+        RestaurantEvent restaurantEvent,
+        CancellationToken cancellationToken)
+    {
+        if (_consumptionLedgerRepository is null)
+        {
+            return;
+        }
+
+        await _consumptionLedgerRepository.AddAsync(
+            new ConsumptionLedger(
+                Guid.NewGuid(),
+                restaurantEvent.EventDate,
+                RestaurantEventLedgerSourceType,
+                restaurantEvent.Id,
+                0,
+                restaurantEvent.EstimatedDoughBalls,
+                0,
+                restaurantEvent.IsActive,
+                restaurantEvent.Notes),
+            cancellationToken);
     }
 
     private static RestaurantEventListItemResponse MapListItem(RestaurantEvent restaurantEvent)

@@ -40,6 +40,27 @@ public sealed class SimulateOperationalNarrativeToolResponse
     public string ValidationWarningsJson { get; init; } = string.Empty;
 }
 
+public sealed class SimulateOperationalProjectionToolResponse
+{
+    public Guid CorrelationId { get; init; }
+
+    public int ReadyNowBalls { get; init; }
+
+    public int BallsReadyForService { get; init; }
+
+    public int ProjectedShortageBalls { get; init; }
+
+    public bool WeeklyClosingUsageConsistent { get; init; }
+
+    public string BeforeSnapshotJson { get; init; } = string.Empty;
+
+    public string AfterPreviewJson { get; init; } = string.Empty;
+
+    public string DiffJson { get; init; } = string.Empty;
+
+    public string ValidationWarningsJson { get; init; } = string.Empty;
+}
+
 public sealed class OperationalDraftToolResponse
 {
     public required OperationalDraft Draft { get; init; }
